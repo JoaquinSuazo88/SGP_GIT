@@ -86,7 +86,11 @@
       "Bash(/c/Users/Joaquin.Suazo/AppData/Local/Programs/Python/Python314/python.exe \"C:/Users/Joaquin.Suazo/AppData/Local/Temp/fix_numbering_v2.py\" 2>&1)",
       "Bash(/c/Users/Joaquin.Suazo/AppData/Local/Programs/Python/Python314/python.exe \"C:/Users/Joaquin.Suazo/AppData/Local/Temp/rebuild_index.py\" 2>&1)",
       "Bash(node _gen_html.js)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(node _gen_html.js --watch)",
+      "Bash(kill %1)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(powershell:*)"
     ]
   }
 }
