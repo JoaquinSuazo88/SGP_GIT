@@ -250,7 +250,7 @@ El alcance de este documento cubre el módulo de Informes del SGP Local (Gestion
 - Sistema PEL (sistema destino de pedidos)
 - Sistema SAP (fuente de convenios y precios)
 - Sistema Sansis (sistema externo de nutrición)
-Módulo de Convocatorias y facturación SAP
+- Módulo de Convocatorias y facturación SAP
 
 # 8. SGP Administrador
 
