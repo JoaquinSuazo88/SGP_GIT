@@ -149,16 +149,6 @@
 
 ---
 
-![Imagen 1](imagenes/imagen_01.jpg)
-
-![Imagen 2](imagenes/imagen_103.jpg)
-![Imagen 3](imagenes/imagen_114.jpg)
-![Imagen 4](imagenes/imagen_125.jpg)
-![Imagen 5](imagenes/imagen_136.jpg)
-
-**
-**
-
 # 1. Confidencialidad
 
 La información de este documento y documentos anexos es propiedad de **SODEXO CHILE** y de carácter confidencial, por lo cual el proveedor debe mantener la información en reserva y usarla sólo para el propósito de prestar los servicios solicitados.
@@ -233,33 +223,33 @@ Definir el alcance funcional del módulo para la etapa de modernización.
 # 7. Alcance del proyecto
 
 El alcance de este documento cubre el módulo de Informes del SGP Local (GestionCasino) y SGP Administrador, incluyendo los siguientes submódulos y pantallas:
-**Sub-módulo Maestros y Parámetros**
+- **Sub-módulo Maestros y Parámetros**
 (I_Casinos, I_IngredientesProductos, I_CatDie, I_TipPla, I_Servic, I_EstructuraServicio, I_Regime, I_SubSeg, I_Zona, I_Segmento, I_Region, I_Provee, I_TipoServicio, I_FormatoCompra, I_FormatoCompras, I_ParametroDespachos, I_ParametroNReceta, I_ParametroGrupoDespacho, I_ParametroGrupoDespachoCeco, I_ParametroCodigoBarra)
-**Sub-módulo Recetas**
+- **Sub-módulo Recetas**
 (I_TarjetaRecetas, I_AporteRecetas, I_NombreRecetas, I_RecetasConProdCostoCero, I_ProductosCostoCero, I_IngredienteSinProductos, I_CategoriaComplejaReceta, I_CostoReceta, I_EfectoMeteorizanteReceta, I_EstacionalidadReceta, I_IntoleranciaReceta, I_MetodoCoccionReceta, I_SellosReceta, I_EtiquetadoSelloReceta, I_TiempoCoccionReceta, I_TiempoHHReceta, I_TipoIngPrincipalReceta, I_TipoNegocioReceta, I_GrupoIngPrincipal, I_GrupoEstructura, I_EquipamientoCoccion, I_ParametroSalsa, I_Alergeno, I_Color, I_EstiloAlimentacion, I_IngCruceGarnituraReceta)
-**Sub-módulo Planificación de Minutas – Segmento**
+- **Sub-módulo Planificación de Minutas – Segmento**
 (I_MenuPlanMensual, I_MenuPlanMensual2, I_MenuPlanMecano, I_MenuPlanMensualSemanaCerrada, I_MenuPlanMensualSemanaCerradaok, I_MenuPlanMensualServicio, I_MenuPlanMensualServicioOk, I_AportePlanDetallado, I_AportePlanRes, I_AportePlanEstrRes, I_AportePlanResumido, I_CostoPlanEstrRes, I_CostoPlanEstrRes1, I_CostoDetMinuta, I_ListaRecetaPlanificacion)
-**Sub-módulo Planificación de Minutas – Bloque / CECO**
+- **Sub-módulo Planificación de Minutas – Bloque / CECO**
 (I_MenuPlanMecanoBloque, I_MenuPlanMensualBloque, I_MenuPlanMensualSemanaCerradaokBloque, I_MenuPlanBloqueMensualServicioOk, I_AportePlanDetalladoBloque, I_AportePlanResBloque, I_AportePlanEstrResBloque, I_ListaRecetaPlanificacionBloque)
-**Sub-módulo Sansis / Exportaciones Especiales**
+- **Sub-módulo Sansis / Exportaciones Especiales**
 (I_AporteNutricionalSansis, I_CostoMinutaResumidoSansis, I_CostoMinutaDetalladoSansis, I_HomologacionFoodUp, I_MinutasRealesConRecetasPropuesta, I_ProductosnoHomologados)
-**Sub-módulo Bodega e Inventario**
+- **Sub-módulo Bodega e Inventario**
 (pantallas: I_SalBod.frm, I_MovSto.frm, I_TomInv.frm, I_MerPed.frm, I_DocPen.frm)
-**Sub-módulo**** ****Compras**
+- **Sub-módulo**** ****Compras**
 (pantallas: I_ComPer.frm, I_DetCom.frm, I_CoteRe.frm, I_CtrFCo.frm)
-**Sub-módulo Facturación y SSLL**
+- **Sub-módulo Facturación y SSLL**
 (I_ConsolidadoFacturacion, I_SSLL_Top10, I_CanastaMedicion, I_OchentaVeinte, I_SSLL_NivelServicio, I_SSLL_ComprasEvolucion, I_SsllIPA, I_SsllNotaVenta, I_EmitirNotaVenta, I_PorcCostoServ, I_SsllPrecRef, I_DsctoxVolumen; pantallas: I_FacCli.frm, I_VenDir.frm)
-**Sub-módulo Rutas y Despacho**
+- **Sub-módulo Rutas y Despacho**
 (I_Ruta, I_RutaProductos, I_RutaCalendarios, I_RutaCalendarioCasinos, I_CalendarioDiasFeriados)
-**Sub-módulo Parámetros del Sistema**
+- **Sub-módulo Parámetros del Sistema**
 (I_ReglasdeNegocios, I_ReglasdeNegociosFamilia, I_ReglasdeNegociosProducto, I_ReglasdeNegociosCasino, I_ListaPrecios, I_ListadePreciosCasinoAsignados, I_ListadePrecioss, I_TablaGramaje, I_TablaGramajeCeco, I_UsuariosWeb, I_RetencionFuente, I_RetencionIca, I_Productos1, I_Productos2, I_Ingrediente, I_AporteProductos, I_ImpuestoProductos, I_CtaCon, I_AgregarCantidadProductos, I_ListarCantidadProductos, I_CostoPrecioIngrediente, I_AsociarListaPrecio, I_GrupoCambioIng)
 
 **Fuera del alcance:**
-Módulos de Recetas y Minutas del SGP Administrador (contexto/prerrequisito, documentados en DRF separado)
-Módulo de Pedidos del SGP Administrador (documentado en DRF separado)
-Sistema PEL (sistema destino de pedidos)
-Sistema SAP (fuente de convenios y precios)
-Sistema Sansis (sistema externo de nutrición)
+- Módulos de Recetas y Minutas del SGP Administrador (contexto/prerrequisito, documentados en DRF separado)
+- Módulo de Pedidos del SGP Administrador (documentado en DRF separado)
+- Sistema PEL (sistema destino de pedidos)
+- Sistema SAP (fuente de convenios y precios)
+- Sistema Sansis (sistema externo de nutrición)
 Módulo de Convocatorias y facturación SAP
 
 # 8. SGP Administrador
