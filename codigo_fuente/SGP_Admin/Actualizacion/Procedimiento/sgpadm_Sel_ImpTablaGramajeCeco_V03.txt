@@ -1,0 +1,131 @@
+/*                          
+==========================================================================                          
+Sistema : Sgp Administrador                          
+Modulo :  Minutas - Tabla Gramaje impresión (I_TablaGramaje)        
+                          
+SP o Function : sgpadm_Sel_ImpTablaGramajeCeco        
+Descripcion   : Imprimir tabla gramaje ceco    
+Observaciones :         
+                          
+F. creacion:      06/01/2014    
+Creador:          Jorge Paz Núñez    
+                          
+==========================================================================                          
+Modificaciones:    
+Fecha             Programador             Motivo y/o Modificacion    
+05/09/2017        Jorge Paz Núñez         Agregar nueva columna tipo de plato
+18/08/2025        Jorge Paz Núñez         Incluir tabla tablagramajececo_nivel
+==========================================================================                          
+test :  sgpadm_Sel_ImpTablaGramajeCeco    
+  
+sgpadm_Sel_ImpTablaGramajeCeco_V02 '22700', 10320, '', 0, 0  
+        
+*/                      
+            
+CREATE PROC [dbo].[sgpadm_Sel_ImpTablaGramajeCeco_V03]
+  (    
+   @ceco VARCHAR(10)    
+  ,@codreg INT    
+  ,@coding VARCHAR(20)    
+  ,@filcatdie INT    
+  ,@filtippla INT        
+  )    
+AS     
+  DECLARE @nreg AS INT        
+  SELECT  @nreg = 0        
+       
+  SELECT  c.*    
+         ,a.rec_nombre    
+         ,a.rec_catdie    
+         ,a.rec_tippla    
+  INTO    #paso1    
+  FROM    b_receta a WITH ( NOLOCK )    
+  INNER JOIN b_recetadet b WITH ( NOLOCK ) ON a.rec_codigo = b.red_codigo    
+  INNER JOIN b_tablagramajececo c WITH ( NOLOCK ) ON c.tgc_codrec = a.rec_codigo    
+                                                 AND c.tgc_coding = b.red_codpro    
+  WHERE   ( c.tgc_ceco = @ceco    
+            OR @ceco = ''    
+          )    
+          AND ( c.tgc_codreg = @codreg    
+                OR @codreg = 0    
+              )    
+          AND ( c.tgc_coding = @coding    
+                OR @coding = ''    
+              )    
+          AND ( a.rec_catdie = @filcatdie    
+                OR @filcatdie = 0    
+              )    
+          AND ( a.rec_tippla = @filtippla    
+                OR @filtippla = 0    
+              )    
+          AND a.rec_tiprec = '0'        
+        
+  SELECT  c.tgc_ceco    
+         ,f.cli_nombre    
+         ,c.tgc_codreg    
+         ,e.reg_nombre    
+         ,c.tgc_codrec    
+         ,c.rec_nombre    
+         ,c.tgc_coding    
+         ,g.ing_nombre    
+         ,c.tgc_codins    
+         ,c.tgc_cantgr    
+         ,c.rec_catdie    
+         ,c.rec_tippla    
+  INTO    #paso2    
+  FROM    #paso1 c WITH ( NOLOCK )    
+  INNER JOIN a_regimen e WITH ( NOLOCK ) ON c.tgc_codreg = e.reg_codigo    
+  INNER JOIN b_clientes f WITH ( NOLOCK ) ON c.tgc_ceco = f.cli_codigo    
+  INNER JOIN b_ingrediente g WITH ( NOLOCK ) ON c.tgc_coding = g.ing_codigo       
+        
+  SELECT  @nreg = COUNT(*)    
+  FROM    #paso2    
+        
+  SELECT  a.tgc_ceco as [Codigo Ceco]   
+         ,a.cli_nombre as [Nombre Ceco]   
+         ,a.tgc_codreg as [Codigo Regimen]   
+         ,a.reg_nombre as [Nombre Regimen]   
+         ,a.tgc_codrec as [Codigo Receta]   
+         ,a.rec_nombre as [Nombre Receta]   
+         ,a.tgc_coding as [Codigo Ing. Receta]   
+         ,a.ing_nombre as [Nombre Ing. Receta]   
+         ,a.tgc_codins as [Codigo Ing. Reemplazar]
+		 ,ISNULL(b.ing_nombre, '') AS [Nombre Ing. Reemplazar]   
+         ,a.tgc_cantgr as [Cantidad Reemplazar]   
+--         ,a.rec_catdie    
+         ,a.rec_tippla as [Codigo Tipo Plato]
+         ,ISNULL(SUBSTRING(dbo.sgpadm_p_buscararboltipplato1(a.rec_tippla),1,LEN(dbo.sgpadm_p_buscararboltipplato1(a.rec_tippla))-1),'') AS [Nombre Tipo Plato]
+		,'Tabla Gramaje Normal' as [Origen Data]
+  FROM    #paso2 a WITH ( NOLOCK )    
+  LEFT JOIN b_ingrediente b WITH ( NOLOCK ) ON a.tgc_codins = b.ing_codigo    
+  union all
+  select IdCeco as [Codigo Ceco]
+        ,bb.cli_nombre as [Nombre Ceco]
+		,cc.reg_codigo as [Codigo Regimen]
+		,cc.reg_nombre as [Nombre Regimen]
+		,null as [Codigo Receta]
+		,'' as [Nombre Receta]
+        ,dd.ing_codigo as [Codigo Ing. Receta]   
+        ,dd.ing_nombre as [Nombre Ing. Receta]   
+        ,ee.ing_codigo as [Codigo Ing. Reemplazar]
+		,ISNULL(ee.ing_nombre, '') AS [Nombre Ing. Reemplazar]   
+		,aa.CantidadBruta as [Cantidad Reemplazar]   
+        ,aa.IdTipoPlato as [Codigo Tipo Plato]
+		,case when ff.tip_codigo is null
+		      then ''
+              else ISNULL(SUBSTRING(dbo.sgpadm_p_buscararboltipplato1(aa.IdTipoPlato),1,LEN(dbo.sgpadm_p_buscararboltipplato1(aa.IdTipoPlato))-1),'') end
+			   AS [Nombre Tipo Plato]
+		,'Tabla Gramaje x Nivel' as [Origen Data]
+  from b_tablagramajececo_nivel as aa with (nolock)
+  inner join b_clientes as bb with (nolock) on bb.cli_codigo = aa.IdCeco
+  left join a_regimen as cc with (nolock) on cc.reg_codigo = aa.IdRegimen
+  inner join b_ingrediente as dd with (nolock) on dd.ing_codigo = aa.IdIngredienteOrigen
+  inner join b_ingrediente as ee with (nolock) on ee.ing_codigo = aa.IdIngredienteCambio
+  left join a_recetatippla as ff with (nolock) on ff.tip_codigo = aa.IdTipoPlato
+  where idceco = @ceco
+  --ORDER BY a.tgc_ceco    
+  --        ,a.tgc_codreg    
+  --        ,a.tgc_coding    
+  --        ,a.rec_catdie    
+  --        ,a.rec_tippla    
+  --        ,a.rec_nombre 

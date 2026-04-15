@@ -1,0 +1,156 @@
+{
+  "proceso": "Flujo de Servicio",
+  "leyenda": {
+    "titulo": "Responsables",
+    "items": [
+      { "color": "#4A90E2", "responsable": "Producción" },
+      { "color": "#7ED321", "responsable": "Inventario" }
+    ],
+    "posicion_sugerida": "inferior-derecha"
+  },
+  "secciones": [
+    {
+      "nombre": "PLANIFICACIÓN REAL",
+      "etapas": [
+        {
+          "id": "plan_real",
+          "tipo": "actividad",
+          "texto": "Planificación Real",
+          "color": "#4A90E2"
+        }
+      ]
+    },
+    {
+      "nombre": "SALIDA A PRODUCCIÓN",
+      "etapas": [
+        {
+          "id": "requisicion",
+          "tipo": "actividad",
+          "texto": "Requisición",
+          "color": "#4A90E2"
+        },
+        {
+          "id": "salida_produccion",
+          "tipo": "actividad",
+          "texto": "Salida a Producción",
+          "color": "#7ED321"
+        },
+        {
+          "id": "devolucion_produccion",
+          "tipo": "actividad",
+          "texto": "Devolución Salida Producción",
+          "color": "#7ED321"
+        },
+        {
+          "id": "adicionales_servicio",
+          "tipo": "actividad",
+          "texto": "Adicionales de Servicio",
+          "color": "#4A90E2"
+        },
+        {
+          "id": "ejecucion_produccion",
+          "tipo": "actividad",
+          "texto": "Ejecución Producción",
+          "color": "#4A90E2",
+          "icono": "reloj"
+        }
+      ]
+    },
+    {
+      "nombre": "VENTAS",
+      "etapas": [
+        {
+          "id": "venta_directa",
+          "tipo": "actividad",
+          "texto": "Venta Directa",
+          "color": "#7ED321"
+        },
+        {
+          "id": "venta_cafeteria",
+          "tipo": "actividad",
+          "texto": "Venta Cafetería",
+          "color": "#7ED321"
+        },
+        {
+          "id": "venta_servicios_especiales",
+          "tipo": "actividad",
+          "texto": "Venta Servicios Especiales",
+          "color": "#7ED321"
+        },
+        {
+          "id": "control_raciones",
+          "tipo": "actividad",
+          "texto": "Control de Raciones",
+          "color": "#4A90E2"
+        },
+        {
+          "id": "venta_servicio_contado",
+          "tipo": "actividad",
+          "texto": "Venta Servicio Contado",
+          "color": "#4A90E2"
+        },
+        {
+          "id": "lista_precio_cafeteria",
+          "tipo": "actividad",
+          "texto": "Lista de Precio Cafetería",
+          "color": "#4A90E2"
+        },
+        {
+          "id": "precio_venta_cliente",
+          "tipo": "actividad",
+          "texto": "Precio Venta Cliente",
+          "color": "#4A90E2"
+        }
+      ]
+    },
+    {
+      "nombre": "MERMAS",
+      "etapas": [
+        {
+          "id": "raciones_no_vendidas",
+          "tipo": "actividad",
+          "texto": "Raciones no Vendidas",
+          "color": "#4A90E2"
+        },
+        {
+          "id": "merma_prod_desconche_pan",
+          "tipo": "actividad",
+          "texto": "Merma Prod., Desconche y Pan",
+          "color": "#4A90E2"
+        }
+      ]
+    },
+    {
+      "nombre": "CIERRE DIARIO",
+      "etapas": [
+        {
+          "id": "cierre_diario",
+          "tipo": "actividad",
+          "texto": "Cierre Diario",
+          "color": "#4A90E2"
+        }
+      ]
+    }
+  ],
+  "conexiones": [
+    { "origen": "plan_real",              "destino": "requisicion" },
+    { "origen": "requisicion",            "destino": "adicionales_servicio" },
+    { "origen": "requisicion",            "destino": "salida_produccion" },
+    { "origen": "salida_produccion",      "destino": "ejecucion_produccion" },
+    { "origen": "adicionales_servicio",   "destino": "salida_produccion" },
+    { "origen": "ejecucion_produccion",   "destino": "devolucion_produccion" },
+    { "origen": "devolucion_produccion",  "destino": "raciones_no_vendidas" },
+    { "origen": "devolucion_produccion",  "destino": "merma_prod_desconche_pan" },
+    { "origen": "devolucion_produccion",  "destino": "control_raciones" },
+    { "origen": "devolucion_produccion",  "destino": "venta_servicio_contado" },
+    { "origen": "venta_directa",          "destino": "cierre_diario" },
+    { "origen": "venta_cafeteria",        "destino": "cierre_diario" },
+    { "origen": "venta_servicio_contado", "destino": "cierre_diario" },
+    { "origen": "venta_servicios_especiales", "destino": "cierre_diario" },
+    { "origen": "control_raciones",       "destino": "cierre_diario" },
+    { "origen": "merma_prod_desconche_pan","destino": "cierre_diario" },
+    { "origen": "raciones_no_vendidas",   "destino": "cierre_diario" },
+    { "origen": "lista_precio_cafeteria", "destino": "venta_cafeteria" },
+    { "origen": "precio_venta_cliente",   "destino": "control_raciones" }
+  ]
+}

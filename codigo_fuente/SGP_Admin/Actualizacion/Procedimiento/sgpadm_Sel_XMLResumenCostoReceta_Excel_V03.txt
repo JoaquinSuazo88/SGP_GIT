@@ -1,0 +1,314 @@
+/*                                                      
+==========================================================================                                                      
+  
+Sistema : Sgp Administrador                                                      
+  
+Modulo :  Informe - Exportar Minuta Bloque Excel (I_ExpMinBlo.frm)                                                                                                         
+  
+SP o Function : sgpadm_Sel_XMLResumenCostoReceta_Excel_V01  
+  
+Descripcion   :  Mostrar resumen de receta asociado tipo plato, costo y gramaje         
+                 de acuerdo a un ceco, regimen y servicio                                                                                                  
+  
+Observaciones :                                                       
+  
+F. creacion:      10/04/2019  
+  
+Creador:          Jorge András Paz Núñez  
+  
+==========================================================================                                                      
+  
+Modificaciones:                                                      
+  
+Fecha             Programador             Motivo y/o Modificacion                                                      
+18/01/2022        Jorge Paz Núñez         Cambiar nombre sub procedimiento 
+                                          PA_sgpadm_CostoRecetaProductoExcel_V01 x
+										  PA_sgpadm_CostoRecetaProductoExcel_V02
+										  esto incluye dos nuevo cambio a la
+										  tabla excepción formato compras que son
+										  fecha inicio y fin.   
+										  Cambio nom de procedimiento sgpadm_Sel_XMLResumenCostoReceta_Excel_V01
+										  x sgpadm_Sel_XMLResumenCostoReceta_Excel_V02                             
+14/02/2024       Jorge Paz Núñez          incluir el campo Activo en los filtro de las tablas
+                                          b_receta_oferta y b_cliente_oferta
+21-08-2025       JPAZN                    Incluir tabla x ceco nivel
+==========================================================================                                            
+  
+Test:                                                         
+
+exec  sgpadm_Sel_XMLResumenCostoReceta_Excel_V02 '22700', 10320, 1001, 20250821,1,'1','','', 2025, 08
+sgpadm_Sel_XMLResumenCostoReceta_Excel_V02 '22700', 10320, 10001, 20250101, 1, '1', '<?xml version="1.0" encoding="iso-8859-1" ?><Dietetica> <DetDietetica Die = "1"/> <DetDietetica Die = "7"/> <DetDietetica Die = "99"/> <DetDietetica Die = "100"/> <DetDietetica Die = "8"/> <DetDietetica Die = "103"/> <DetDietetica Die = "104"/> <DetDietetica Die = "105"/> <DetDietetica Die = "343"/> <DetDietetica Die = "344"/> <DetDietetica Die = "106"/> <DetDietetica Die = "107"/> <DetDietetica Die = "108"/> <DetDietetica Die = "109"/> <DetDietetica Die = "110"/> <DetDietetica Die = "111"/> <DetDietetica Die = "112"/> <DetDietetica Die = "113"/> <DetDietetica Die = "114"/> <DetDietetica Die = "39"/> <DetDietetica Die = "53"/> <DetDietetica Die = "102"/> <DetDietetica Die = "115"/> <DetDietetica Die = "116"/> <DetDietetica Die = "117"/> <DetDietetica Die = "118"/> <DetDietetica Die = "119"/> <DetDietetica Die = "120"/> <DetDietetica Die = "121"/> <DetDietetica Die = "122"/> <DetDietetica Die = "123"/> <DetDietetica Die = "124"/> <DetDietetica Die = "125"/> <DetDietetica Die = "126"/> <DetDietetica Die = "127"/> <DetDietetica Die = "128"/> <DetDietetica Die = "129"/> <DetDietetica Die = "130"/> <DetDietetica Die = "131"/> <DetDietetica Die = "132"/> <DetDietetica Die = "133"/> <DetDietetica Die = "272"/> <DetDietetica Die = "134"/> <DetDietetica Die = "135"/> <DetDietetica Die = "136"/> <DetDietetica Die = "137"/> <DetDietetica Die = "138"/> <DetDietetica Die = "139"/> <DetDietetica Die = "140"/> <DetDietetica Die = "141"/> <DetDietetica Die = "142"/> <DetDietetica Die = "143"/> <DetDietetica Die = "144"/> <DetDietetica Die = "275"/> <DetDietetica Die = "276"/> <DetDietetica Die = "277"/> <DetDietetica Die = "284"/> <DetDietetica Die = "285"/> <DetDietetica Die = "295"/> <DetDietetica Die = "145"/> <DetDietetica Die = "146"/> <DetDietetica Die = "147"/> <DetDietetica Die = "148"/> <DetDietetica Die = "149"/> <DetDietetica Die = "150"/> <DetDietetica Die = "151"/> <DetDietetica Die = "152"/> <DetDietetica Die = "153"/> <DetDietetica Die = "290"/> <DetDietetica Die = "297"/> <DetDietetica Die = "300"/> <DetDietetica Die = "301"/> <DetDietetica Die = "302"/> <DetDietetica Die = "303"/> <DetDietetica Die = "304"/> <DetDietetica Die = "305"/> <DetDietetica Die = "306"/> <DetDietetica Die = "307"/> <DetDietetica Die = "321"/> <DetDietetica Die = "322"/> <DetDietetica Die = "323"/> <DetDietetica Die = "324"/> <DetDietetica Die = "315"/> <DetDietetica Die = "318"/> <DetDietetica Die = "340"/> <DetDietetica Die = "154"/> <DetDietetica Die = "155"/> <DetDietetica Die = "156"/> <DetDietetica Die = "345"/> <DetDietetica Die = "26"/> <DetDietetica Die = "27"/> <DetDietetica Die = "40"/> <DetDietetica Die = "93"/> <DetDietetica Die = "29"/> <DetDietetica Die = "30"/> <DetDietetica Die = "36"/> <DetDietetica Die = "31"/> <DetDietetica Die = "32"/> <DetDietetica Die = "33"/> <DetDietetica Die = "43"/> <DetDietetica Die = "256"/> <DetDietetica Die = "257"/> <DetDietetica Die = "258"/> <DetDietetica Die = "316"/> <DetDietetica Die = "317"/> <DetDietetica Die = "259"/> <DetDietetica Die = "260"/> <DetDietetica Die = "261"/> <DetDietetica Die = "262"/> <DetDietetica Die = "263"/> <DetDietetica Die = "264"/> <DetDietetica Die = "265"/> <DetDietetica Die = "266"/> <DetDietetica Die = "267"/> <DetDietetica Die = "268"/> <DetDietetica Die = "269"/> <DetDietetica Die = "270"/> <DetDietetica Die = "271"/> <DetDietetica Die = "44"/> <DetDietetica Die = "45"/> <DetDietetica Die = "157"/> <DetDietetica Die = "158"/> <DetDietetica Die = "46"/> <DetDietetica Die = "160"/> <DetDietetica Die = "161"/> <DetDietetica Die = "162"/> <DetDietetica Die = "163"/> <DetDietetica Die = "164"/> <DetDietetica Die = "165"/> <DetDietetica Die = "339"/> <DetDietetica Die = "61"/> <DetDietetica Die = "80"/> <DetDietetica Die = "159"/> <DetDietetica Die = "166"/> <DetDietetica Die = "167"/> <DetDietetica Die = "168"/> <DetDietetica Die = "169"/> <DetDietetica Die = "170"/> <DetDietetica Die = "171"/> <DetDietetica Die = "172"/> <DetDietetica Die = "173"/> <DetDietetica Die = "174"/> <DetDietetica Die = "175"/> <DetDietetica Die = "176"/> <DetDietetica Die = "177"/> <DetDietetica Die = "178"/> <DetDietetica Die = "179"/> <DetDietetica Die = "180"/> <DetDietetica Die = "181"/> <DetDietetica Die = "182"/> <DetDietetica Die = "183"/> <DetDietetica Die = "273"/> <DetDietetica Die = "184"/> <DetDietetica Die = "185"/> <DetDietetica Die = "186"/> <DetDietetica Die = "187"/> <DetDietetica Die = "188"/> <DetDietetica Die = "189"/> <DetDietetica Die = "190"/> <DetDietetica Die = "191"/> <DetDietetica Die = "192"/> <DetDietetica Die = "193"/> <DetDietetica Die = "194"/> <DetDietetica Die = "278"/> <DetDietetica Die = "279"/> <DetDietetica Die = "280"/> <DetDietetica Die = "286"/> <DetDietetica Die = "287"/> <DetDietetica Die = "296"/> <DetDietetica Die = "195"/> <DetDietetica Die = "196"/> <DetDietetica Die = "197"/> <DetDietetica Die = "198"/> <DetDietetica Die = "199"/> <DetDietetica Die = "200"/> <DetDietetica Die = "201"/> <DetDietetica Die = "202"/> <DetDietetica Die = "203"/> <DetDietetica Die = "298"/> <DetDietetica Die = "308"/> <DetDietetica Die = "309"/> <DetDietetica Die = "310"/> <DetDietetica Die = "311"/> <DetDietetica Die = "312"/> <DetDietetica Die = "313"/> <DetDietetica Die = "314"/> <DetDietetica Die = "334"/> <DetDietetica Die = "335"/> <DetDietetica Die = "336"/> <DetDietetica Die = "337"/> <DetDietetica Die = "338"/> <DetDietetica Die = "319"/> <DetDietetica Die = "341"/> <DetDietetica Die = "204"/> <DetDietetica Die = "205"/> <DetDietetica Die = "206"/> <DetDietetica Die = "49"/> <DetDietetica Die = "50"/> <DetDietetica Die = "207"/> <DetDietetica Die = "208"/> <DetDietetica Die = "51"/> <DetDietetica Die = "209"/> <DetDietetica Die = "210"/> <DetDietetica Die = "211"/> <DetDietetica Die = "212"/> <DetDietetica Die = "213"/> <DetDietetica Die = "214"/> <DetDietetica Die = "92"/> <DetDietetica Die = "215"/> <DetDietetica Die = "216"/> <DetDietetica Die = "217"/> <DetDietetica Die = "218"/> <DetDietetica Die = "219"/> <DetDietetica Die = "220"/> <DetDietetica Die = "221"/> <DetDietetica Die = "222"/> <DetDietetica Die = "223"/> <DetDietetica Die = "224"/> <DetDietetica Die = "225"/> <DetDietetica Die = "226"/> <DetDietetica Die = "227"/> <DetDietetica Die = "228"/> <DetDietetica Die = "229"/> <DetDietetica Die = "230"/> <DetDietetica Die = "231"/> <DetDietetica Die = "232"/> <DetDietetica Die = "274"/> <DetDietetica Die = "233"/> <DetDietetica Die = "234"/> <DetDietetica Die = "235"/> <DetDietetica Die = "236"/> <DetDietetica Die = "237"/> <DetDietetica Die = "238"/> <DetDietetica Die = "239"/> <DetDietetica Die = "240"/> <DetDietetica Die = "241"/> <DetDietetica Die = "242"/> <DetDietetica Die = "243"/> <DetDietetica Die = "281"/> <DetDietetica Die = "282"/> <DetDietetica Die = "283"/> <DetDietetica Die = "288"/> <DetDietetica Die = "289"/> <DetDietetica Die = "244"/> <DetDietetica Die = "245"/> <DetDietetica Die = "246"/> <DetDietetica Die = "247"/> <DetDietetica Die = "248"/> <DetDietetica Die = "249"/> <DetDietetica Die = "250"/> <DetDietetica Die = "251"/> <DetDietetica Die = "252"/> <DetDietetica Die = "299"/> <DetDietetica Die = "320"/> <DetDietetica Die = "325"/> <DetDietetica Die = "326"/> <DetDietetica Die = "327"/> <DetDietetica Die = "328"/> <DetDietetica Die = "329"/> <DetDietetica Die = "330"/> <DetDietetica Die = "331"/> <DetDietetica Die = "332"/> <DetDietetica Die = "333"/> <DetDietetica Die = "342"/> <DetDietetica Die = "253"/> <DetDietetica Die = "254"/> <DetDietetica Die = "255"/> <DetDietetica Die = "70"/> <DetDietetica Die = "71"/> <DetDietetica Die = "72"/> <DetDietetica Die = "97"/> <DetDietetica Die = "98"/> <DetDietetica Die = "76"/> <DetDietetica Die = "74"/> <DetDietetica Die = "75"/> <DetDietetica Die = "77"/> <DetDietetica Die = "94"/> <DetDietetica Die = "291"/> <DetDietetica Die = "292"/> <DetDietetica Die = "293"/></Dietetica>', '<?xml version="1.0" encoding="iso-8859-1" ?><Plato> <DetPlato Pla = "71"/> <DetPlato Pla = "72"/> <DetPlato Pla = "73"/> <DetPlato Pla = "74"/> <DetPlato Pla = "75"/> <DetPlato Pla = "198"/> <DetPlato Pla = "76"/> <DetPlato Pla = "111"/> <DetPlato Pla = "143"/> <DetPlato Pla = "189"/> <DetPlato Pla = "190"/> <DetPlato Pla = "191"/> <DetPlato Pla = "135"/> <DetPlato Pla = "6"/> <DetPlato Pla = "5"/> <DetPlato Pla = "199"/> <DetPlato Pla = "77"/> <DetPlato Pla = "144"/> <DetPlato Pla = "145"/> <DetPlato Pla = "146"/> <DetPlato Pla = "147"/> <DetPlato Pla = "148"/> <DetPlato Pla = "96"/> <DetPlato Pla = "97"/> <DetPlato Pla = "98"/> <DetPlato Pla = "99"/> <DetPlato Pla = "100"/> <DetPlato Pla = "149"/> <DetPlato Pla = "150"/> <DetPlato Pla = "105"/> <DetPlato Pla = "106"/> <DetPlato Pla = "7"/> <DetPlato Pla = "38"/> <DetPlato Pla = "39"/> <DetPlato Pla = "84"/> <DetPlato Pla = "85"/> <DetPlato Pla = "86"/> <DetPlato Pla = "110"/> <DetPlato Pla = "132"/> <DetPlato Pla = "151"/> <DetPlato Pla = "2"/> <DetPlato Pla = "14"/> <DetPlato Pla = "164"/> <DetPlato Pla = "165"/> <DetPlato Pla = "166"/> <DetPlato Pla = "17"/> <DetPlato Pla = "152"/> <DetPlato Pla = "153"/> <DetPlato Pla = "154"/> <DetPlato Pla = "58"/> <DetPlato Pla = "161"/> <DetPlato Pla = "162"/> <DetPlato Pla = "163"/> <DetPlato Pla = "61"/> <DetPlato Pla = "155"/> <DetPlato Pla = "156"/> <DetPlato Pla = "157"/> <DetPlato Pla = "64"/> <DetPlato Pla = "158"/> <DetPlato Pla = "159"/> <DetPlato Pla = "160"/> <DetPlato Pla = "65"/> <DetPlato Pla = "66"/> <DetPlato Pla = "67"/> <DetPlato Pla = "68"/> <DetPlato Pla = "69"/> <DetPlato Pla = "70"/> <DetPlato Pla = "87"/> <DetPlato Pla = "88"/> <DetPlato Pla = "89"/> <DetPlato Pla = "136"/> <DetPlato Pla = "138"/> <DetPlato Pla = "139"/> <DetPlato Pla = "197"/> <DetPlato Pla = "140"/> <DetPlato Pla = "141"/> <DetPlato Pla = "142"/> <DetPlato Pla = "172"/> <DetPlato Pla = "173"/> <DetPlato Pla = "174"/> <DetPlato Pla = "175"/> <DetPlato Pla = "176"/> <DetPlato Pla = "177"/> <DetPlato Pla = "181"/> <DetPlato Pla = "182"/> <DetPlato Pla = "183"/> <DetPlato Pla = "184"/> <DetPlato Pla = "185"/> <DetPlato Pla = "186"/> <DetPlato Pla = "202"/> <DetPlato Pla = "187"/> <DetPlato Pla = "3"/> <DetPlato Pla = "18"/> <DetPlato Pla = "167"/> <DetPlato Pla = "168"/> <DetPlato Pla = "169"/> <DetPlato Pla = "19"/> <DetPlato Pla = "20"/> <DetPlato Pla = "22"/> <DetPlato Pla = "133"/> <DetPlato Pla = "170"/> <DetPlato Pla = "192"/> <DetPlato Pla = "194"/> <DetPlato Pla = "23"/> <DetPlato Pla = "31"/> <DetPlato Pla = "120"/> <DetPlato Pla = "123"/> <DetPlato Pla = "130"/> <DetPlato Pla = "131"/> <DetPlato Pla = "37"/> <DetPlato Pla = "42"/> <DetPlato Pla = "90"/> <DetPlato Pla = "92"/> <DetPlato Pla = "134"/> <DetPlato Pla = "188"/> <DetPlato Pla = "1"/> <DetPlato Pla = "9"/> <DetPlato Pla = "45"/> <DetPlato Pla = "46"/> <DetPlato Pla = "10"/> <DetPlato Pla = "47"/> <DetPlato Pla = "50"/> <DetPlato Pla = "11"/> <DetPlato Pla = "51"/> <DetPlato Pla = "53"/> <DetPlato Pla = "112"/> <DetPlato Pla = "201"/> <DetPlato Pla = "12"/> <DetPlato Pla = "13"/> <DetPlato Pla = "54"/> <DetPlato Pla = "55"/> <DetPlato Pla = "108"/> <DetPlato Pla = "109"/> <DetPlato Pla = "137"/> <DetPlato Pla = "171"/> <DetPlato Pla = "52"/> <DetPlato Pla = "113"/> <DetPlato Pla = "200"/> <DetPlato Pla = "129"/> <DetPlato Pla = "4"/> <DetPlato Pla = "24"/> <DetPlato Pla = "25"/> <DetPlato Pla = "195"/> <DetPlato Pla = "35"/> <DetPlato Pla = "196"/> <DetPlato Pla = "36"/> <DetPlato Pla = "44"/> <DetPlato Pla = "103"/> <DetPlato Pla = "82"/> <DetPlato Pla = "178"/> <DetPlato Pla = "179"/> <DetPlato Pla = "180"/> <DetPlato Pla = "83"/></Plato>', '0101', '3101'
+sgpadm_Sel_XMLResumenCostoReceta_Excel_V03 '22700', 10320, 10001, 20250101, 1, '1', '<?xml version="1.0" encoding="iso-8859-1" ?><Dietetica> <DetDietetica Die = "1"/> <DetDietetica Die = "7"/> <DetDietetica Die = "99"/> <DetDietetica Die = "100"/> <DetDietetica Die = "8"/> <DetDietetica Die = "103"/> <DetDietetica Die = "104"/> <DetDietetica Die = "105"/> <DetDietetica Die = "343"/> <DetDietetica Die = "344"/> <DetDietetica Die = "106"/> <DetDietetica Die = "107"/> <DetDietetica Die = "108"/> <DetDietetica Die = "109"/> <DetDietetica Die = "110"/> <DetDietetica Die = "111"/> <DetDietetica Die = "112"/> <DetDietetica Die = "113"/> <DetDietetica Die = "114"/> <DetDietetica Die = "39"/> <DetDietetica Die = "53"/> <DetDietetica Die = "102"/> <DetDietetica Die = "115"/> <DetDietetica Die = "116"/> <DetDietetica Die = "117"/> <DetDietetica Die = "118"/> <DetDietetica Die = "119"/> <DetDietetica Die = "120"/> <DetDietetica Die = "121"/> <DetDietetica Die = "122"/> <DetDietetica Die = "123"/> <DetDietetica Die = "124"/> <DetDietetica Die = "125"/> <DetDietetica Die = "126"/> <DetDietetica Die = "127"/> <DetDietetica Die = "128"/> <DetDietetica Die = "129"/> <DetDietetica Die = "130"/> <DetDietetica Die = "131"/> <DetDietetica Die = "132"/> <DetDietetica Die = "133"/> <DetDietetica Die = "272"/> <DetDietetica Die = "134"/> <DetDietetica Die = "135"/> <DetDietetica Die = "136"/> <DetDietetica Die = "137"/> <DetDietetica Die = "138"/> <DetDietetica Die = "139"/> <DetDietetica Die = "140"/> <DetDietetica Die = "141"/> <DetDietetica Die = "142"/> <DetDietetica Die = "143"/> <DetDietetica Die = "144"/> <DetDietetica Die = "275"/> <DetDietetica Die = "276"/> <DetDietetica Die = "277"/> <DetDietetica Die = "284"/> <DetDietetica Die = "285"/> <DetDietetica Die = "295"/> <DetDietetica Die = "145"/> <DetDietetica Die = "146"/> <DetDietetica Die = "147"/> <DetDietetica Die = "148"/> <DetDietetica Die = "149"/> <DetDietetica Die = "150"/> <DetDietetica Die = "151"/> <DetDietetica Die = "152"/> <DetDietetica Die = "153"/> <DetDietetica Die = "290"/> <DetDietetica Die = "297"/> <DetDietetica Die = "300"/> <DetDietetica Die = "301"/> <DetDietetica Die = "302"/> <DetDietetica Die = "303"/> <DetDietetica Die = "304"/> <DetDietetica Die = "305"/> <DetDietetica Die = "306"/> <DetDietetica Die = "307"/> <DetDietetica Die = "321"/> <DetDietetica Die = "322"/> <DetDietetica Die = "323"/> <DetDietetica Die = "324"/> <DetDietetica Die = "315"/> <DetDietetica Die = "318"/> <DetDietetica Die = "340"/> <DetDietetica Die = "154"/> <DetDietetica Die = "155"/> <DetDietetica Die = "156"/> <DetDietetica Die = "345"/> <DetDietetica Die = "26"/> <DetDietetica Die = "27"/> <DetDietetica Die = "40"/> <DetDietetica Die = "93"/> <DetDietetica Die = "29"/> <DetDietetica Die = "30"/> <DetDietetica Die = "36"/> <DetDietetica Die = "31"/> <DetDietetica Die = "32"/> <DetDietetica Die = "33"/> <DetDietetica Die = "43"/> <DetDietetica Die = "256"/> <DetDietetica Die = "257"/> <DetDietetica Die = "258"/> <DetDietetica Die = "316"/> <DetDietetica Die = "317"/> <DetDietetica Die = "259"/> <DetDietetica Die = "260"/> <DetDietetica Die = "261"/> <DetDietetica Die = "262"/> <DetDietetica Die = "263"/> <DetDietetica Die = "264"/> <DetDietetica Die = "265"/> <DetDietetica Die = "266"/> <DetDietetica Die = "267"/> <DetDietetica Die = "268"/> <DetDietetica Die = "269"/> <DetDietetica Die = "270"/> <DetDietetica Die = "271"/> <DetDietetica Die = "44"/> <DetDietetica Die = "45"/> <DetDietetica Die = "157"/> <DetDietetica Die = "158"/> <DetDietetica Die = "46"/> <DetDietetica Die = "160"/> <DetDietetica Die = "161"/> <DetDietetica Die = "162"/> <DetDietetica Die = "163"/> <DetDietetica Die = "164"/> <DetDietetica Die = "165"/> <DetDietetica Die = "339"/> <DetDietetica Die = "61"/> <DetDietetica Die = "80"/> <DetDietetica Die = "159"/> <DetDietetica Die = "166"/> <DetDietetica Die = "167"/> <DetDietetica Die = "168"/> <DetDietetica Die = "169"/> <DetDietetica Die = "170"/> <DetDietetica Die = "171"/> <DetDietetica Die = "172"/> <DetDietetica Die = "173"/> <DetDietetica Die = "174"/> <DetDietetica Die = "175"/> <DetDietetica Die = "176"/> <DetDietetica Die = "177"/> <DetDietetica Die = "178"/> <DetDietetica Die = "179"/> <DetDietetica Die = "180"/> <DetDietetica Die = "181"/> <DetDietetica Die = "182"/> <DetDietetica Die = "183"/> <DetDietetica Die = "273"/> <DetDietetica Die = "184"/> <DetDietetica Die = "185"/> <DetDietetica Die = "186"/> <DetDietetica Die = "187"/> <DetDietetica Die = "188"/> <DetDietetica Die = "189"/> <DetDietetica Die = "190"/> <DetDietetica Die = "191"/> <DetDietetica Die = "192"/> <DetDietetica Die = "193"/> <DetDietetica Die = "194"/> <DetDietetica Die = "278"/> <DetDietetica Die = "279"/> <DetDietetica Die = "280"/> <DetDietetica Die = "286"/> <DetDietetica Die = "287"/> <DetDietetica Die = "296"/> <DetDietetica Die = "195"/> <DetDietetica Die = "196"/> <DetDietetica Die = "197"/> <DetDietetica Die = "198"/> <DetDietetica Die = "199"/> <DetDietetica Die = "200"/> <DetDietetica Die = "201"/> <DetDietetica Die = "202"/> <DetDietetica Die = "203"/> <DetDietetica Die = "298"/> <DetDietetica Die = "308"/> <DetDietetica Die = "309"/> <DetDietetica Die = "310"/> <DetDietetica Die = "311"/> <DetDietetica Die = "312"/> <DetDietetica Die = "313"/> <DetDietetica Die = "314"/> <DetDietetica Die = "334"/> <DetDietetica Die = "335"/> <DetDietetica Die = "336"/> <DetDietetica Die = "337"/> <DetDietetica Die = "338"/> <DetDietetica Die = "319"/> <DetDietetica Die = "341"/> <DetDietetica Die = "204"/> <DetDietetica Die = "205"/> <DetDietetica Die = "206"/> <DetDietetica Die = "49"/> <DetDietetica Die = "50"/> <DetDietetica Die = "207"/> <DetDietetica Die = "208"/> <DetDietetica Die = "51"/> <DetDietetica Die = "209"/> <DetDietetica Die = "210"/> <DetDietetica Die = "211"/> <DetDietetica Die = "212"/> <DetDietetica Die = "213"/> <DetDietetica Die = "214"/> <DetDietetica Die = "92"/> <DetDietetica Die = "215"/> <DetDietetica Die = "216"/> <DetDietetica Die = "217"/> <DetDietetica Die = "218"/> <DetDietetica Die = "219"/> <DetDietetica Die = "220"/> <DetDietetica Die = "221"/> <DetDietetica Die = "222"/> <DetDietetica Die = "223"/> <DetDietetica Die = "224"/> <DetDietetica Die = "225"/> <DetDietetica Die = "226"/> <DetDietetica Die = "227"/> <DetDietetica Die = "228"/> <DetDietetica Die = "229"/> <DetDietetica Die = "230"/> <DetDietetica Die = "231"/> <DetDietetica Die = "232"/> <DetDietetica Die = "274"/> <DetDietetica Die = "233"/> <DetDietetica Die = "234"/> <DetDietetica Die = "235"/> <DetDietetica Die = "236"/> <DetDietetica Die = "237"/> <DetDietetica Die = "238"/> <DetDietetica Die = "239"/> <DetDietetica Die = "240"/> <DetDietetica Die = "241"/> <DetDietetica Die = "242"/> <DetDietetica Die = "243"/> <DetDietetica Die = "281"/> <DetDietetica Die = "282"/> <DetDietetica Die = "283"/> <DetDietetica Die = "288"/> <DetDietetica Die = "289"/> <DetDietetica Die = "244"/> <DetDietetica Die = "245"/> <DetDietetica Die = "246"/> <DetDietetica Die = "247"/> <DetDietetica Die = "248"/> <DetDietetica Die = "249"/> <DetDietetica Die = "250"/> <DetDietetica Die = "251"/> <DetDietetica Die = "252"/> <DetDietetica Die = "299"/> <DetDietetica Die = "320"/> <DetDietetica Die = "325"/> <DetDietetica Die = "326"/> <DetDietetica Die = "327"/> <DetDietetica Die = "328"/> <DetDietetica Die = "329"/> <DetDietetica Die = "330"/> <DetDietetica Die = "331"/> <DetDietetica Die = "332"/> <DetDietetica Die = "333"/> <DetDietetica Die = "342"/> <DetDietetica Die = "253"/> <DetDietetica Die = "254"/> <DetDietetica Die = "255"/> <DetDietetica Die = "70"/> <DetDietetica Die = "71"/> <DetDietetica Die = "72"/> <DetDietetica Die = "97"/> <DetDietetica Die = "98"/> <DetDietetica Die = "76"/> <DetDietetica Die = "74"/> <DetDietetica Die = "75"/> <DetDietetica Die = "77"/> <DetDietetica Die = "94"/> <DetDietetica Die = "291"/> <DetDietetica Die = "292"/> <DetDietetica Die = "293"/></Dietetica>', '<?xml version="1.0" encoding="iso-8859-1" ?><Plato> <DetPlato Pla = "71"/> <DetPlato Pla = "72"/> <DetPlato Pla = "73"/> <DetPlato Pla = "74"/> <DetPlato Pla = "75"/> <DetPlato Pla = "198"/> <DetPlato Pla = "76"/> <DetPlato Pla = "111"/> <DetPlato Pla = "143"/> <DetPlato Pla = "189"/> <DetPlato Pla = "190"/> <DetPlato Pla = "191"/> <DetPlato Pla = "135"/> <DetPlato Pla = "6"/> <DetPlato Pla = "5"/> <DetPlato Pla = "199"/> <DetPlato Pla = "77"/> <DetPlato Pla = "144"/> <DetPlato Pla = "145"/> <DetPlato Pla = "146"/> <DetPlato Pla = "147"/> <DetPlato Pla = "148"/> <DetPlato Pla = "96"/> <DetPlato Pla = "97"/> <DetPlato Pla = "98"/> <DetPlato Pla = "99"/> <DetPlato Pla = "100"/> <DetPlato Pla = "149"/> <DetPlato Pla = "150"/> <DetPlato Pla = "105"/> <DetPlato Pla = "106"/> <DetPlato Pla = "7"/> <DetPlato Pla = "38"/> <DetPlato Pla = "39"/> <DetPlato Pla = "84"/> <DetPlato Pla = "85"/> <DetPlato Pla = "86"/> <DetPlato Pla = "110"/> <DetPlato Pla = "132"/> <DetPlato Pla = "151"/> <DetPlato Pla = "2"/> <DetPlato Pla = "14"/> <DetPlato Pla = "164"/> <DetPlato Pla = "165"/> <DetPlato Pla = "166"/> <DetPlato Pla = "17"/> <DetPlato Pla = "152"/> <DetPlato Pla = "153"/> <DetPlato Pla = "154"/> <DetPlato Pla = "58"/> <DetPlato Pla = "161"/> <DetPlato Pla = "162"/> <DetPlato Pla = "163"/> <DetPlato Pla = "61"/> <DetPlato Pla = "155"/> <DetPlato Pla = "156"/> <DetPlato Pla = "157"/> <DetPlato Pla = "64"/> <DetPlato Pla = "158"/> <DetPlato Pla = "159"/> <DetPlato Pla = "160"/> <DetPlato Pla = "65"/> <DetPlato Pla = "66"/> <DetPlato Pla = "67"/> <DetPlato Pla = "68"/> <DetPlato Pla = "69"/> <DetPlato Pla = "70"/> <DetPlato Pla = "87"/> <DetPlato Pla = "88"/> <DetPlato Pla = "89"/> <DetPlato Pla = "136"/> <DetPlato Pla = "138"/> <DetPlato Pla = "139"/> <DetPlato Pla = "197"/> <DetPlato Pla = "140"/> <DetPlato Pla = "141"/> <DetPlato Pla = "142"/> <DetPlato Pla = "172"/> <DetPlato Pla = "173"/> <DetPlato Pla = "174"/> <DetPlato Pla = "175"/> <DetPlato Pla = "176"/> <DetPlato Pla = "177"/> <DetPlato Pla = "181"/> <DetPlato Pla = "182"/> <DetPlato Pla = "183"/> <DetPlato Pla = "184"/> <DetPlato Pla = "185"/> <DetPlato Pla = "186"/> <DetPlato Pla = "202"/> <DetPlato Pla = "187"/> <DetPlato Pla = "3"/> <DetPlato Pla = "18"/> <DetPlato Pla = "167"/> <DetPlato Pla = "168"/> <DetPlato Pla = "169"/> <DetPlato Pla = "19"/> <DetPlato Pla = "20"/> <DetPlato Pla = "22"/> <DetPlato Pla = "133"/> <DetPlato Pla = "170"/> <DetPlato Pla = "192"/> <DetPlato Pla = "194"/> <DetPlato Pla = "23"/> <DetPlato Pla = "31"/> <DetPlato Pla = "120"/> <DetPlato Pla = "123"/> <DetPlato Pla = "130"/> <DetPlato Pla = "131"/> <DetPlato Pla = "37"/> <DetPlato Pla = "42"/> <DetPlato Pla = "90"/> <DetPlato Pla = "92"/> <DetPlato Pla = "134"/> <DetPlato Pla = "188"/> <DetPlato Pla = "1"/> <DetPlato Pla = "9"/> <DetPlato Pla = "45"/> <DetPlato Pla = "46"/> <DetPlato Pla = "10"/> <DetPlato Pla = "47"/> <DetPlato Pla = "50"/> <DetPlato Pla = "11"/> <DetPlato Pla = "51"/> <DetPlato Pla = "53"/> <DetPlato Pla = "112"/> <DetPlato Pla = "201"/> <DetPlato Pla = "12"/> <DetPlato Pla = "13"/> <DetPlato Pla = "54"/> <DetPlato Pla = "55"/> <DetPlato Pla = "108"/> <DetPlato Pla = "109"/> <DetPlato Pla = "137"/> <DetPlato Pla = "171"/> <DetPlato Pla = "52"/> <DetPlato Pla = "113"/> <DetPlato Pla = "200"/> <DetPlato Pla = "129"/> <DetPlato Pla = "4"/> <DetPlato Pla = "24"/> <DetPlato Pla = "25"/> <DetPlato Pla = "195"/> <DetPlato Pla = "35"/> <DetPlato Pla = "196"/> <DetPlato Pla = "36"/> <DetPlato Pla = "44"/> <DetPlato Pla = "103"/> <DetPlato Pla = "82"/> <DetPlato Pla = "178"/> <DetPlato Pla = "179"/> <DetPlato Pla = "180"/> <DetPlato Pla = "83"/></Plato>', '0101', '3101'
+
+
+==========================================================================                                            
+  
+*/                                                      
+  
+alter PROC [dbo].[sgpadm_Sel_XMLResumenCostoReceta_Excel_V03]  
+    (  
+      @Ceco VARCHAR(20) ,  
+      @CodRegimen INT ,  
+      @CodServicio INT ,  
+      @Fecha INT ,  
+      @OpPrecio INT ,  
+      @OpMuestraPre VARCHAR(1) ,  
+      @XmlDietetica AS TEXT ,  
+      @XmlPlato AS TEXT,  
+      @AnoMesInicio as varchar(4),  
+      @AnoMesFinal as varchar(4)   
+    )  
+  
+AS   
+  
+    DECLARE @hdoc AS INTEGER                          
+	declare @FechaSistema as int
+	set @FechaSistema = CONVERT(INT, CONVERT(VARCHAR(8), GETDATE(), 112))
+
+    EXEC sp_xml_preparedocument @hdoc OUTPUT, @XmlDietetica  
+  
+    SELECT  Die  
+    INTO    #TmpDietetica  
+    FROM    OPENXML (@hdoc, '/Dietetica/DetDietetica ', 1)                            
+    WITH                            
+    (                            
+    Die INT   
+    )                            
+  
+    EXEC sp_xml_preparedocument @hdoc OUTPUT, @XmlPlato  
+  
+    SELECT  Pla  
+    INTO    #TmpPlato  
+    FROM    OPENXML (@hdoc, '/Plato/DetPlato ', 1)                            
+    WITH                            
+  
+    (                            
+    Pla INT   
+    )   
+  
+    CREATE INDEX ix_TmpDietetica_01 ON #TmpDietetica (Die)                                                                  
+    CREATE INDEX ix_TmpPlato_01 ON #TmpPlato (Pla)                                                                  
+  
+    BEGIN                                                      
+  
+        SELECT  CONVERT(INT, 0) AS rec_codigo ,  
+                CONVERT(VARCHAR(80), '') AS rec_nombre ,  
+                CONVERT(INT, 0) AS rec_catdie ,  
+                CONVERT(INT, 0) AS rec_tippla ,  
+                CONVERT(INT, 0) AS rec_fecvig ,  
+                CONVERT(VARCHAR(20), '') AS ing_codigo ,  
+                CONVERT(FLOAT, 0) AS promedioreceta ,  
+                CONVERT(int, 0) AS rec_indppr , 
+                CONVERT(INT, 0) AS cod_uniReceta  
+        INTO    #Paso_Final          
+                                          
+        CREATE INDEX ix_rec_codigo_01 ON #Paso_Final (rec_codigo)                                                                  
+  
+        DELETE  #Paso_Final                                                
+  
+        IF @OpMuestraPre = '1'   
+  
+            BEGIN                                                
+  
+                CREATE TABLE #sgpadm_Fun_CostoRecetaProducto  
+                    (  
+                      ing_codigo VARCHAR(20) COLLATE DATABASE_DEFAULT ,  
+                      pro_codigo VARCHAR(20) COLLATE DATABASE_DEFAULT ,  
+                      pro_nombre VARCHAR(100) COLLATE DATABASE_DEFAULT ,  
+                      pro_facing FLOAT ,  
+                      fi INT ,  
+                      ft INT ,  
+                      PMP FLOAT ,  
+                      PMPIng FLOAT ,  
+                      Convenio FLOAT ,  
+                      ConvenioIng FLOAT ,  
+                      Lista FLOAT ,  
+                      ListaIng FLOAT  
+                    )                                        
+  
+                INSERT  #sgpadm_Fun_CostoRecetaProducto  
+                        ( ing_codigo ,  
+                          pro_codigo ,  
+                          pro_nombre ,  
+                          pro_facing ,  
+                          fi ,  
+                          ft ,  
+                          PMP ,  
+                          PMPIng ,  
+                          Convenio ,  
+                          ConvenioIng ,  
+                          Lista ,  
+                          ListaIng                                
+                        )  
+  
+                        EXEC dbo.PA_sgpadm_CostoRecetaProductoExcel_V03 @Ceco, @Fecha, @CodRegimen, @CodServicio, @OpPrecio, @AnoMesInicio, @AnoMesFinal   
+                              
+  
+                SELECT  ing_codigo ,  
+                        pro_codigo ,  
+                        pro_nombre ,  
+                        pro_facing ,  
+                        fi ,  
+                        ft ,  
+                        PMP ,  
+                        PMPIng ,  
+                        Convenio ,  
+                        ConvenioIng ,  
+                        Lista ,  
+                        ListaIng ,  
+                        ( ISNULL(CASE WHEN @OpPrecio = 1 THEN Convenio  
+                                      WHEN @OpPrecio = 2 THEN PMP  
+                     ELSE Lista  
+                        END, 0) / ISNULL(pro_facing, 0) ) AS pmp1  
+                INTO    #sgpadm_Fun_CostoRecetaProducto2  
+                FROM    #sgpadm_Fun_CostoRecetaProducto  
+                WHERE   ( ISNULL(CASE WHEN @OpPrecio = 1 THEN Convenio  
+                                      WHEN @OpPrecio = 2 THEN PMP  
+                                      ELSE Lista  
+                                 END, 0) ) > 0    
+  
+                CREATE INDEX ix_ing_codigo_01 ON #sgpadm_Fun_CostoRecetaProducto2 (ing_codigo)                            
+  
+                INSERT  INTO #Paso_Final  
+                SELECT  br3.rec_codigo ,  
+                        br3.rec_nombre ,  
+                        br3.rec_catdie ,  
+                        br3.rec_tippla ,  
+                        br3.rec_fecvig ,  
+                        bi.ing_codigo ,  
+                        ROUND(ISNULL(AVG(fun.PMP1) * MAX(isnull(reemplazo.CantIngredienteCambio, br4.red_canpro) ), 0), 2) AS promedioreceta ,  
+                        br3.rec_indppr ,  
+						br3.cod_uniReceta  
+                FROM    dbo.b_receta AS br3 WITH ( NOLOCK )  
+                INNER JOIN dbo.b_recetadet AS br4 WITH ( NOLOCK ) ON br3.rec_codigo = br4.red_codigo  
+				OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    @Ceco,
+				    @CodRegimen,
+				    br4.red_codigo,
+				    br4.red_codpro,
+				    br3.rec_tippla
+				) AS reemplazo
+                INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON ISNULL(reemplazo.IdIngredienteCambio, br4.red_codpro) = bi.ing_codigo  
+                LEFT JOIN #sgpadm_Fun_CostoRecetaProducto2 AS fun ON fun.ing_codigo = bi.ing_codigo  
+                                                                 AND fun.fi = @Fecha  
+                WHERE br3.rec_catdie IN ( SELECT  Die FROM #TmpDietetica WITH ( NOLOCK ) )  
+                AND   br3.rec_tippla IN ( SELECT  Pla FROM    #TmpPlato WITH ( NOLOCK ) )  
+                AND br3.rec_indppr = 1 
+                AND ( br3.rec_fecvig >  @fechasistema OR br3.rec_fecvig <= 0 )  
+                GROUP BY br3.rec_codigo ,  
+                         br3.rec_nombre ,  
+                         br3.rec_catdie ,  
+                         br3.rec_tippla ,  
+                         br3.rec_fecvig ,  
+                         br3.rec_indppr ,  
+                         bi.ing_codigo ,  
+                         br3.cod_uniReceta  
+                ORDER BY br3.rec_nombre                            
+  
+                DROP TABLE #sgpadm_Fun_CostoRecetaProducto                            
+  
+                DROP TABLE #sgpadm_Fun_CostoRecetaProducto2                            
+                               
+            END                            
+  
+        ELSE   
+  
+            BEGIN                            
+  
+                INSERT  INTO #Paso_Final  
+                SELECT  br3.rec_codigo ,  
+                        br3.rec_nombre ,  
+						br3.rec_catdie ,  
+                        br3.rec_tippla ,  
+                        br3.rec_fecvig ,  
+                        bi.ing_codigo ,  
+                        CONVERT(FLOAT, 0) AS promedioreceta ,  
+						br3.rec_indppr ,  
+                        br3.cod_uniReceta  
+               FROM    dbo.b_receta AS br3 WITH ( NOLOCK )  
+               INNER JOIN dbo.b_recetadet AS br4 WITH ( NOLOCK ) ON br3.rec_codigo = br4.red_codigo  
+				OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    @Ceco,
+				    @CodRegimen,
+				    br4.red_codigo,
+				    br4.red_codpro,
+				    br3.rec_tippla
+				) AS reemplazo
+               INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON ISNULL(reemplazo.IdIngredienteCambio, br4.red_codpro) = bi.ing_codigo  
+               WHERE   br3.rec_catdie IN ( SELECT  Die FROM #TmpDietetica WITH ( NOLOCK ) )  
+               AND br3.rec_tippla IN ( SELECT  Pla FROM #TmpPlato WITH ( NOLOCK ) )  
+               AND br3.rec_indppr = 1
+               AND ( br3.rec_fecvig > CONVERT(INT, CONVERT(VARCHAR(8), GETDATE(), 112)) OR br3.rec_fecvig <= 0 )  
+               GROUP BY br3.rec_codigo ,  
+                        br3.rec_nombre ,  
+                        br3.rec_catdie ,  
+                        br3.rec_tippla ,  
+                        br3.rec_fecvig ,  
+                        br3.rec_indppr ,  
+                        bi.ing_codigo ,  
+                        br3.cod_uniReceta  
+               ORDER BY br3.rec_nombre                                                                       
+  
+            END                            
+  
+     -- Selecciona las Ofertas- Tipo Negocio- Sellos- Zona- Estacionalidad que tiene el Casino  
+  
+        SELECT  pf.rec_codigo ,  
+                pf.rec_nombre + ' ' + CONVERT(VARCHAR(20), pf.rec_codigo) AS rec_nombre ,  
+                SUM(promedioreceta) AS promedioreceta ,  
+                SUBSTRING(dbo.sgpadm_p_buscararbolcatdietetica(pf.rec_catdie), 1,  
+                          LEN(dbo.sgpadm_p_buscararbolcatdietetica(pf.rec_catdie)) - 1) AS nom_catdie,  
+                SUBSTRING(dbo.sgpadm_p_buscararboltipplato1(pf.rec_tippla), 1,  
+                          LEN(dbo.sgpadm_p_buscararboltipplato1(pf.rec_tippla)) - 1) AS nom_tippla   
+        FROM    #Paso_Final AS pf  
+        INNER JOIN dbo.b_UnidadReceta AS bur WITH ( NOLOCK ) ON bur.Codigo_unidad = pf.cod_uniReceta  
+        AND EXISTS ( SELECT 1 FROM dbo.b_receta_Oferta AS bro WITH ( NOLOCK )  
+                     INNER JOIN dbo.b_Cliente_Oferta AS bco WITH ( NOLOCK ) ON bro.codigo_oferta = bco.codigo_oferta  
+                     WHERE  bro.rec_codigo = pf.rec_codigo  
+					 and    bro.Activo = '1'
+					 and    bco.Activo = '1'
+                     AND    bco.cli_codigo = @Ceco )  
+         --and exists ( select 1 from b_recetatiponegocio as brtn with (nolock)   
+         --             inner join a_tiponegocioreceta as atng with (nolock) on atng.IdTipoNegocio = brtn.IdTipoNegocio  
+         --                                                                 and brtn.IdReceta = pf.rec_codigo  
+         --                               and atng.Activo = '1'  
+         --                                                                 and brtn.Activo = '1'  
+         --             inner join b_ClientesTipoNegocio as bctn with (nolock) on bctn.IdTipoNegocio = atng.IDTipoNegocio  
+         --                                                                   and bctn.IdCliente = @Ceco  
+         --                                                                   and bctn.Activo = '1')  
+         --and exists (select 1 from a_sellosreceta as asr with (nolock)   
+         --            inner join b_receta as br with (nolock) on br.IdSellos = asr.IdSellos  
+         --                                                   and br.rec_codigo = pf.rec_codigo  
+         --            inner join b_ClientesSello as bcs with (nolock) on bcs.IdSello = asr.IdSellos   
+         --                                                           and bcs.IdCliente = @Ceco
+									--								and bcs.activo = '1' 
+         --            where asr.Activo = '1')  
+         --and exists (select 1 from b_recetazona as brz with (nolock)                                                
+         --            inner join I_org_ceco as ioc with (nolock) on ioc.Id_orgcompra = brz.IdOrganizacionCompras  
+         --                                                      and ioc.Id_ceco = @Ceco  
+         --           and isnull(ioc.borrado,'') = ''   
+    --            where brz.IdReceta = pf.rec_codigo  
+         --            and   brz.activo = '1' )  
+         --and exists (select 1 from a_estacionalidadreceta as aer with (nolock)   
+         --            inner join b_recetaestacionalidad as bre with (nolock) on bre.IdEstacionalidad = aer.IdEstacionalidad  
+         --                                                                  and bre.IdReceta = pf.rec_codigo  
+         --                                                                  and bre.activo = '1'  
+         --                                                                  and aer.activo = '1'  
+         --                                                                  and convert(int,@AnoMesinicio) >= convert(int,aer.fecha_inicial)  
+         --                                                                  and convert(int,@AnoMesFinal) <= convert(int,aer.fecha_final))  
+        GROUP BY pf.rec_codigo ,  
+                pf.rec_nombre ,  
+                pf.rec_catdie ,  
+                pf.rec_tippla  
+        ORDER BY pf.rec_nombre                            
+                                                
+        DROP TABLE #Paso_Final                                                                
+  
+    END                            
+  
+    EXEC sp_xml_removedocument @hDoc                                   
+  
+    DROP TABLE #TmpDietetica                           
+    DROP TABLE #TmpPlato  
+
+

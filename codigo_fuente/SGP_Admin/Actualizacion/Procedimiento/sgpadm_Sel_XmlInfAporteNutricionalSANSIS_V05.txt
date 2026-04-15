@@ -1,0 +1,214 @@
+/*                                    
+==========================================================================                                    
+Sistema : Sgp Administrador                                    
+Modulo :   Informe - Aporte Minutas SANSIS (I_AporteNutricionalSansis)            
+                                    
+SP o Function : sgpadm_Sel_XmlInfAporteNutricionalSANSIS_V03      
+Descripcion  : Mostrar detalle minuta con su receta            
+                                    
+Observaciones :                                     
+                                    
+F. creacion:      21/11/2016            
+Creador:          Jorge Andres Paz Núñez    
+                                    
+==========================================================================                                    
+Modificaciones:                                    
+Fecha             Programador             Motivo y/o Modificacion                                    
+30/07/2019		  Jorge Andréz Paz Núñez  agrega el campo de cantidad servir detalle y total
+13/12/2022        Jorge Andréz Paz Núñez  cambio de fecha mes/año y la posibilidad de emitir
+                                          informe con un maximo de tres meses.
+22/08/2025        JPAZN                   Incluir tabla gramaje x nivel
+==========================================================================                                    
+Test:                                    
+      
+sgpadm_Sel_XmlInfAporteNutricionalSANSIS_V02 '<?xml version="1.0" encoding="iso-8859-1" ?><Servicio> <Ser Ser = "10003"/></Servicio>','45292', 11117, 20181101, 20181130, '0'      
+sgpadm_Sel_XmlInfAporteNutricionalSANSIS_V02 '<?xml version="1.0" encoding="iso-8859-1" ?><Servicio> <Ser Ser = "10001"/></Servicio>','PPT0618', 11117, 20190101, 20190103, '0'  
+sgpadm_Sel_XmlInfAporteNutricionalSANSIS_V04 '<?xml version="1.0" encoding="iso-8859-1" ?><Servicio> <Ser Ser = "10000"/> <Ser Ser = "10001"/> <Ser Ser = "10003"/></Servicio>','45212', 11135, 20190601, 20190601, '0'
+sgpadm_Sel_XmlInfAporteNutricionalSANSIS_V05 '<?xml version="1.0" encoding="iso-8859-1" ?><Servicio> <Ser Ser = "10003"/></Servicio>','45292', 11117, 201811, 201811, '0'      
+==========================================================================                                    
+*/                                    
+                                    
+alter PROC [dbo].[sgpadm_Sel_XmlInfAporteNutricionalSANSIS_V05]
+    (
+      @XmlServicio AS TEXT = NULL ,
+      @Ceco AS VARCHAR(10) ,
+      @Regimen AS INT ,
+      @FecIni AS INT ,
+      @FecFin AS INT ,
+      @IncluyeGrmCeco AS VARCHAR(1)
+    )
+AS 
+    SET NOCOUNT ON                        
+    SET XACT_ABORT ON              
+                
+    DECLARE @hdoc AS INTEGER                                      
+                                      
+    EXEC sp_xml_preparedocument @hdoc OUTPUT, @XmlServicio                                      
+                                      
+    SELECT  Ser
+    INTO    #TmpServicio
+    FROM    OPENXML (@hdoc, '/Servicio/Ser ', 1)                                      
+    WITH                                      
+    (                                      
+    Ser  INT            
+    )                                      
+                
+    CREATE INDEX #TmpServicio_01 ON #TmpServicio (Ser)            
+                
+    SELECT  cbm.min_cecori ,
+            cbm.min_codreg ,
+            cbm.min_codigo ,
+            cbm.min_codser ,
+            as2.ser_nombre ,
+            cbm.min_fecmin ,
+            cbm2.mid_numlin ,
+            br.rec_codigo ,
+            br.rec_nombre ,
+            br.rec_canser ,
+            br2.red_codpro ,
+            br2.red_canpro ,
+            br2.red_pctapr ,
+            br2.red_pctcoc ,
+            br2.red_pctnut ,
+            br.rec_basrac ,
+			br.rec_tippla,
+            cbm2.mid_numrac ,
+            CONVERT(FLOAT, 0) AS WsNumPorcion ,
+            CONVERT(FLOAT, 0) AS WsCantConsumido ,
+            CONVERT(FLOAT, 0) AS Calorias ,
+            CONVERT(FLOAT, 0) AS Proteinas ,
+            CONVERT(FLOAT, 0) AS Lipidos ,
+            CONVERT(FLOAT, 0) AS Hidratos ,
+            CONVERT(FLOAT, 0) AS Acgrsat ,
+            CONVERT(FLOAT, 0) AS pneto ,
+            CONVERT(INT, 0) AS Indpavb ,
+            CONVERT(FLOAT, 0) AS pnetoApr,
+			CONVERT(FLOAT, 0) AS canservida
+    INTO    #TempDetalleMinuta
+    FROM    dbo.cas_b_minuta AS cbm WITH ( NOLOCK )
+            INNER JOIN dbo.cas_b_minutadet AS cbm2 WITH ( NOLOCK ) ON cbm.min_cecori = cbm2.mid_cecori
+                                                                      AND cbm.min_codigo = cbm2.mid_codigo
+            INNER JOIN dbo.b_receta AS br WITH ( NOLOCK ) ON cbm2.mid_codrec = br.rec_codigo
+            INNER JOIN dbo.b_recetadet AS br2 WITH ( NOLOCK ) ON br.rec_codigo = br2.red_codigo
+            INNER JOIN dbo.a_servicio AS as2 WITH ( NOLOCK ) ON as2.ser_codigo = cbm.min_codser
+            INNER JOIN #TmpServicio AS ts WITH ( NOLOCK ) ON ts.Ser = cbm.min_codser
+    WHERE   cbm.min_cecori = @Ceco
+            AND cbm.min_codreg = @Regimen
+            AND convert(int,(substring(convert(varchar(8),cbm.min_fecmin),1,6))) >= @FecIni
+            AND convert(int,(substring(convert(varchar(8),cbm.min_fecmin),1,6))) <= @FecFin            
+            
+	/* Actualizar tabla gramaje ceco */            
+    UPDATE  #TempDetalleMinuta
+    SET     red_codpro = ISNULL(reemplazo.IdIngredienteCambio, tdm.red_codpro) ,
+            red_canpro = isnull(reemplazo.CantIngredienteCambio, tdm.red_canpro)  ,
+            red_pctnut = CASE WHEN reemplazo.IdIngredienteCambio is not null and reemplazo.IdIngredienteOrigen <> reemplazo.IdIngredienteCambio THEN bi.ing_pctnut
+                                    ELSE tdm.red_pctnut
+                               END,
+            red_pctapr = CASE WHEN reemplazo.IdIngredienteCambio is not null and reemplazo.IdIngredienteOrigen <> reemplazo.IdIngredienteCambio THEN bi.ing_pctapr
+                                    ELSE tdm.red_pctapr
+                               END,
+			red_pctcoc = CASE WHEN reemplazo.IdIngredienteCambio is not null and reemplazo.IdIngredienteOrigen <> reemplazo.IdIngredienteCambio THEN bi.ing_pctcoc
+                                    ELSE tdm.red_pctcoc
+                               END
+    FROM    #TempDetalleMinuta AS tdm WITH ( NOLOCK )
+			OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    tdm.min_cecori,
+				    tdm.min_codreg,
+				    tdm.rec_codigo,
+				    tdm.red_codpro,
+				    tdm.rec_tippla
+			) AS reemplazo
+            INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON ISNULL(reemplazo.IdIngredienteCambio, tdm.red_codpro) = bi.ing_codigo
+
+	/* Actualizar tabla temporal detalle minuta */            
+    UPDATE  #TempDetalleMinuta
+    SET     WsNumPorcion = ( red_canpro / rec_basrac ) ,
+            WsCantConsumido = ( ( ISNULL(red_canpro, 1) / ISNULL(rec_basrac, 1) ) * mid_numrac ) ,
+            pneto = ( ( red_pctnut / 100 ) * red_canpro ) ,
+            pnetoApr = ( ( red_pctapr / 100 ) * red_canpro ),
+			canservida = isnull(( ( ( red_pctapr / 100 ) * red_canpro ) * ( red_pctcoc / 100 ) ),0)
+                
+	/* Actualizar calorias */                                                                               
+    UPDATE  #TempDetalleMinuta
+    SET     Calorias = ( ( tdm.red_pctnut / 100 ) * ( bp.pnu_canapo * tdm.WsNumPorcion ) / bi.ing_facnut )
+    FROM    #TempDetalleMinuta AS tdm WITH ( NOLOCK )
+            INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON tdm.red_codpro = bi.ing_codigo
+            INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = tdm.red_codpro
+            INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                                AND an.nut_activo = '1'
+                                                                AND an.nut_codigo = 2          
+	/* Actualizar protetinas */                                                                               
+    UPDATE  #TempDetalleMinuta
+    SET     Proteinas = ( ( tdm.red_pctnut / 100 ) * ( bp.pnu_canapo * tdm.WsNumPorcion ) / bi.ing_facnut )
+    FROM    #TempDetalleMinuta AS tdm WITH ( NOLOCK )
+        INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON tdm.red_codpro = bi.ing_codigo
+            INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = tdm.red_codpro
+            INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                                AND an.nut_activo = '1'
+                                                                AND an.nut_codigo = 3            
+          
+	/* Actualizar lipidos */                                                                               
+    UPDATE  #TempDetalleMinuta
+    SET     Lipidos = ( ( tdm.red_pctnut / 100 ) * ( bp.pnu_canapo * tdm.WsNumPorcion ) / bi.ing_facnut )
+    FROM    #TempDetalleMinuta AS tdm WITH ( NOLOCK )
+            INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON tdm.red_codpro = bi.ing_codigo
+            INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = tdm.red_codpro
+            INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                       AND an.nut_activo = '1'
+                                                                AND an.nut_codigo = 6            
+            
+	/* Actualizar hidratos */                                                                               
+    UPDATE  #TempDetalleMinuta
+    SET     Hidratos = ( ( tdm.red_pctnut / 100 ) * ( bp.pnu_canapo * tdm.WsNumPorcion ) / bi.ing_facnut )
+    FROM    #TempDetalleMinuta AS tdm WITH ( NOLOCK )
+            INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON tdm.red_codpro = bi.ing_codigo
+            INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = tdm.red_codpro
+            INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                                AND an.nut_activo = '1'
+                                                                AND an.nut_codigo = 4            
+                                                                        
+	/* Actualizar acgrsat */                                                                               
+    UPDATE  #TempDetalleMinuta
+    SET     Acgrsat = ( ( tdm.red_pctnut / 100 ) * ( bp.pnu_canapo * tdm.WsNumPorcion ) / bi.ing_facnut )
+    FROM    #TempDetalleMinuta AS tdm WITH ( NOLOCK )
+            INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON tdm.red_codpro = bi.ing_codigo
+            INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = tdm.red_codpro
+            INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                                AND an.nut_activo = '1'
+                                                                AND an.nut_codigo = 8            
+	
+	/* Actualizar indice porcentaje alto valor biologico */                                                                        
+    UPDATE  #TempDetalleMinuta
+    SET     indpavb = bi.ing_indpav
+    FROM    #TempDetalleMinuta AS tdm WITH ( NOLOCK )
+            INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON bi.ing_codigo = tdm.red_codpro
+                                                                  AND bi.ing_activo = '1'      
+      
+    DECLARE @GlosaSql VARCHAR(MAX)                      
+                      
+    SET @GlosaSql = ''                      
+            
+    SET @GlosaSql = @GlosaSql
+        + 'SELECT DISTINCT min_codigo AS [Codigo Minuta] , min_codser AS [Codigo Servicio] , ser_nombre AS [Nombre Servicio] , '      
+    SET @GlosaSql = @GlosaSql
+        + 'min_fecmin AS [Fecha Minuta] , mid_numlin AS [Nro. Linea] , rec_codigo AS [Codigo Receta] , '      
+    SET @GlosaSql = @GlosaSql
+        + 'rec_nombre AS [Nombre Receta] , red_codpro AS [Codigo Ingrediente] , bi.ing_nombre AS [Nombre Ingrediente] , '      
+    SET @GlosaSql = @GlosaSql
+   + 'WsNumPorcion , WsCantConsumido , bi.ing_facnut AS [Factor Nutricional] , tdm.red_pctnut AS [Porcentaje Nutricional], '      
+    SET @GlosaSql = @GlosaSql
+        + 'rec_canser AS [Porcion Solida] , Calorias , Proteinas , Lipidos , Hidratos , Acgrsat , pneto , Indpavb, pnetoApr, canservida '      
+    SET @GlosaSql = @GlosaSql + 'FROM    #TempDetalleMinuta AS tdm WITH ( NOLOCK ) '      
+    SET @GlosaSql = @GlosaSql + 'INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON bi.ing_codigo = tdm.red_codpro '      
+          
+    IF @IncluyeGrmCeco = '0' 
+        SET @GlosaSql = @GlosaSql + 'WHERE tdm.pneto > 0 '      
+          
+    SET @GlosaSql = @GlosaSql + 'ORDER BY [Fecha Minuta], [Codigo Servicio], [Nro. Linea]'
+      
+    PRINT @GlosaSql                      
+    EXEC (@GlosaSql )       
+                
+    DROP TABLE #TempDetalleMinuta      
+    DROP TABLE #TmpServicio
+

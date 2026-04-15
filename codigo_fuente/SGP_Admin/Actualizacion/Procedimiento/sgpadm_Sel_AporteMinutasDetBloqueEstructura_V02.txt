@@ -1,0 +1,144 @@
+/*                                      
+==========================================================================                                      
+Sistema : Sgp Administrador                                      
+Modulo :  Informe - Informe Aporte de Estructura Resumido (I_AportePlanEstrResBloque)    
+                                      
+SP o Function : sgpadm_Sel_AporteMinutasDetBloqueEstructura
+Descripcion  : Entrega detalle aportes nutricionales desde minuta bloque
+Observaciones :                                       
+                                      
+F. creacion:      27/02/2018    
+Creador:          Jorge Paz Núñez              
+                                      
+==========================================================================                                      
+Modificaciones:                                      
+Fecha             Programador             Motivo y/o Modificacion   
+21-08-2025        JPAZN                   Incluir tabl gramaje x nivel                                   
+==========================================================================                                      
+Test:                                      
+                                     
+sgpadm_Sel_AporteMinutasDetBloqueEstructura
+        
+==========================================================================                                      
+*/                                      
+
+CREATE PROCEDURE [dbo].[sgpadm_Sel_AporteMinutasDetBloqueEstructura_V02]
+    (
+      @Ceco VARCHAR(10) ,
+      @codreg INT ,
+      @codser INT ,
+      @fecini INT ,
+      @fecfin INT ,
+      @tipmin CHAR(1)
+    )
+AS 
+    SET NOCOUNT ON  
+      
+    DECLARE @nreg AS INT      
+    SELECT  @nreg = 0      
+            
+    SELECT DISTINCT
+            d.mid_codrec
+    INTO    #tmpReceta
+    FROM    cas_b_minuta c WITH ( NOLOCK )
+            INNER JOIN cas_b_minutadet d WITH ( NOLOCK ) ON c.min_codigo = d.mid_codigo
+                                                            AND c.min_cecori = d.mid_cecori
+    WHERE   c.min_cecori = @ceco
+            AND c.min_codreg = @codreg
+            AND c.min_codser = @codser
+            AND c.min_fecmin >= @fecini
+            AND c.min_fecmin <= @fecfin
+            AND d.mid_tipmin = @tipmin
+          
+    SELECT DISTINCT
+            b.red_codigo ,
+            b.red_codpro ,
+            b.red_codpro AS ori_codpro ,
+            b.red_pctapr ,
+            b.red_canpro ,
+            b.red_pctcoc ,
+            b.red_pctnut ,
+            a.rec_basrac ,
+            b.red_nroite ,
+            a.rec_nombre ,
+            a.rec_nomfan ,
+            a.rec_indppr ,
+			a.rec_tippla
+    INTO    #tmpDetReceta
+    FROM    #tmpReceta c WITH ( NOLOCK )
+            INNER JOIN b_receta a WITH ( NOLOCK ) ON c.mid_codrec = a.rec_codigo
+            INNER JOIN b_recetadet b WITH ( NOLOCK ) ON b.red_codigo = c.mid_codrec            
+            
+    UPDATE  #tmpDetReceta
+    SET     #tmpDetReceta.red_codpro = ISNULL(reemplazo.IdIngredienteCambio, b.red_codpro) ,
+            #tmpDetReceta.red_canpro = isnull(reemplazo.CantIngredienteCambio, b.red_canpro) ,
+            #tmpDetReceta.red_pctnut = c.ing_pctnut
+    FROM    #tmpDetReceta b WITH ( NOLOCK ) 
+			OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    @Ceco,
+				    @codreg,
+				    b.red_codigo,
+				    b.red_codpro,
+				    b.rec_tippla
+			) AS reemplazo
+            INNER JOIN b_ingrediente c WITH ( NOLOCK ) ON ISNULL(reemplazo.IdIngredienteCambio, b.red_codpro) = c.ing_codigo
+            
+    SELECT  @nreg = COUNT(*)
+    FROM    cas_b_minuta c WITH ( NOLOCK )
+            INNER JOIN cas_b_minutadet d WITH ( NOLOCK ) ON c.min_codigo = d.mid_codigo
+                                                            AND c.min_cecori = d.mid_cecori
+            INNER JOIN #tmpDetReceta a WITH ( NOLOCK ) ON d.mid_codrec = a.red_codigo
+            INNER JOIN b_ingrediente b WITH ( NOLOCK ) ON a.red_codpro = b.ing_codigo
+    WHERE   c.min_cecori = @ceco
+            AND c.min_codreg = @codreg
+    AND c.min_codser = @codser
+            AND c.min_fecmin >= @fecini
+            AND c.min_fecmin <= @fecfin
+            AND d.mid_tipmin = @tipmin            
+        
+            
+    SELECT  d.mid_tipmin ,
+            d.mid_numlin ,
+            d.mid_codrec ,
+            d.mid_estser ,
+            e.ess_nombre ,
+            d.mid_cosrec ,
+            c.min_fecmin ,
+            c.min_indblo ,
+            a.rec_nombre ,
+            a.rec_nomfan ,
+            d.mid_numrac ,
+            a.red_codpro ,
+            a.red_pctapr ,
+            a.red_pctcoc ,
+            a.red_pctnut ,
+            ( a.red_canpro / a.rec_basrac ) AS canpro ,
+            b.ing_nombre ,
+            b.ing_facnut ,
+            b.ing_pctapr ,
+            b.ing_pctcoc ,
+            b.ing_pctnut ,
+            a.ori_codpro ,
+            nreg = @nreg ,
+            a.rec_indppr ,
+            d.mid_desest
+    FROM    cas_b_minuta c WITH ( NOLOCK )
+            INNER JOIN cas_b_minutadet d WITH ( NOLOCK ) ON c.min_codigo = d.mid_codigo
+                                                            AND c.min_cecori = d.mid_cecori
+            INNER JOIN #tmpDetReceta a WITH ( NOLOCK ) ON d.mid_codrec = a.red_codigo
+            INNER JOIN b_ingrediente b WITH ( NOLOCK ) ON a.red_codpro = b.ing_codigo
+            INNER JOIN a_estservicio e WITH ( NOLOCK ) ON d.mid_estser = e.ess_codigo
+			                                          and e.ess_codser = @codser
+    WHERE   c.min_cecori = @ceco
+            AND c.min_codreg = @codreg
+            AND c.min_codser = @codser
+            AND c.min_fecmin >= @fecini
+            AND c.min_fecmin <= @fecfin
+            AND d.mid_tipmin = @tipmin
+    ORDER BY c.min_fecmin ,
+            d.mid_numlin ,
+            a.red_nroite            
+
+    DROP TABLE #tmpReceta      
+    DROP TABLE #tmpDetReceta 
+

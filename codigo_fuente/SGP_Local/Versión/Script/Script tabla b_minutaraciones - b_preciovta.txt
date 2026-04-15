@@ -1,0 +1,18 @@
+/* Crear campo a la tabla b_minutaraciones */
+IF NOT EXISTS ( SELECT  *
+                FROM    information_schema.[columns]
+                WHERE   table_name = 'b_minutaraciones'
+                        AND column_name = 'mir_SPRS' ) 
+    BEGIN
+        ALTER TABLE dbo.b_minutaraciones ADD mir_SPRS varchar(1)
+    END
+
+/* Crear campo a la tabla b_preciovta - */
+IF NOT EXISTS ( SELECT  *
+                FROM    information_schema.[columns]
+                WHERE   table_name = 'b_preciovta'
+                        AND column_name = 'prv_SPRS' ) 
+    BEGIN
+        ALTER TABLE dbo.b_preciovta ADD prv_SPRS varchar(1)
+    END
+

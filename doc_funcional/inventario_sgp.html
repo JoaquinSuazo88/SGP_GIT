@@ -1,0 +1,1304 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SGP Local – Documentación Módulo Inventario</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --primary: #1e3a5f;
+    --primary-light: #2d5a9b;
+    --accent: #e85d04;
+    --accent2: #0077b6;
+    --success: #2d6a4f;
+    --warning: #b5451b;
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --border: #d1dce8;
+    --text: #1a202c;
+    --text-muted: #4a5568;
+    --sidebar-w: 270px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+  /* SIDEBAR */
+  #sidebar {
+    width: var(--sidebar-w); background: var(--primary); color: #e2e8f0;
+    position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto;
+    display: flex; flex-direction: column; z-index: 100;
+    transition: transform 0.3s;
+  }
+  #sidebar-header { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  #sidebar-header .sys-name { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #90aac4; }
+  #sidebar-header h1 { font-size: 15px; font-weight: 700; color: #fff; margin-top: 4px; line-height: 1.3; }
+  #sidebar nav { flex: 1; padding: 12px 0; }
+  .nav-section { padding: 6px 16px 2px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #7090b0; font-weight: 600; }
+  .nav-item { display: block; padding: 8px 16px; font-size: 13px; color: #c8d8ea; cursor: pointer; border-left: 3px solid transparent; transition: all 0.2s; text-decoration: none; }
+  .nav-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+  .nav-item.active { background: rgba(255,255,255,0.12); color: #fff; border-left-color: var(--accent); font-weight: 600; }
+  .nav-sub { padding-left: 28px; font-size: 12px; color: #a0b8d0; }
+  .nav-sub.active { color: #fff; border-left-color: #f97316; }
+
+  /* MAIN */
+  #main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; }
+  #topbar { background: #fff; border-bottom: 1px solid var(--border); padding: 12px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
+  #topbar h2 { font-size: 17px; font-weight: 700; color: var(--primary); }
+  #topbar .meta { font-size: 12px; color: var(--text-muted); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .badge-blue { background: #dbeafe; color: #1d4ed8; }
+  .badge-orange { background: #ffedd5; color: #c2410c; }
+  .badge-green { background: #d1fae5; color: #065f46; }
+  .badge-yellow { background: #fef9c3; color: #854d0e; }
+  .badge-red { background: #fee2e2; color: #991b1b; }
+  .badge-gray { background: #f1f5f9; color: #475569; }
+
+  #content { padding: 28px; max-width: 1100px; }
+
+  /* SECTIONS */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* CARDS */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+  .card h3 { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
+  .card h4 { font-size: 13px; font-weight: 700; color: var(--primary-light); margin: 14px 0 6px; }
+
+  /* GRID */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* TABLES */
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { background: var(--primary); color: #fff; padding: 8px 10px; text-align: left; font-weight: 600; }
+  td { padding: 7px 10px; border-bottom: 1px solid #e8edf3; vertical-align: top; }
+  tr:hover td { background: #f7fafd; }
+  .mono { font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; color: #1e40af; }
+
+  /* ALERTS */
+  .alert { border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; font-size: 13px; border-left: 4px solid; }
+  .alert-info { background: #eff6ff; border-color: #3b82f6; }
+  .alert-warning { background: #fff7ed; border-color: #f97316; }
+  .alert-danger { background: #fef2f2; border-color: #ef4444; }
+  .alert-success { background: #f0fdf4; border-color: #22c55e; }
+  .alert strong { font-weight: 700; }
+
+  /* PROCESS FLOW CARDS */
+  .process-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 14px; margin-bottom: 20px; }
+  .process-card { background: #fff; border: 2px solid var(--border); border-radius: 10px; padding: 16px; cursor: pointer; transition: all 0.2s; }
+  .process-card:hover { border-color: var(--accent); box-shadow: 0 4px 14px rgba(0,0,0,0.1); transform: translateY(-2px); }
+  .process-card.selected { border-color: var(--accent); background: #fff7ed; }
+  .process-card .icon { font-size: 28px; margin-bottom: 8px; }
+  .process-card .ptitle { font-size: 13px; font-weight: 700; color: var(--primary); }
+  .process-card .pcode { font-size: 11px; color: var(--text-muted); font-family: monospace; }
+
+  /* FLOW PANEL */
+  #flow-panel { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 24px; min-height: 400px; }
+  #flow-panel h3 { font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+  #flow-panel .flow-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+  #flow-panel .flow-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .mermaid { background: #fafbfc; border-radius: 8px; padding: 16px; overflow-x: auto; }
+
+  /* RULES */
+  .rule-item { border-left: 4px solid var(--accent2); background: #f0f7ff; border-radius: 0 8px 8px 0; padding: 12px 16px; margin-bottom: 10px; }
+  .rule-item .rule-id { font-size: 11px; font-weight: 700; color: var(--accent); font-family: monospace; }
+  .rule-item .rule-text { font-size: 13px; margin: 4px 0; }
+  .rule-item .rule-src { font-size: 11px; color: var(--text-muted); font-style: italic; }
+
+  /* DB OBJECTS */
+  .db-tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+  .db-tab { padding: 7px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 2px solid var(--border); background: #fff; transition: all 0.2s; }
+  .db-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .db-section { display: none; }
+  .db-section.active { display: block; }
+  .sp-card { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; overflow: hidden; }
+  .sp-header { background: #1e3a5f; color: #fff; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+  .sp-header .sp-name { font-family: monospace; font-size: 13px; font-weight: 700; }
+  .sp-body { padding: 16px; font-size: 12.5px; display: none; }
+  .sp-body.open { display: block; }
+  .sp-row { display: grid; grid-template-columns: 160px 1fr; gap: 6px; margin-bottom: 6px; }
+  .sp-label { font-weight: 600; color: var(--text-muted); font-size: 12px; }
+
+  /* STEP FLOW */
+  .steps { counter-reset: step; }
+  .step { display: flex; gap: 14px; margin-bottom: 12px; align-items: flex-start; }
+  .step-num { counter-increment: step; width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-num::before { content: counter(step); }
+  .step-body { flex: 1; font-size: 13px; padding-top: 4px; }
+  .step-body strong { color: var(--primary); }
+
+  /* QUESTIONS */
+  .question { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; margin-bottom: 10px; }
+  .question .q-id { font-size: 11px; font-weight: 700; color: #92400e; font-family: monospace; }
+  .question .q-text { font-size: 13px; margin-top: 4px; }
+
+  /* GLOSSARY */
+  .glos-item { display: grid; grid-template-columns: 160px 1fr; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .glos-term { font-weight: 700; color: var(--primary); font-family: monospace; font-size: 12px; }
+
+  /* Mermaid override */
+  .mermaid svg { max-width: 100%; }
+
+  /* Scrollbar */
+  #sidebar::-webkit-scrollbar { width: 4px; }
+  #sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+
+  /* Responsive */
+  @media (max-width: 800px) {
+    #sidebar { transform: translateX(-100%); }
+    #sidebar.open { transform: translateX(0); }
+    #main { margin-left: 0; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside id="sidebar">
+  <div id="sidebar-header">
+    <div class="sys-name">SGP Local · Visual Basic 6 + SQL Server</div>
+    <h1>Módulo Inventario</h1>
+  </div>
+  <nav>
+    <div class="nav-section">Documentación</div>
+    <a class="nav-item active" onclick="showSection('intro')">1. Introducción</a>
+    <a class="nav-item" onclick="showSection('datos')">2. Modelo de Datos</a>
+    <a class="nav-item" onclick="showSection('flujos')">3. Flujos de Proceso</a>
+    <a class="nav-item" onclick="showSection('reglas')">4. Reglas de Negocio</a>
+    <a class="nav-item" onclick="showSection('validaciones')">5. Validaciones</a>
+    <a class="nav-item" onclick="showSection('bd')">6. Objetos de Base de Datos</a>
+    <a class="nav-item" onclick="showSection('integraciones')">7. Integraciones</a>
+    <a class="nav-item" onclick="showSection('valorizacion')">8. Valorización y Costos</a>
+    <a class="nav-item" onclick="showSection('reportes')">9. Reportes</a>
+    <a class="nav-item" onclick="showSection('preguntas')">10. Preguntas Abiertas</a>
+    <a class="nav-item" onclick="showSection('glosario')">11. Glosario</a>
+    <div class="nav-section" style="margin-top:8px">Submódulos</div>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('docpro')">Ingreso Documento Proveedor</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('traspa')">Traspaso entre Casinos</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('mermas')">Merma Bodega</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('salbod')">Salida Producción</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('vendir')">Venta Directa</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('vencaf')">Venta Cafetería</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('salesp')">Salida Venta Especiales</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('devbod')">Devolución Producción</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('devesp')">Devolución Venta Especiales</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('ajuinv')">Ajuste de Inventario</a>
+  </nav>
+</aside>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="topbar">
+    <h2 id="section-title">1. Introducción al Módulo</h2>
+    <div class="meta">
+      <span class="badge badge-blue">VB6 + SQL Server</span>&nbsp;
+      <span class="badge badge-orange">SGP Local</span>&nbsp;
+      <span class="badge badge-gray">v2026-02-19</span>
+    </div>
+  </div>
+
+  <div id="content">
+
+    <!-- ===== 1. INTRODUCCIÓN ===== -->
+    <div class="section active" id="sec-intro">
+      <div class="card">
+        <h3>Propósito y Alcance</h3>
+        <p style="font-size:13.5px;line-height:1.7;margin-bottom:12px">
+          El módulo de <strong>Inventario</strong> del sistema SGP Local gestiona todos los movimientos de stock de insumos en bodegas de los centros de costo (casinos) de Sodexo Chile. Registra entradas, salidas, traspasos y ajustes, mantiene valorización por costo promedio ponderado (PMP) y alimenta el reporte de costo de alimentos (A13).
+        </p>
+        <div class="grid-2">
+          <div>
+            <h4>Alcance funcional</h4>
+            <ul style="font-size:13px;line-height:1.9;padding-left:18px">
+              <li>Ingreso de documentos de compra (facturas, guías, notas)</li>
+              <li>Registro de mermas de bodega</li>
+              <li>Salidas y devoluciones de producción</li>
+              <li>Traspasos entre casinos</li>
+              <li>Ventas directas y ventas cafetería</li>
+              <li>Ventas / devoluciones de servicios especiales</li>
+              <li>Ajustes de inventario (toma física)</li>
+              <li>Actualización de stock y valorización PMP</li>
+            </ul>
+          </div>
+          <div>
+            <h4>Actores del módulo</h4>
+            <table>
+              <thead><tr><th>Actor</th><th>Acciones principales</th></tr></thead>
+              <tbody>
+                <tr><td>Operador de bodega</td><td>Ingresa documentos proveedor, mermas, salidas y devoluciones</td></tr>
+                <tr><td>Jefe de cocina</td><td>Genera salidas de producción, supervisa stock</td></tr>
+                <tr><td>Administrador casino</td><td>Aprueba traspasos, realiza toma de inventario, cierre diario</td></tr>
+                <tr><td>Controller / Controlling</td><td>Revisa reportes A13, valida costos y ajustes</td></tr>
+                <tr><td>Administrador SGP</td><td>Mantenedores, parámetros, cierre de período</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Relación con otros módulos</h3>
+        <div class="grid-3">
+          <div class="alert alert-info"><strong>Compras (SAC/SAP)</strong><br>Integración de órdenes de compra. Las facturas recibidas en SGP se vinculan a OC SAC via <span class="mono">b_ocsacrecibido</span> y homologación <span class="mono">b_formatocomprassgp</span>.</div>
+          <div class="alert alert-info"><strong>Producción / Minutas</strong><br>Las salidas de bodega (<span class="mono">SP</span>) se generan desde las minutas planificadas. Las devoluciones de producción (<span class="mono">DP</span>) retroalimentan el stock.</div>
+          <div class="alert alert-info"><strong>Reportes A13</strong><br>Todos los movimientos se consolidan en el reporte A13 (costo de alimentos) por mes y centro de costo, incluyendo compras, traspasos, mermas y ajustes.</div>
+          <div class="alert alert-info"><strong>Cafetería</strong><br>Ventas de cafetería (<span class="mono">b_totventascaf</span>) descuentan stock de bodega cuando los productos tienen control de inventario.</div>
+          <div class="alert alert-info"><strong>Servicios Especiales</strong><br>Formularios <span class="mono">M_SalidaServicioEspeciales</span> y <span class="mono">M_DevolucionSalidaEspeciales</span> manejan salidas/devoluciones con tipdoc SE/DE.</div>
+          <div class="alert alert-warning"><strong>AMD (Sistema de Minutas)</strong><br>Sistemas externos que consumen parámetros de estacionalidad y recetas. En sitios con AMD, el ajuste estacional es automático. En sitios sin AMD se usa tabla de estacionalidad del SGP.</div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Formularios VB6 del módulo</h3>
+        <table>
+          <thead><tr><th>Archivo .frm</th><th>Funcionalidad</th><th>Tipo doc BD</th><th>Tablas afectadas</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">M_DocPro.frm</td><td>Ingreso Documento Proveedor</td><td><span class="badge badge-green">FA · FE · GD · SN</span></td><td>b_totcompras, b_detcompras, b_bodegas, b_productospmpdia</td></tr>
+            <tr><td class="mono">M_Traspa.frm</td><td>Ingreso Traspaso entre Casinos / Guías</td><td><span class="badge badge-blue">TR · GD</span></td><td>b_totventas, b_detventas, b_bodegas</td></tr>
+            <tr><td class="mono">M_Mermas.frm</td><td>Merma de Bodega</td><td><span class="badge badge-red">ME</span></td><td>b_totventas, b_detventas, b_bodegas</td></tr>
+            <tr><td class="mono">M_VenDir.frm</td><td>Venta Directa</td><td><span class="badge badge-orange">VD</span></td><td>b_totventas, b_detventas, b_bodegas</td></tr>
+            <tr><td class="mono">M_VenCaf.frm</td><td>Venta Cafetería</td><td><span class="badge badge-orange">–</span></td><td>b_totventascaf, b_detventascafpro, b_bodegas</td></tr>
+            <tr><td class="mono">M_SalBod.frm</td><td>Salida Producción</td><td><span class="badge badge-blue">SP</span></td><td>b_totventas, b_detventas, b_bodegas</td></tr>
+            <tr><td class="mono">M_SalidaServicioEspeciales.frm</td><td>Salida Ventas Especiales</td><td><span class="badge badge-orange">SE</span></td><td>b_totventaserviciosespeciales, b_detventaserviciosespeciales</td></tr>
+            <tr><td class="mono">M_DevBod.frm</td><td>Devolución Producción</td><td><span class="badge badge-green">DP</span></td><td>b_totventas, b_detventas, b_bodegas</td></tr>
+            <tr><td class="mono">M_DevolucionSalidaEspeciales.frm</td><td>Devolución Ventas Especiales</td><td><span class="badge badge-green">DE</span></td><td>b_totventaserviciosespeciales, b_detventaserviciosespeciales</td></tr>
+            <tr><td class="mono">M_AjuInv.frm</td><td>Ajuste de Inventario</td><td><span class="badge badge-yellow">AI</span></td><td>b_totventas, b_detventas, b_bodegas, b_tomainv</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== 2. MODELO DE DATOS ===== -->
+    <div class="section" id="sec-datos">
+      <div class="card">
+        <h3>Tablas principales del módulo</h3>
+        <div class="grid-2">
+          <div>
+            <h4>Tablas de movimientos</h4>
+            <table>
+              <thead><tr><th>Tabla</th><th>Descripción</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">b_totcompras</td><td>Cabecera de documentos de compra (FA, FE, GD, SN)</td></tr>
+                <tr><td class="mono">b_detcompras</td><td>Detalle de líneas de compra (productos, cantidades, precios)</td></tr>
+                <tr><td class="mono">b_detcomprasimp</td><td>Impuestos por línea de compra</td></tr>
+                <tr><td class="mono">b_totventas</td><td>Cabecera de movimientos de salida (SP, DP, ME, TR, AI, VD…)</td></tr>
+                <tr><td class="mono">b_detventas</td><td>Detalle de movimientos de salida</td></tr>
+                <tr><td class="mono">b_totventascaf</td><td>Cabecera venta cafetería</td></tr>
+                <tr><td class="mono">b_detventascafpro</td><td>Detalle de productos venta cafetería</td></tr>
+                <tr><td class="mono">b_totventaserviciosespeciales</td><td>Cabecera salida/devolución servicios especiales</td></tr>
+                <tr><td class="mono">b_detventaserviciosespeciales</td><td>Detalle servicios especiales</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <h4>Tablas maestro y control</h4>
+            <table>
+              <thead><tr><th>Tabla</th><th>Descripción</th></tr></thead>
+              <tbody>
+                <tr><td class="mono">b_bodegas</td><td>Stock actual por bodega y producto (bod_canmer)</td></tr>
+                <tr><td class="mono">b_productos</td><td>Maestro de productos</td></tr>
+                <tr><td class="mono">b_clientes</td><td>Centros de costo / casinos (cli_codbod = bodega)</td></tr>
+                <tr><td class="mono">b_proveedor</td><td>Maestro de proveedores</td></tr>
+                <tr><td class="mono">b_tomainv</td><td>Toma de inventario físico</td></tr>
+                <tr><td class="mono">b_cierreperiodo</td><td>Fechas de cierre de período mensual</td></tr>
+                <tr><td class="mono">b_productospmpdia</td><td>Precio Medio Ponderado (PMP) diario por producto/casino</td></tr>
+                <tr><td class="mono">b_ocsacrecibido</td><td>Relación OC SAC con recepciones SGP</td></tr>
+                <tr><td class="mono">b_formatocomprassgp</td><td>Homologación código SGP ↔ código SAC</td></tr>
+                <tr><td class="mono">a_tipoajuste</td><td>Tipos de ajuste (A=Aumenta, D=Disminuye)</td></tr>
+                <tr><td class="mono">a_tipodocumento</td><td>Tipos de documento con ID interno</td></tr>
+                <tr><td class="mono">a_impuesto</td><td>Maestro de impuestos (IVA, específicos)</td></tr>
+                <tr><td class="mono">a_param</td><td>Parámetros por centro de costo (ej: deccan, ciediario)</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Campos clave: b_totcompras (cabecera compras)</h3>
+        <table>
+          <thead><tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">toc_rutpro</td><td>varchar</td><td>RUT del proveedor (FK b_proveedor)</td></tr>
+            <tr><td class="mono">toc_tipdoc</td><td>varchar</td><td>Tipo documento: FA=Factura, FE=Factura Electrónica, GD=Guía, SN=Solicitud Nota</td></tr>
+            <tr><td class="mono">toc_numdoc</td><td>int</td><td>Número de folio del documento</td></tr>
+            <tr><td class="mono">toc_codbod</td><td>int</td><td>Código de bodega (FK b_clientes.cli_codbod)</td></tr>
+            <tr><td class="mono">toc_fecemi</td><td>datetime</td><td>Fecha de emisión del documento</td></tr>
+            <tr><td class="mono">toc_fecrem</td><td>datetime</td><td>Fecha de recepción (usada para calcular stock)</td></tr>
+            <tr><td class="mono">toc_netdoc / toc_exedoc / toc_ivadoc / toc_totdoc</td><td>money</td><td>Totales neto, exento, IVA y total del documento</td></tr>
+            <tr><td class="mono">toc_estdoc</td><td>char(1)</td><td>Estado: vacío=activo, A=Anulado, P=Pendiente</td></tr>
+            <tr><td class="mono">toc_docaso</td><td>int</td><td>Documento asociado (número de factura asociada a guía)</td></tr>
+            <tr><td class="mono">toc_docsnc</td><td>int</td><td>Solicitud de nota de crédito/débito asociada</td></tr>
+            <tr><td class="mono">toc_envsap</td><td>varchar</td><td>Flag de envío a SAP</td></tr>
+            <tr><td class="mono">EnvioDocSGPADM</td><td>varchar</td><td>Flag de envío a SGP Administrador</td></tr>
+            <tr><td class="mono">toc_fledoc</td><td>money</td><td>Monto de flete del documento</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Campos clave: b_detcompras (detalle compras)</h3>
+        <table>
+          <thead><tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">dec_rutpro / dec_tipdoc / dec_numdoc</td><td>PK comp.</td><td>Identificación del documento cabecera</td></tr>
+            <tr><td class="mono">dec_numlin</td><td>int</td><td>Número de línea dentro del documento</td></tr>
+            <tr><td class="mono">dec_codmer</td><td>varchar</td><td>Código de producto SGP (FK b_productos)</td></tr>
+            <tr><td class="mono">dec_canmer / dec_precom</td><td>float/money</td><td>Cantidad y precio de compra</td></tr>
+            <tr><td class="mono">dec_canrec / dec_prerec</td><td>float/money</td><td>Cantidad y precio recibido (puede diferir de OC)</td></tr>
+            <tr><td class="mono">dec_mueinv</td><td>char(1)</td><td>'S'=mueve inventario, 'N'=no mueve. Determina si afecta b_bodegas</td></tr>
+            <tr><td class="mono">dec_pctdes / dec_valdes</td><td>float/money</td><td>Porcentaje y valor de descuento</td></tr>
+            <tr><td class="mono">dec_prefle</td><td>money</td><td>Flete prorrateado por línea</td></tr>
+            <tr><td class="mono">dec_acepre</td><td>char(1)</td><td>Acepta precio: indica si el precio fue aceptado vs OC</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Campos clave: b_bodegas (stock)</h3>
+        <table>
+          <thead><tr><th>Campo</th><th>Descripción</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">bod_codbod</td><td>Código de bodega</td></tr>
+            <tr><td class="mono">bod_codpro</td><td>Código de producto SGP</td></tr>
+            <tr><td class="mono">bod_canmer</td><td>Cantidad en stock (actualizada por sgp_Upd_actualizar_Stock_Bodega y por movimientos en tiempo real)</td></tr>
+          </tbody>
+        </table>
+        <div class="alert alert-warning" style="margin-top:12px"><strong>Nota crítica:</strong> El stock en b_bodegas se actualiza de dos formas: (1) en tiempo real por cada movimiento VB6 (INSERT/UPDATE directo) y (2) por el SP sgp_Upd_actualizar_Stock_Bodega que recalcula desde el último inventario. Esta doble actualización puede generar discrepancias si falla alguna transacción.</div>
+      </div>
+      <div class="card">
+        <h3>Diagrama Entidad-Relación (principales)</h3>
+        <div class="mermaid">
+erDiagram
+    b_clientes {
+        varchar cli_codigo PK
+        int cli_codbod
+        varchar cli_tipo
+        varchar cli_activo
+    }
+    b_bodegas {
+        int bod_codbod PK
+        varchar bod_codpro PK
+        float bod_canmer
+    }
+    b_productos {
+        varchar pro_codigo PK
+        varchar pro_nombre
+        int pro_ctrsto
+        float pro_facing
+        float pro_facsto
+    }
+    b_proveedor {
+        varchar prv_codigo PK
+        varchar prv_nombre
+        int prv_permiteingdoc
+    }
+    b_totcompras {
+        varchar toc_rutpro PK
+        varchar toc_tipdoc PK
+        int toc_numdoc PK
+        int toc_codbod
+        datetime toc_fecemi
+        datetime toc_fecrem
+        char toc_estdoc
+    }
+    b_detcompras {
+        varchar dec_rutpro PK
+        varchar dec_tipdoc PK
+        int dec_numdoc PK
+        int dec_numlin PK
+        varchar dec_codmer
+        float dec_canrec
+        money dec_prerec
+        char dec_mueinv
+    }
+    b_totventas {
+        varchar tov_rutcli PK
+        varchar tov_tipdoc PK
+        int tov_numdoc PK
+        int tov_codbod
+        datetime tov_fecemi
+        char tov_estdoc
+    }
+    b_detventas {
+        varchar dev_rutcli PK
+        varchar dev_tipdoc PK
+        int dev_numdoc PK
+        int dev_numlin PK
+        varchar dev_codmer
+        float dev_canmer
+        char dev_mueinv
+    }
+    b_tomainv {
+        int tin_fectom PK
+        int tin_codbod PK
+        varchar tin_codpro PK
+        float tin_stofis
+        float tin_stosis
+    }
+    b_productospmpdia {
+        varchar ppd_cencos PK
+        varchar ppd_codpro PK
+        int ppd_fecdia PK
+        float ppd_propon
+        money ppd_upreco
+    }
+    b_cierreperiodo {
+        varchar cie_cencos PK
+        int cie_fecini PK
+        int cie_fecter
+    }
+
+    b_clientes ||--o{ b_bodegas : "tiene bodega"
+    b_productos ||--o{ b_bodegas : "almacenado en"
+    b_proveedor ||--o{ b_totcompras : "emite"
+    b_totcompras ||--|{ b_detcompras : "contiene"
+    b_productos ||--o{ b_detcompras : "referenciado"
+    b_totventas ||--|{ b_detventas : "contiene"
+    b_productos ||--o{ b_detventas : "referenciado"
+    b_clientes ||--o{ b_tomainv : "realiza"
+    b_productos ||--o{ b_tomainv : "inventariado"
+    b_clientes ||--o{ b_productospmpdia : "tiene PMP"
+    b_productos ||--o{ b_productospmpdia : "tiene PMP"
+    b_clientes ||--o{ b_cierreperiodo : "tiene cierre"
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 3. FLUJOS DE PROCESO ===== -->
+    <div class="section" id="sec-flujos">
+      <div class="process-grid" id="process-grid">
+        <div class="process-card selected" id="pc-docpro" onclick="selectProcess('docpro')">
+          <div class="icon">🧾</div>
+          <div class="ptitle">Ingreso Documento Proveedor</div>
+          <div class="pcode">M_DocPro.frm · FA / FE / GD / SN</div>
+        </div>
+        <div class="process-card" id="pc-traspa" onclick="selectProcess('traspa')">
+          <div class="icon">🔄</div>
+          <div class="ptitle">Traspaso entre Casinos</div>
+          <div class="pcode">M_Traspa.frm · TR</div>
+        </div>
+        <div class="process-card" id="pc-mermas" onclick="selectProcess('mermas')">
+          <div class="icon">🗑️</div>
+          <div class="ptitle">Merma de Bodega</div>
+          <div class="pcode">M_Mermas.frm · ME</div>
+        </div>
+        <div class="process-card" id="pc-salbod" onclick="selectProcess('salbod')">
+          <div class="icon">📤</div>
+          <div class="ptitle">Salida Producción</div>
+          <div class="pcode">M_SalBod.frm · SP</div>
+        </div>
+        <div class="process-card" id="pc-vendir" onclick="selectProcess('vendir')">
+          <div class="icon">💰</div>
+          <div class="ptitle">Venta Directa</div>
+          <div class="pcode">M_VenDir.frm · VD</div>
+        </div>
+        <div class="process-card" id="pc-vencaf" onclick="selectProcess('vencaf')">
+          <div class="icon">☕</div>
+          <div class="ptitle">Venta Cafetería</div>
+          <div class="pcode">M_VenCaf.frm</div>
+        </div>
+        <div class="process-card" id="pc-salesp" onclick="selectProcess('salesp')">
+          <div class="icon">⭐</div>
+          <div class="ptitle">Salida Ventas Especiales</div>
+          <div class="pcode">M_SalidaServicioEspeciales.frm · SE</div>
+        </div>
+        <div class="process-card" id="pc-devbod" onclick="selectProcess('devbod')">
+          <div class="icon">↩️</div>
+          <div class="ptitle">Devolución Producción</div>
+          <div class="pcode">M_DevBod.frm · DP</div>
+        </div>
+        <div class="process-card" id="pc-devesp" onclick="selectProcess('devesp')">
+          <div class="icon">↩️</div>
+          <div class="ptitle">Devolución Venta Especiales</div>
+          <div class="pcode">M_DevolucionSalidaEspeciales.frm · DE</div>
+        </div>
+        <div class="process-card" id="pc-ajuinv" onclick="selectProcess('ajuinv')">
+          <div class="icon">⚖️</div>
+          <div class="ptitle">Ajuste de Inventario</div>
+          <div class="pcode">M_AjuInv.frm · AI</div>
+        </div>
+      </div>
+
+      <div id="flow-panel">
+        <div id="flow-content"></div>
+      </div>
+    </div>
+
+    <!-- ===== 4. REGLAS DE NEGOCIO ===== -->
+    <div class="section" id="sec-reglas">
+      <div class="card">
+        <h3>Reglas de Negocio Consolidadas</h3>
+        <div class="alert alert-info"><strong>Fuentes cruzadas:</strong> código VB6 (M_DocPro.frm, M_Mermas.frm, M_SalBod.frm), SP sgp_Upd_actualizar_Stock_Bodega, transcripciones de reuniones (20260106, 20260107, 20260108).</div>
+
+        <div class="rule-item">
+          <div class="rule-id">RN-INV-001</div>
+          <div class="rule-text">El stock de un producto en b_bodegas no puede quedar negativo: al recalcular con sgp_Upd_actualizar_Stock_Bodega, si la cantidad calculada es negativa se fija en 0.</div>
+          <div class="rule-src">Fuente: sgp_Upd_actualizar_Stock_Bodega.sql línea 333 — <code>bod_canmer = CASE WHEN b.Cantidad &lt; 0 THEN 0 ELSE b.Cantidad END</code></div>
+        </div>
+
+        <div class="rule-item">
+          <div class="rule-id">RN-INV-002</div>
+          <div class="rule-text">Solo los documentos con estado distinto de 'A' (Anulado) y 'P' (Pendiente) afectan el stock. Los documentos anulados quedan en la base de datos pero no se suman al cálculo de stock.</div>
+          <div class="rule-src">Fuente: sgp_Upd_actualizar_Stock_Bodega.sql — <code>tov_estdoc NOT IN ('A','P')</code></div>
+        </div>
+
+        <div class="rule-item">
+          <div class="rule-id">RN-INV-003</div>
+          <div class="rule-text">El campo <span class="mono">dec_mueinv / dev_mueinv / des_Mueve_Inventario = 'S'</span> determina si una línea de detalle afecta el stock de bodega. Productos sin control de stock pueden existir en documentos sin impactar inventario.</div>
+          <div class="rule-src">Fuente: sgp_Upd_actualizar_Stock_Bodega.sql — filtros por mueinv en todos los joins</div>
+        </div>
+
+        <div class="rule-item">
+          <div class="rule-id">RN-INV-004</div>
+          <div class="rule-text">El Precio Medio Ponderado (PMP) se calcula y registra en <span class="mono">b_productospmpdia</span> al momento de ingresar un documento de compra (FA/FE/GD). El campo <span class="mono">ppd_propon</span> almacena el PMP recalculado para el día.</div>
+          <div class="rule-src">Fuente: M_DocPro.frm líneas 4592-4628 — INSERT/UPDATE b_productospmpdia</div>
+        </div>
+
+        <div class="rule-item">
+          <div class="rule-id">RN-INV-005</div>
+          <div class="rule-text">No se permite ingresar un documento de proveedor (FA/FE) duplicado. Se valida contra la base de datos con <span class="mono">sgp_Sel_ValidaCfCElectronico</span> o <span class="mono">sgp_Sel_ValidaCfCNormal</span> antes de grabar.</div>
+          <div class="rule-src">Fuente: M_DocPro.frm líneas 7149-7153</div>
+        </div>
+
+        <div class="rule-item">
+          <div class="rule-id">RN-INV-006</div>
+          <div class="rule-text">El tipo de documento en M_DocPro puede ser FOFI (Factura/Guía proveedor directo) o CFC (Comprobante de Factura Centralizada, para compras a través de la central). Cada tipo tiene numeración y validaciones distintas.</div>
+          <div class="rule-src">Fuente: M_DocPro.frm — OptionButton Option1(0)=FOFI, Option1(1)=CFC</div>
+        </div>
+
+        <div class="rule-item">
+          <div class="rule-id">RN-INV-007</div>
+          <div class="rule-text">Solo los productos con <span class="mono">pro_ctrsto = 1</span> son incluidos en el cálculo de stock. Productos sin control de stock (pro_ctrsto = 0) se ignoran en el recálculo de bodega.</div>
+          <div class="rule-src">Fuente: sgp_Upd_actualizar_Stock_Bodega.sql línea 309 — <code>AND bp.pro_ctrsto = 1</code></div>
+        </div>
+
+        <div class="rule-item">
+          <div class="rule-id">RN-INV-008</div>
+          <div class="rule-text">Un Traspaso de tipo TR se identifica como Entrada (tov_codser &lt;&gt; 0 y tov_codreg = 0) o como Salida (tov_codser = 0). La entrada suma stock, la salida lo resta.</div>
+          <div class="rule-src">Fuente: sgp_Upd_actualizar_Stock_Bodega.sql — joins TEn y Tsa con condición tov_codser</div>
+        </div>
+
+        <div class="rule-item">
+          <div class="rule-id">RN-INV-009</div>
+          <div class="rule-text">El stock se recalcula desde el último inventario de fin de mes (b_cierreperiodo). El período del día se determina por el parámetro <span class="mono">ciediario</span> en <span class="mono">a_param</span>, que almacena la fecha de cierre diario encriptada con <span class="mono">dbo.sgp_p_desencripta()</span>.</div>
+          <div class="rule-src">Fuente: sgp_Upd_actualizar_Stock_Bodega.sql — múltiples referencias a par_codigo='ciediario'</div>
+        </div>
+
+        <div class="rule-item">
+          <div class="rule-id">RN-INV-010</div>
+          <div class="rule-text">Un proveedor puede tener bloqueado el ingreso de documentos. El campo <span class="mono">prv_permiteingdoc</span> en b_proveedor controla si se permite ingresar facturas/guías para ese RUT.</div>
+          <div class="rule-src">Fuente: M_DocPro.frm línea 3106 — SELECT prv_permiteingdoc FROM b_proveedor</div>
+        </div>
+
+        <div class="rule-item">
+          <div class="rule-id">RN-INV-011</div>
+          <div class="rule-text">Los ajustes de inventario tipo 'AI' se clasifican en Aumenta (aju_tipo='A', aju_tipaju=1) y Disminuye (aju_tipo='D', aju_tipaju=1) según la tabla a_tipoajuste. El mismo tipo de documento 'AI' puede aumentar o disminuir stock según el tipo de ajuste.</div>
+          <div class="rule-src">Fuente: sgp_Upd_actualizar_Stock_Bodega.sql — joins AjuA y AjuD con a_tipoajuste</div>
+        </div>
+
+        <div class="rule-item">
+          <div class="rule-id">RN-INV-012</div>
+          <div class="rule-text">El ajuste del inventario es neteado (positivos menos negativos) y no absoluto. El reporte A13 muestra el neto de ajustes del mes, no el valor absoluto de cada ajuste individual.</div>
+          <div class="rule-src">Fuente: Reunión 20260108 — Sandoval Nocchi, 3h11m44s</div>
+        </div>
+
+        <div class="rule-item">
+          <div class="rule-id">RN-INV-013</div>
+          <div class="rule-text">La homologación entre código SGP y código SAC se mantiene en <span class="mono">b_formatocomprassgp</span>. Al recibir una factura, se actualiza el precio de referencia SAC (<span class="mono">fcs_cenpre</span>) para el código SAC asociado al producto recibido.</div>
+          <div class="rule-src">Fuente: M_DocPro.frm líneas 4499-4500</div>
+        </div>
+
+        <div class="rule-item">
+          <div class="rule-id">RN-INV-014</div>
+          <div class="rule-text">La cantidad de decimales para cantidades de inventario es configurable por centro de costo mediante el parámetro <span class="mono">deccan</span> en a_param. Por defecto es 2 decimales.</div>
+          <div class="rule-src">Fuente: sgp_Upd_actualizar_Stock_Bodega.sql líneas 103-104 — ROUND(..., isnull(par_valor,2))</div>
+        </div>
+
+        <div class="rule-item">
+          <div class="rule-id">RN-INV-015</div>
+          <div class="rule-text">En la merma de bodega, el sistema alerta visualmente cuando la cantidad ingresada sobrepasa el stock actual (indicador de color en la grilla). Sin embargo, no bloquea el ingreso — es solo una advertencia.</div>
+          <div class="rule-src">Fuente: M_Mermas.frm — Label "Cantidad sobrepasa Stock actual" + Shape coloreado</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 5. VALIDACIONES ===== -->
+    <div class="section" id="sec-validaciones">
+      <div class="card">
+        <h3>Validaciones de Formato y Obligatoriedad (VB6)</h3>
+        <table>
+          <thead><tr><th>Formulario</th><th>Campo</th><th>Validación</th><th>Mensaje / Acción</th></tr></thead>
+          <tbody>
+            <tr><td>M_DocPro</td><td>Proveedor (RUT)</td><td>Obligatorio, formato RUT válido</td><td>Bloquea grabado si vacío</td></tr>
+            <tr><td>M_DocPro</td><td>Fecha emisión / recepción</td><td>Obligatorio, formato fecha</td><td>Bloquea grabado si vacío</td></tr>
+            <tr><td>M_DocPro</td><td>Número de folio</td><td>Obligatorio, numérico</td><td>Bloquea grabado si vacío</td></tr>
+            <tr><td>M_DocPro</td><td>Tipo documento (FOFI/CFC)</td><td>Debe seleccionarse uno</td><td>Bloquea grabado</td></tr>
+            <tr><td>M_DocPro</td><td>Grilla de productos</td><td>Función Valida_DatosGrilla(): cantidad &gt; 0, precio &gt; 0 (excepto SN), precio unitario &gt; 0 (excepto SN)</td><td>Devuelve True si hay error</td></tr>
+            <tr><td>M_DocPro</td><td>Guías asociadas (CFC)</td><td>Validadas con sgp_Sel_ValidaCfCGuia</td><td>Error si guía ya asociada a otra factura</td></tr>
+            <tr><td>M_Mermas</td><td>Fecha</td><td>Obligatorio</td><td>Bloquea grabado</td></tr>
+            <tr><td>M_Mermas</td><td>Tipo de merma</td><td>Obligatorio (combo)</td><td>Bloquea grabado</td></tr>
+            <tr><td>M_Mermas</td><td>Cantidad &gt; stock</td><td>Comparación vs b_bodegas</td><td>Alerta visual (no bloquea)</td></tr>
+            <tr><td>M_SalBod</td><td>Fecha de producción</td><td>Obligatorio</td><td>Bloquea grabado</td></tr>
+            <tr><td>M_SalBod</td><td>Minuta / servicio</td><td>Obligatorio</td><td>Bloquea grabado</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Validaciones de Integridad de Datos (BD)</h3>
+        <table>
+          <thead><tr><th>Objeto</th><th>Validación</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">sgp_Sel_ValidaCfCElectronico</td><td>Verifica que no exista ya una factura electrónica con el mismo RUT + folio + bodega</td></tr>
+            <tr><td class="mono">sgp_Sel_ValidaCfCNormal</td><td>Verifica duplicados para facturas normales (FOFI)</td></tr>
+            <tr><td class="mono">sgp_Sel_ValidaCfCGuia</td><td>Verifica que una guía no esté ya asociada a otra factura CFC</td></tr>
+            <tr><td class="mono">sgp_Sel_ValidaCfCSolicitudNota</td><td>Valida la solicitud de nota de crédito/débito antes de grabar</td></tr>
+            <tr><td>b_productos.pro_ctrsto</td><td>Solo productos con pro_ctrsto=1 afectan stock. FK implícita por lógica de negocio</td></tr>
+            <tr><td>b_productos.pro_fecven</td><td>Productos con fecha de vencimiento pasada se excluyen de b_bodegas en el recálculo</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Validaciones de Negocio (SP / VB6 complejo)</h3>
+        <table>
+          <thead><tr><th>Regla</th><th>Implementación</th></tr></thead>
+          <tbody>
+            <tr><td>El proveedor debe tener permiso para ingresar documentos</td><td>VB6: consulta <span class="mono">prv_permiteingdoc</span> en b_proveedor antes de habilitar el formulario</td></tr>
+            <tr><td>El stock nunca queda negativo en el recálculo masivo</td><td>SP: CASE WHEN Cantidad &lt; 0 THEN 0 ELSE Cantidad</td></tr>
+            <tr><td>La fecha de cierre diario encriptada controla qué movimientos del día se procesan</td><td>SP: dbo.sgp_p_desencripta(par_valor) donde par_codigo='ciediario'</td></tr>
+            <tr><td>Solo se procesan documentos del mismo mes-año del cierre diario</td><td>SP: CONVERT(varchar(6), fecha, 112) = mes/año cierre</td></tr>
+            <tr><td>Al anular un documento de compra, se revierte el stock (bod_canmer - cantidad)</td><td>VB6: UPDATE b_bodegas SET bod_canmer = bod_canmer - cantidad</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== 6. OBJETOS BD ===== -->
+    <div class="section" id="sec-bd">
+      <div class="db-tabs">
+        <button class="db-tab active" onclick="showDbSection('sp')">Stored Procedures</button>
+        <button class="db-tab" onclick="showDbSection('tables')">Tablas Clave</button>
+        <button class="db-tab" onclick="showDbSection('funcs')">Funciones UDF</button>
+        <button class="db-tab" onclick="showDbSection('notes')">Notas Técnicas</button>
+      </div>
+
+      <div class="db-section active" id="db-sp">
+        <!-- SP 1 -->
+        <div class="sp-card">
+          <div class="sp-header" onclick="toggleSp(this)">
+            <span class="sp-name">sgp_Upd_actualizar_Stock_Bodega</span>
+            <span><span class="badge badge-orange">UPDATE</span> &nbsp; ▼</span>
+          </div>
+          <div class="sp-body open">
+            <div class="sp-row"><span class="sp-label">Propósito</span><span>Recalcula y actualiza el stock de bodega desde el último inventario físico de fin de mes hasta el día de cierre actual.</span></div>
+            <div class="sp-row"><span class="sp-label">Parámetros</span><span><span class="mono">@Ceco varchar(10)</span> — Centro de costo<br><span class="mono">@CodBod int</span> — Código de bodega<br><span class="mono">@FechaInventario int</span> — Fecha en formato YYYYMMDD</span></div>
+            <div class="sp-row"><span class="sp-label">Tablas leídas</span><span>b_cierreperiodo, b_tomainv, b_bodegas, b_productos, b_clientes, b_totventas, b_detventas, b_totcompras, b_detcompras, b_totventascaf, b_detventascafpro, b_totventaserviciosespeciales, b_detventaserviciosespeciales, a_tipoajuste, a_param</span></div>
+            <div class="sp-row"><span class="sp-label">Tablas modificadas</span><span>b_bodegas (UPDATE bod_canmer)</span></div>
+            <div class="sp-row"><span class="sp-label">Lógica principal</span><span>1. Obtiene fecha del último inventario físico (último día del período anterior desde b_cierreperiodo).<br>2. Carga b_tomainv para esa fecha/bodega en tabla temporal #b_tomainv.<br>3. Agrega a #b_tomainv productos de b_bodegas que no estuvieron en el inventario (con stock = 0).<br>4. Calcula para cada producto: stock_inventario + Ajustes_Aumenta + Devoluciones_Producción + Devoluciones_VtaEsp + Traspasos_Entrada + Compras_Centralizadas - Mermas - Ajustes_Disminuye - Salidas_Producción - Salidas_VtaEsp - Traspasos_Salida - Ventas_Cafetería.<br>5. Aplica ROUND según parámetro deccan.<br>6. UPDATE b_bodegas con cantidad calculada (mín. 0).</span></div>
+            <div class="sp-row"><span class="sp-label">Transacciones</span><span>BEGIN TRY / BEGIN TRAN / COMMIT TRAN. En caso de error: ROLLBACK y GOTO handle_error. SET XACT_ABORT ON.</span></div>
+            <div class="sp-row"><span class="sp-label">Regla crítica</span><span>Usa la fecha encriptada del parámetro 'ciediario' para filtrar movimientos del día. Solo procesa movimientos cuyo mes-año coincide con el mes del cierre.</span></div>
+            <div class="sp-row"><span class="sp-label">Llamado desde</span><td>🔍 <em>Requiere validación — no se encontró llamado explícito en los formularios VB6 analizados. Posiblemente es un job del SQL Agent o se invoca desde un formulario de cierre diario.</em></td></div>
+          </div>
+        </div>
+
+        <!-- SP 2 -->
+        <div class="sp-card">
+          <div class="sp-header" onclick="toggleSp(this)">
+            <span class="sp-name">sgp_Sel_ValidaCfCGuia</span>
+            <span><span class="badge badge-blue">SELECT</span> &nbsp; ▼</span>
+          </div>
+          <div class="sp-body">
+            <div class="sp-row"><span class="sp-label">Propósito</span><span>Valida que una guía de despacho no esté ya asociada a otra factura CFC para el mismo proveedor y bodega.</span></div>
+            <div class="sp-row"><span class="sp-label">Parámetros</span><span><span class="mono">@RUT varchar</span>, <span class="mono">@CodBod int</span>, <span class="mono">@TipoDoc varchar</span></span></div>
+            <div class="sp-row"><span class="sp-label">Llamado desde</span><span>M_DocPro.frm (líneas 2805, 3690, 3781) — antes de grabar y al seleccionar guías en modo CFC</span></div>
+          </div>
+        </div>
+
+        <!-- SP 3 -->
+        <div class="sp-card">
+          <div class="sp-header" onclick="toggleSp(this)">
+            <span class="sp-name">sgp_Sel_ValidaCfCSolicitudNota</span>
+            <span><span class="badge badge-blue">SELECT</span> &nbsp; ▼</span>
+          </div>
+          <div class="sp-body">
+            <div class="sp-row"><span class="sp-label">Propósito</span><span>Valida que la solicitud de nota de crédito/débito a asociar no esté ya vinculada a otro documento.</span></div>
+            <div class="sp-row"><span class="sp-label">Llamado desde</span><span>M_DocPro.frm (líneas 2816, 3703, 3790)</span></div>
+          </div>
+        </div>
+
+        <!-- SP 4 -->
+        <div class="sp-card">
+          <div class="sp-header" onclick="toggleSp(this)">
+            <span class="sp-name">sgp_Sel_ValidaCfCElectronico / sgp_Sel_ValidaCfCNormal</span>
+            <span><span class="badge badge-blue">SELECT</span> &nbsp; ▼</span>
+          </div>
+          <div class="sp-body">
+            <div class="sp-row"><span class="sp-label">Propósito</span><span>Detecta duplicados de facturas electrónicas (FOFI tipo F) o normales (FOFI tipo C) por RUT + folio + bodega.</span></div>
+            <div class="sp-row"><span class="sp-label">Llamado desde</span><span>M_DocPro.frm (líneas 7149-7153) — justo antes del INSERT en b_totcompras</span></div>
+          </div>
+        </div>
+
+        <!-- SP 5 -->
+        <div class="sp-card">
+          <div class="sp-header" onclick="toggleSp(this)">
+            <span class="sp-name">dbo.sgp_p_desencripta (función)</span>
+            <span><span class="badge badge-yellow">SCALAR UDF</span> &nbsp; ▼</span>
+          </div>
+          <div class="sp-body">
+            <div class="sp-row"><span class="sp-label">Propósito</span><span>Desencripta el valor del parámetro 'ciediario' para obtener la fecha de cierre diario en formato legible (DD/MM/YYYY).</span></div>
+            <div class="sp-row"><span class="sp-label">Uso</span><span>Llamada intensivamente en sgp_Upd_actualizar_Stock_Bodega para determinar el mes/año del período en proceso. La fecha encriptada se convierte con: <span class="mono">substring(dbo.sgp_p_desencripta(par_valor),7,4) + substring(...,4,2) + substring(...,1,2)</span> → formato YYYYMMDD.</span></div>
+            <div class="sp-row"><span class="sp-label">Impacto crítico</span><span>Si el parámetro 'ciediario' no está seteado correctamente, ningún movimiento del día será procesado en el recálculo de stock.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="db-section" id="db-tables">
+        <div class="card">
+          <h3>Campos de b_totventas relevantes para Inventario</h3>
+          <table>
+            <thead><tr><th>Campo</th><th>Descripción</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">tov_rutcli</td><td>RUT del cliente/casino (también usado como ID de documento)</td></tr>
+              <tr><td class="mono">tov_tipdoc</td><td>Tipo: SP=Salida Producción, DP=Devolución, ME=Merma, TR=Traspaso, AI=Ajuste, VD=Venta Directa</td></tr>
+              <tr><td class="mono">tov_numdoc</td><td>Número de documento interno</td></tr>
+              <tr><td class="mono">tov_codbod</td><td>Bodega origen del movimiento</td></tr>
+              <tr><td class="mono">tov_fecemi</td><td>Fecha de emisión (usada para mermas, traspasos, ajustes)</td></tr>
+              <tr><td class="mono">tov_fecpro</td><td>Fecha de producción (usada para SP y DP)</td></tr>
+              <tr><td class="mono">tov_estdoc</td><td>Estado: A=Anulado, P=Pendiente, vacío=activo</td></tr>
+              <tr><td class="mono">tov_codser</td><td>Código de servicio/origen. Para TR: &lt;&gt;0 significa Entrada, =0 significa Salida</td></tr>
+              <tr><td class="mono">tov_codreg</td><td>Código de registro/destino. Para TR entrada: debe ser 0</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Tabla b_tomainv — Toma de Inventario</h3>
+          <table>
+            <thead><tr><th>Campo</th><th>Descripción</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">tin_fectom</td><td>Fecha de toma (formato YYYYMMDD int)</td></tr>
+              <tr><td class="mono">tin_codbod</td><td>Código de bodega</td></tr>
+              <tr><td class="mono">tin_codpro</td><td>Código de producto</td></tr>
+              <tr><td class="mono">tin_stosis</td><td>Stock según sistema al momento del inventario</td></tr>
+              <tr><td class="mono">tin_stofis</td><td>Stock físico contado</td></tr>
+              <tr><td class="mono">tin_propon</td><td>PMP al momento del inventario</td></tr>
+              <tr><td class="mono">tin_ciemes</td><td>¿Es cierre de mes? (0/1)</td></tr>
+              <tr><td class="mono">tin_tipinv</td><td>Tipo de inventario</td></tr>
+              <tr><td class="mono">tin_autaju</td><td>Ajuste automático</td></tr>
+              <tr><td class="mono">tin_envioADMSGP</td><td>Flag de envío a SGP Administrador</td></tr>
+              <tr><td class="mono">tin_envsap</td><td>Flag de envío a SAP</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>Tabla a_param — Parámetros críticos del módulo</h3>
+          <table>
+            <thead><tr><th>par_codigo</th><th>Descripción</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">ciediario</td><td>Fecha de cierre diario encriptada (usada para definir qué movimientos pertenecen al día en proceso)</td></tr>
+              <tr><td class="mono">deccan</td><td>Decimales para cantidades de inventario (por defecto 2)</td></tr>
+            </tbody>
+          </table>
+          <div class="alert alert-warning" style="margin-top:12px"><strong>Pregunta abierta:</strong> ¿Existen otros par_codigo relevantes para el módulo de inventario? El análisis de a_param está incompleto sin acceso al script de tablas completo.</div>
+        </div>
+      </div>
+
+      <div class="db-section" id="db-funcs">
+        <div class="card">
+          <h3>Funciones UDF identificadas</h3>
+          <table>
+            <thead><tr><th>Función</th><th>Tipo</th><th>Descripción</th><th>Usado en</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">dbo.sgp_p_desencripta()</td><td>Escalar</td><td>Desencripta el valor del parámetro 'ciediario'. Devuelve fecha en formato DD/MM/YYYY</td><td>sgp_Upd_actualizar_Stock_Bodega (múltiples veces)</td></tr>
+              <tr><td class="mono">fg_Pict()</td><td>VB6 global</td><td>Formatea números con decimales. Se usa en VB6 para formatear cantidades y precios en la grilla</td><td>M_DocPro.frm y otros formularios</td></tr>
+              <tr><td class="mono">fg_DespintaRut()</td><td>VB6 global</td><td>Limpia el formato del RUT (elimina puntos y guión) antes de enviarlo a la BD</td><td>M_DocPro.frm — parámetros de SP</td></tr>
+              <tr><td class="mono">fg_descarga()</td><td>VB6 global</td><td>Rutina de manejo de errores globales. Se llama en cada bloque On Error GoTo</td><td>Todos los formularios de inventario</td></tr>
+            </tbody>
+          </table>
+          <div class="alert alert-warning" style="margin-top:12px"><strong>Nota:</strong> No se encontró un script de BD con las UDF SQL completas. Solo sgp_p_desencripta pudo confirmarse desde el SP. Se requiere el script de creación de funciones para documentar el resto.</div>
+        </div>
+      </div>
+
+      <div class="db-section" id="db-notes">
+        <div class="card">
+          <h3>Notas Técnicas Críticas</h3>
+          <div class="alert alert-danger">
+            <strong>Transacciones distribuidas VB6 + SQL Server:</strong> En M_DocPro.frm las operaciones de INSERT a b_totcompras, b_detcompras, UPDATE b_bodegas y UPDATE/INSERT b_productospmpdia se ejecutan como sentencias individuales via <span class="mono">vg_db.Execute</span> sin un BEGIN TRANS explícito en VB6. Esto significa que si falla el UPDATE de b_bodegas después de haber insertado en b_totcompras, el documento queda registrado pero el stock no se actualiza. El SP de recálculo masivo puede corregir esto, pero requiere ejecución manual/programada.
+          </div>
+          <div class="alert alert-warning">
+            <strong>Doble actualización de stock:</strong> El stock se actualiza en dos vías: (1) UPDATE directo desde VB6 al guardar cada documento, y (2) SP sgp_Upd_actualizar_Stock_Bodega que recalcula todo desde el último inventario. Si hay diferencias, el SP prevalece cuando se ejecuta.
+          </div>
+          <div class="alert alert-info">
+            <strong>Tipo de documento SN (Solicitud Nota):</strong> Se excluye explícitamente del cálculo de stock en el SP (<span class="mono">tdo_IdCodigo NOT IN ('SN')</span>). La nota de crédito/débito afecta valores monetarios pero no cantidades físicas.
+          </div>
+          <div class="alert alert-info">
+            <strong>Venta Cafetería:</strong> Usa tablas separadas (<span class="mono">b_totventascaf</span>, <span class="mono">b_detventascafpro</span>) con estructura diferente a los demás movimientos. El estado 'C' (Cerrado) es el que activa el descuento de stock (tvc_estado='C'). Adicionalmente, la cantidad que afecta stock es <span class="mono">dvp_candig</span> (cantidad digitada), y solo cuando es &lt;&gt; 0.
+          </div>
+          <div class="alert alert-warning">
+            <strong>Códigos genéricos SAP:</strong> Existe un problema conocido donde facturas con código SAP genérico (ej: "alimento") quedan integradas sin asociar a un producto específico. Esto genera gastos directos que no se asocian a ningún servicio. Mencionado en reunión 20260108 como problema a resolver.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 7. INTEGRACIONES ===== -->
+    <div class="section" id="sec-integraciones">
+      <div class="card">
+        <h3>Diagrama de Integración entre Sistemas</h3>
+        <div class="mermaid">
+sequenceDiagram
+    participant SAP as SAP / SAC
+    participant SGP as SGP Local (VB6)
+    participant BD as SQL Server
+    participant SGPADM as SGP Administrador
+    participant AMD as Sistema AMD
+
+    SAP->>SGP: Órdenes de Compra (OC SAC)
+    Note over SGP,BD: Recepción de factura proveedor
+    SGP->>BD: INSERT b_totcompras + b_detcompras
+    SGP->>BD: UPDATE b_bodegas (stock +)
+    SGP->>BD: INSERT/UPDATE b_productospmpdia (PMP)
+    BD->>BD: sgp_Upd_actualizar_Stock_Bodega (recálculo)
+
+    Note over SGP,BD: Salida de producción
+    AMD->>SGP: Minuta planificada (recetas)
+    SGP->>BD: INSERT b_totventas (tipdoc=SP)
+    SGP->>BD: UPDATE b_bodegas (stock -)
+
+    Note over SGP,BD: Traspaso entre casinos
+    SGP->>BD: INSERT b_totventas (tipdoc=TR, salida)
+    BD->>BD: Registro TR entrada en casino destino
+    SGP->>BD: UPDATE b_bodegas origen (-)
+    SGP->>BD: UPDATE b_bodegas destino (+)
+
+    Note over SGP,SGPADM: Envío a SGP Administrador
+    BD-->>SGPADM: EnvioDocSGPADM = 'S' (flag sincronización)
+
+    Note over SGP,SAP: Envío a SAP
+    BD-->>SAP: toc_envsap flag para integración
+        </div>
+      </div>
+      <div class="card">
+        <h3>Dependencias de Datos</h3>
+        <table>
+          <thead><tr><th>Sistema origen</th><th>Dato</th><th>Destino en SGP</th><th>Mecanismo</th></tr></thead>
+          <tbody>
+            <tr><td>SAC / SAP</td><td>Órdenes de Compra</td><td>b_ocsacrecibido</td><td>Integración manual o automática via b_formatocomprassgp</td></tr>
+            <tr><td>AMD</td><td>Minutas planificadas</td><td>b_totventas (SP)</td><td>M_SalBod.frm consume minuta para generar salida</td></tr>
+            <tr><td>SGP Administrador</td><td>Maestro de productos, proveedores</td><td>b_productos, b_proveedor</td><td>Replicación periódica (flag EnvioDocSGPADM)</td></tr>
+            <tr><td>SGP Local</td><td>Movimientos de inventario</td><td>Reporte A13</td><td>Consultas directas a b_totcompras, b_totventas, etc.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ===== 8. VALORIZACIÓN ===== -->
+    <div class="section" id="sec-valorizacion">
+      <div class="card">
+        <h3>Método de Valorización: Precio Medio Ponderado (PMP)</h3>
+        <div class="alert alert-info"><strong>Método:</strong> El SGP utiliza Costo Promedio Ponderado (PMP). El costo unitario de cada producto se recalcula cada vez que ingresa una compra, ponderando las cantidades anteriores con las nuevas.</div>
+        <h4>Tabla b_productospmpdia</h4>
+        <table>
+          <thead><tr><th>Campo</th><th>Descripción</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">ppd_cencos</td><td>Centro de costo (casino)</td></tr>
+            <tr><td class="mono">ppd_codpro</td><td>Código de producto</td></tr>
+            <tr><td class="mono">ppd_fecdia</td><td>Fecha del cálculo (YYYYMMDD)</td></tr>
+            <tr><td class="mono">ppd_propon</td><td>PMP calculado para ese día</td></tr>
+            <tr><td class="mono">ppd_upreco</td><td>Último precio de compra recibido</td></tr>
+            <tr><td class="mono">ppd_fecuco</td><td>Fecha de la última compra</td></tr>
+          </tbody>
+        </table>
+        <h4>Flujo de cálculo PMP al ingresar una compra</h4>
+        <div class="steps">
+          <div class="step"><div class="step-num"></div><div class="step-body">Usuario ingresa factura/guía en M_DocPro con productos, cantidades y precios.</div></div>
+          <div class="step"><div class="step-num"></div><div class="step-body">VB6 calcula PMP por producto: <strong>PMP nuevo = (stock_actual × PMP_anterior + cantidad_compra × precio_compra) / (stock_actual + cantidad_compra)</strong>. Variable local <span class="mono">pmp</span>.</div></div>
+          <div class="step"><div class="step-num"></div><div class="step-body">Si no existe registro en b_productospmpdia para ese día: INSERT. Si ya existe: UPDATE ppd_propon y ppd_upreco.</div></div>
+          <div class="step"><div class="step-num"></div><div class="step-body">El PMP anterior se lee de b_productospmpdia WHERE ppd_fecdia = fecha_ayer. Si no existe, se usa el PMP del día anterior disponible.</div></div>
+        </div>
+        <div class="alert alert-warning" style="margin-top:12px">
+          <strong>Discrepancia detectada:</strong> El SP sgp_Upd_actualizar_Stock_Bodega lee <span class="mono">tin_propon</span> (PMP del inventario físico) como base, pero el VB6 actualiza ppd_propon al ingresar compras. El PMP efectivo para valorizaciones puede diferir entre el inventario y los movimientos del día si el SP no se ejecuta.
+        </div>
+      </div>
+      <div class="card">
+        <h3>Impacto de ajustes en valorización</h3>
+        <p style="font-size:13px;line-height:1.7">Los ajustes de inventario (AI) afectan solo cantidades, no el PMP unitario. Sin embargo, al cambiar la cantidad base del stock, el PMP calculado en la próxima compra cambiará ya que utiliza el stock actualizado. Los ajustes negativos grandes pueden distorsionar el PMP si luego se ingresa una compra.</p>
+        <div class="alert alert-info" style="margin-top:12px">
+          <strong>Reunión 20260108:</strong> Los ajustes se muestran en el reporte A13 como neto (suma algebraica de ajustes positivos y negativos). La dirección solicita verlos en valor absoluto separado positivos/negativos. Esto requiere un cambio en la consulta del reporte.
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 9. REPORTES ===== -->
+    <div class="section" id="sec-reportes">
+      <div class="card">
+        <h3>Reportes del Módulo de Inventario</h3>
+        <table>
+          <thead><tr><th>Reporte</th><th>Descripción</th><th>Filtros</th><th>Fuentes de datos</th></tr></thead>
+          <tbody>
+            <tr><td><strong>A13 (Costo de Alimentos)</strong></td><td>Reporte principal. Muestra todos los movimientos de inventario del mes: compras, traspasos, mermas, salidas, devoluciones, ajustes, ventas especiales. Calcula food cost %.</td><td>Centro de costo, período (mes/año)</td><td>b_totcompras, b_totventas, b_tomainv, b_totventaserviciosespeciales, b_totventascaf</td></tr>
+            <tr><td><strong>Stock de Bodega</strong></td><td>Stock actual por producto y bodega.</td><td>Bodega, categoría, producto</td><td>b_bodegas, b_productos</td></tr>
+            <tr><td><strong>Kardex / Movimientos</strong></td><td>Historial de movimientos por producto en un período.</td><td>Producto, período, bodega</td><td>b_totcompras+b_detcompras, b_totventas+b_detventas</td></tr>
+            <tr><td><strong>Inventario Físico</strong></td><td>Comparación stock sistema vs stock físico con diferencia y valorización.</td><td>Fecha de inventario, bodega</td><td>b_tomainv, b_bodegas, b_productospmpdia</td></tr>
+            <tr><td><strong>Documentos Proveedor</strong></td><td>Listado de facturas/guías ingresadas por período.</td><td>Proveedor, período, tipo doc, estado</td><td>b_totcompras, b_detcompras, b_proveedor</td></tr>
+          </tbody>
+        </table>
+        <div class="alert alert-warning" style="margin-top:12px">
+          <strong>Solicitud de mejora (Reunión 20260108):</strong> El reporte A13 actualmente mezcla salidas de servicios especiales dentro de "Salida de Producción". Los usuarios solicitan visualizar por separado las ventas de servicios especiales con su salida, para comparar servicios planificados vs especiales.
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 10. PREGUNTAS ABIERTAS ===== -->
+    <div class="section" id="sec-preguntas">
+      <div class="card">
+        <h3>Preguntas Abiertas – Requieren validación</h3>
+
+        <div class="question">
+          <div class="q-id">❓ Pregunta-INV-001</div>
+          <div class="q-text">¿Desde dónde se invoca el SP <span class="mono">sgp_Upd_actualizar_Stock_Bodega</span>? ¿Es un SQL Agent job programado, se llama desde un formulario VB6 de cierre diario, o es manual? ¿Con qué frecuencia se ejecuta?</div>
+        </div>
+
+        <div class="question">
+          <div class="q-id">❓ Pregunta-INV-002</div>
+          <div class="q-text">¿Cómo se determina el parámetro <span class="mono">ciediario</span> en a_param? ¿Quién lo actualiza y cuándo? ¿Existe un proceso de cierre diario que lo setea antes de correr el SP?</div>
+        </div>
+
+        <div class="question">
+          <div class="q-id">❓ Pregunta-INV-003</div>
+          <div class="q-text">¿Existe algún trigger sobre b_bodegas, b_totcompras, b_detcompras, b_totventas o b_detventas que no fue incluido en el script de BD recibido? Los archivos SQL analizados solo contienen el SP de actualización de stock.</div>
+        </div>
+
+        <div class="question">
+          <div class="q-id">❓ Pregunta-INV-004</div>
+          <div class="q-text">El SP de recálculo evita stock negativo fijando en 0. ¿Existe algún parámetro o configuración que permita stock negativo para ciertos productos o bodegas (como se menciona en la plantilla de documentación)?</div>
+        </div>
+
+        <div class="question">
+          <div class="q-id">❓ Pregunta-INV-005</div>
+          <div class="q-text">¿Cuál es el proceso exacto del formulario M_Traspa.frm? ¿Un traspaso genera simultáneamente la salida en el casino origen y la entrada en el casino destino, o requiere confirmación del casino receptor?</div>
+        </div>
+
+        <div class="question">
+          <div class="q-id">❓ Pregunta-INV-006</div>
+          <div class="q-text">¿Cuál es el proceso de la "toma de inventario físico"? ¿Se ingresa desde un formulario VB6 (M_AjuInv.frm o similar)? ¿Existen dispositivos móviles o planillas externas que se importan?</div>
+        </div>
+
+        <div class="question">
+          <div class="q-id">❓ Pregunta-INV-007</div>
+          <div class="q-text">El campo <span class="mono">EnvioDocSGPADM</span> en b_totcompras indica si el documento fue enviado a SGP Administrador. ¿Existe un proceso de sincronización bidireccional o solo es unidireccional?</div>
+        </div>
+
+        <div class="question">
+          <div class="q-id">❓ Pregunta-INV-008</div>
+          <div class="q-text">¿El formulario M_VenDir.frm (Venta Directa) afecta inventario con un tipo de documento diferente o usa la misma estructura de b_totventas/b_detventas? ¿Cuál es el tipdoc utilizado?</div>
+        </div>
+
+        <div class="question">
+          <div class="q-id">❓ Pregunta-INV-009</div>
+          <div class="q-text">La reunión 20260106 menciona un proceso de "Compras Centralizadas" (tabla b_totcompras con CFC). ¿Cuál es la diferencia operativa exacta entre una compra FOFI y una CFC? ¿Quién ingresa las CFC — la central o el casino?</div>
+        </div>
+
+        <div class="question">
+          <div class="q-id">❓ Pregunta-INV-010</div>
+          <div class="q-text">¿Existen vistas (Views) en la base de datos que consoliden información de inventario para reportes? No se encontraron scripts de vistas en los archivos recibidos.</div>
+        </div>
+
+        <div class="question">
+          <div class="q-id">❓ Pregunta-INV-011</div>
+          <div class="q-text">¿Cuál es el proceso de cierre de período mensual? ¿El formulario M_CiePer.frm o M_ProCie.frm están involucrados en el cierre de inventario? ¿Qué acciones dispara el cierre de período sobre las tablas de inventario?</div>
+        </div>
+
+        <div class="question">
+          <div class="q-id">❓ Pregunta-INV-012</div>
+          <div class="q-text">La reunión 20260108 menciona que "gastos generales" se pueden digitar manualmente como A13. ¿Estos gastos manuales afectan las tablas de inventario o van a tablas separadas? ¿Cuál es la tabla objetivo?</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 11. GLOSARIO ===== -->
+    <div class="section" id="sec-glosario">
+      <div class="card">
+        <h3>Glosario del Dominio</h3>
+        <div class="glos-item"><span class="glos-term">PMP</span><span>Precio Medio Ponderado. Método de valorización de inventario. Se recalcula en cada ingreso de compra.</span></div>
+        <div class="glos-item"><span class="glos-term">FOFI</span><span>Formulario de Factura. Tipo de ingreso de documento para facturas de proveedor directo (sin centralización).</span></div>
+        <div class="glos-item"><span class="glos-term">CFC</span><span>Comprobante de Factura Centralizada. Factura procesada por la central de abastecimiento, no directamente por el casino.</span></div>
+        <div class="glos-item"><span class="glos-term">Ceco / Casino</span><span>Centro de Costo. Unidad operativa (casino, comedor, cafetería) identificada en b_clientes.</span></div>
+        <div class="glos-item"><span class="glos-term">Bodega</span><span>Depósito físico de insumos. Cada centro de costo tiene una bodega (cli_codbod). El stock se mantiene en b_bodegas.</span></div>
+        <div class="glos-item"><span class="glos-term">Merma</span><span>Pérdida o deterioro de producto en bodega. Se registra con tipo de documento ME y disminuye el stock sin generar venta.</span></div>
+        <div class="glos-item"><span class="glos-term">Traspaso</span><span>Movimiento de productos entre dos casinos/bodegas. Genera una salida (TR, tov_codser=0) y una entrada (TR, tov_codser≠0).</span></div>
+        <div class="glos-item"><span class="glos-term">A13</span><span>Reporte de costo de alimentos (food cost). Consolida todos los movimientos del mes para calcular el costo total de alimentos sobre la venta.</span></div>
+        <div class="glos-item"><span class="glos-term">mueinv</span><span>Flag "Mueve Inventario". Campo 'S'/'N' en detalles de documentos que determina si una línea afecta el stock de b_bodegas.</span></div>
+        <div class="glos-item"><span class="glos-term">Toma de inventario</span><span>Conteo físico de existencias. Se registra en b_tomainv. Es la base del recálculo de stock en sgp_Upd_actualizar_Stock_Bodega.</span></div>
+        <div class="glos-item"><span class="glos-term">ciediario</span><span>Parámetro encriptado en a_param que indica la fecha del cierre diario activo. Controla qué movimientos procesa el SP de recálculo.</span></div>
+        <div class="glos-item"><span class="glos-term">Food Cost %</span><span>Porcentaje de costo de alimentos sobre la venta. Indicador clave del módulo A13. Meta: mínimo posible.</span></div>
+        <div class="glos-item"><span class="glos-term">SAC</span><span>Sistema de Abastecimiento Centralizado. Plataforma de pedidos y órdenes de compra. Se integra con SGP via b_ocsacrecibido y b_formatocomprassgp.</span></div>
+        <div class="glos-item"><span class="glos-term">AMD</span><span>Sistema de Administración de Minutas Digitales. Genera las minutas planificadas que alimentan las salidas de producción en SGP.</span></div>
+        <div class="glos-item"><span class="glos-term">pro_ctrsto</span><span>Campo de b_productos (Control de Stock = 1). Solo productos con este flag activo participan en el cálculo de stock.</span></div>
+        <div class="glos-item"><span class="glos-term">Cross Docking</span><span>Modalidad de compra donde el proveedor despacha directamente a la central de distribución y no al casino. Configurable en la ruta del centro de costo.</span></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' });
+
+  // NAV
+  function showSection(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('sec-' + id).classList.add('active');
+    const titles = {
+      intro: '1. Introducción al Módulo',
+      datos: '2. Modelo de Datos',
+      flujos: '3. Flujos de Proceso',
+      reglas: '4. Reglas de Negocio',
+      validaciones: '5. Validaciones',
+      bd: '6. Objetos de Base de Datos',
+      integraciones: '7. Integraciones y Dependencias',
+      valorizacion: '8. Valorización y Costos',
+      reportes: '9. Reportes y Consultas',
+      preguntas: '10. Preguntas Abiertas',
+      glosario: '11. Glosario'
+    };
+    document.getElementById('section-title').textContent = titles[id] || id;
+    // Render mermaid in newly visible section
+    setTimeout(() => mermaid.run(), 100);
+  }
+
+  // DB TABS
+  function showDbSection(id) {
+    document.querySelectorAll('.db-section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.db-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('db-' + id).classList.add('active');
+    event.target.classList.add('active');
+  }
+
+  // SP ACCORDION
+  function toggleSp(header) {
+    const body = header.nextElementSibling;
+    body.classList.toggle('open');
+  }
+
+  // PROCESS FLOWS DATA
+  const flows = {
+    docpro: {
+      title: 'Ingreso Documento Proveedor',
+      desc: 'Registro de facturas (FA/FE), guías de despacho (GD) y solicitudes de nota (SN) recibidas de proveedores. Afecta stock positivamente (entrada de mercadería) y actualiza el PMP.',
+      badges: ['<span class="badge badge-blue">M_DocPro.frm</span>', '<span class="badge badge-green">tipdoc: FA · FE · GD · SN</span>', '<span class="badge badge-orange">Afecta stock (+)</span>'],
+      diagram: `flowchart TD
+    A([Inicio: Abrir M_DocPro]) --> B[Seleccionar Proveedor por RUT]
+    B --> C{prv_permiteingdoc = 1?}
+    C -- No --> C1([Error: Proveedor bloqueado])
+    C -- Sí --> D[Seleccionar tipo: FOFI o CFC]
+    D --> E[Ingresar datos cabecera:\\nFecha emisión, recepción, folio, montos]
+    E --> F[Ingresar detalle: productos,\\ncantidades, precios, descuentos]
+    F --> G{Tipo FOFI o CFC?}
+    G -- FOFI --> H[Seleccionar FA o FE\\nIngresar folio]
+    G -- CFC --> I[Asociar guías y/o\\nSolicitud de Nota]
+    I --> I1[sgp_Sel_ValidaCfCGuia\\nsgp_Sel_ValidaCfCSolicitudNota]
+    I1 --> J
+    H --> H1[sgp_Sel_ValidaCfCElectronico\\no sgp_Sel_ValidaCfCNormal]
+    H1 --> J[Validar grilla:\\ncantidad>0, precio>0]
+    J --> K{Validación OK?}
+    K -- No --> F
+    K -- Sí --> L[BEGIN TRAN implícita VB6]
+    L --> M[INSERT b_totcompras\\ncabecera documento]
+    M --> N[INSERT b_detcompras\\npor cada línea]
+    N --> O[UPDATE b_bodegas\\nbod_canmer = bod_canmer + canrec]
+    O --> P[INSERT/UPDATE b_productospmpdia\\nRecalcular PMP]
+    P --> Q[UPDATE b_formatocomprassgp\\nActualizar precio SAC]
+    Q --> R{¿Tiene OC SAC?}
+    R -- Sí --> S[INSERT/UPDATE b_ocsacrecibido]
+    R -- No --> T
+    S --> T[INSERT b_detcomprasimp\\nImpuestos por línea]
+    T --> U([Documento grabado exitosamente])
+    U --> V[Actualizar guías asociadas\\nb_totcompras.toc_docaso]`
+    },
+    traspa: {
+      title: 'Traspaso entre Casinos',
+      desc: 'Movimiento de productos desde una bodega/casino hacia otra. Genera simultáneamente una salida en el origen y una entrada en el destino. Tipo de documento TR.',
+      badges: ['<span class="badge badge-blue">M_Traspa.frm</span>', '<span class="badge badge-blue">tipdoc: TR</span>', '<span class="badge badge-orange">Afecta dos bodegas</span>'],
+      diagram: `flowchart TD
+    A([Inicio: Abrir M_Traspa]) --> B[Seleccionar Casino Destino]
+    B --> C[Ingresar fecha y datos del traspaso]
+    C --> D[Agregar productos:\\ncódigo, cantidad, costo logístico]
+    D --> E[Validar productos en stock]
+    E --> F{Stock suficiente?}
+    F -- Advertencia --> G[Alerta visual\\n¿Continuar?]
+    F -- Sí --> H
+    G --> H[INSERT b_totventas\\ntov_tipdoc=TR, tov_codser=0\\nCasino ORIGEN - Salida]
+    H --> I[INSERT b_detventas\\ndev_mueinv=S, líneas de productos]
+    I --> J[UPDATE b_bodegas ORIGEN\\nbod_canmer = bod_canmer - cantidad]
+    J --> K[INSERT b_totventas\\ntov_tipdoc=TR, tov_codser != 0\\nCasino DESTINO - Entrada]
+    K --> L[INSERT b_detventas\\nbodega destino]
+    L --> M[UPDATE b_bodegas DESTINO\\nbod_canmer = bod_canmer + cantidad]
+    M --> N([Traspaso grabado])
+    N --> O{¿Incluye costo logístico?}
+    O -- Sí --> P[Registrar costo logístico\\nen cabecera del traspaso]
+    O -- No --> Q([Fin])
+    P --> Q`
+    },
+    mermas: {
+      title: 'Merma de Bodega',
+      desc: 'Registro de pérdidas, deterioros o destrucción de insumos en bodega. Disminuye el stock sin generar venta. El sistema alerta si la cantidad supera el stock actual pero no bloquea.',
+      badges: ['<span class="badge badge-blue">M_Mermas.frm</span>', '<span class="badge badge-red">tipdoc: ME</span>', '<span class="badge badge-orange">Afecta stock (-)</span>'],
+      diagram: `flowchart TD
+    A([Inicio: Abrir M_Mermas]) --> B[Número correlativo auto-generado]
+    B --> C[Ingresar Fecha de merma]
+    C --> D[Seleccionar Tipo de merma\\ndesde combo a_tipoajuste]
+    D --> E[Seleccionar Centro de Costo / Bodega]
+    E --> F[Agregar productos a la grilla\\n8 columnas, máx 20 filas]
+    F --> G[Ingresar cantidad por producto]
+    G --> H{Cantidad > Stock actual?}
+    H -- Sí --> I[Alerta visual color\\nNo bloquea el ingreso]
+    H -- No --> J
+    I --> J[Continuar ingreso restantes]
+    J --> K[Confirmar / Grabar]
+    K --> L[INSERT b_totventas\\ntov_tipdoc=ME]
+    L --> M[INSERT b_detventas\\ndev_mueinv=S]
+    M --> N[UPDATE b_bodegas\\nbod_canmer = bod_canmer - cantidad]
+    N --> O([Merma registrada])
+    O --> P[Disponible en reporte A13\\ncomo Merma de Bodega]`
+    },
+    salbod: {
+      title: 'Salida de Bodega para Producción',
+      desc: 'Descuento de insumos del stock para la producción del día. Se genera desde la minuta planificada. Opciones: vista Resumida o por Sector. Puede ocultar ingredientes.',
+      badges: ['<span class="badge badge-blue">M_SalBod.frm</span>', '<span class="badge badge-blue">tipdoc: SP</span>', '<span class="badge badge-orange">Afecta stock (-)</span>'],
+      diagram: `flowchart TD
+    A([Inicio: Abrir M_SalBod]) --> B[Seleccionar Fecha de Producción]
+    B --> C[Seleccionar Servicio / Minuta]
+    C --> D{Vista: Resumida o Sector?}
+    D -- Resumida --> E[Carga ingredientes consolidados\\nde todas las recetas]
+    D -- Sector --> F[Carga ingredientes\\nagrupados por sector]
+    E --> G
+    F --> G[Opción: Oculta Ingrediente\\nCheckbox Check1]
+    G --> H[Revisar y ajustar cantidades]
+    H --> I[Confirmar Salida]
+    I --> J[INSERT b_totventas\\ntov_tipdoc=SP\\ntov_fecpro=fecha producción]
+    J --> K[INSERT b_detventas\\ndev_mueinv=S por producto]
+    K --> L[UPDATE b_bodegas\\nbod_canmer = bod_canmer - cantidad]
+    L --> M([Salida registrada])
+    M --> N[Reporte A13:\\nSalida de Producción]`
+    },
+    vendir: {
+      title: 'Venta Directa',
+      desc: 'Registro de ventas directas desde bodega. Disminuye stock. Detalle específico requiere validación con usuarios para confirmar el tipo de documento y flujo exacto.',
+      badges: ['<span class="badge badge-blue">M_VenDir.frm</span>', '<span class="badge badge-orange">tipdoc: VD</span>', '<span class="badge badge-orange">Afecta stock (-)</span>'],
+      diagram: `flowchart TD
+    A([Inicio: M_VenDir]) --> B[Seleccionar cliente/destinatario]
+    B --> C[Ingresar fecha y datos]
+    C --> D[Agregar productos y cantidades]
+    D --> E[Confirmar venta]
+    E --> F[INSERT b_totventas tipdoc=VD]
+    F --> G[INSERT b_detventas]
+    G --> H[UPDATE b_bodegas - cantidad]
+    H --> I([Venta Directa registrada])
+    I --> J{🔍 Requiere validación:\\n¿Genera documento tributario?\\n¿Afecta reporte A13?}`
+    },
+    vencaf: {
+      title: 'Venta Cafetería',
+      desc: 'Registro diario de ventas de cafetería. Usa tablas separadas (b_totventascaf / b_detventascafpro). Solo afecta stock cuando el estado es "Cerrado" (C) y la cantidad digitada es distinta de cero.',
+      badges: ['<span class="badge badge-blue">M_VenCaf.frm</span>', '<span class="badge badge-orange">tipdoc: propio</span>', '<span class="badge badge-orange">Afecta stock (-)</span>'],
+      diagram: `flowchart TD
+    A([Inicio: M_VenCaf]) --> B[Seleccionar Fecha y Centro de Costo]
+    B --> C[Registrar productos vendidos\\nCantidad digitada dvp_candig]
+    C --> D[Guardar como Abierto o Cerrado]
+    D --> E{Estado = Cerrado C?}
+    E -- No --> F[Pendiente - no afecta stock]
+    E -- Sí --> G{dvp_candig != 0?}
+    G -- No --> H[No afecta stock]
+    G -- Sí --> I[INSERT b_totventascaf\\ntvc_estado=C]
+    I --> J[INSERT b_detventascafpro\\ndvp_candig = cantidad]
+    J --> K[Stock descontado vía\\nsgp_Upd_actualizar_Stock_Bodega]
+    K --> L([Venta Cafetería cerrada])
+    L --> M[Reporte A13:\\nVenta Cafetería]`
+    },
+    salesp: {
+      title: 'Salida Ventas Especiales',
+      desc: 'Registro de salidas de insumos para servicios especiales (eventos, catering extra). Usa tablas propias. La fecha de producción determina el período contable.',
+      badges: ['<span class="badge badge-blue">M_SalidaServicioEspeciales.frm</span>', '<span class="badge badge-orange">tipdoc: SE</span>', '<span class="badge badge-orange">Afecta stock (-)</span>'],
+      diagram: `flowchart TD
+    A([Inicio: M_SalidaServicioEspeciales]) --> B[Ingresar datos del servicio especial]
+    B --> C[Fecha de producción]
+    C --> D[Agregar productos y cantidades]
+    D --> E[des_Mueve_Inventario = S?]
+    E -- No --> F[Registro sin impacto en stock]
+    E -- Sí --> G[INSERT b_totventaserviciosespeciales\\ntos_tipo_documento=SE]
+    G --> H[INSERT b_detventaserviciosespeciales\\ndes_Cantidad_Mercaderia]
+    H --> I[Stock descontado en recálculo SP]
+    I --> J([Salida Especial registrada])
+    J --> K[Reporte A13:\\nIncluido en Salida Producción\\n🔍 Mejora solicitada: separar]`
+    },
+    devbod: {
+      title: 'Devolución de Producción',
+      desc: 'Retorno de insumos desde producción hacia la bodega. Incrementa el stock. Tipo de documento DP. Usa fecha de producción para el período contable.',
+      badges: ['<span class="badge badge-blue">M_DevBod.frm</span>', '<span class="badge badge-green">tipdoc: DP</span>', '<span class="badge badge-green">Afecta stock (+)</span>'],
+      diagram: `flowchart TD
+    A([Inicio: M_DevBod]) --> B[Seleccionar servicio/minuta a devolver]
+    B --> C[Ingresar fecha de producción]
+    C --> D[Seleccionar productos devueltos\\ny cantidades]
+    D --> E[Confirmar devolución]
+    E --> F[INSERT b_totventas\\ntov_tipdoc=DP\\ntov_fecpro=fecha producción]
+    F --> G[INSERT b_detventas\\ndev_mueinv=S]
+    G --> H[UPDATE b_bodegas\\nbod_canmer = bod_canmer + cantidad]
+    H --> I([Devolución registrada])
+    I --> J[Reporte A13:\\nDevolución de Producción - suma]`
+    },
+    devesp: {
+      title: 'Devolución Ventas Especiales',
+      desc: 'Retorno de insumos de servicios especiales a bodega. Usa tabla b_totventaserviciosespeciales con tipo DE. La cantidad de devolución es des_Cantidad_Devolver.',
+      badges: ['<span class="badge badge-blue">M_DevolucionSalidaEspeciales.frm</span>', '<span class="badge badge-green">tipdoc: DE</span>', '<span class="badge badge-green">Afecta stock (+)</span>'],
+      diagram: `flowchart TD
+    A([Inicio: M_DevolucionSalidaEspeciales]) --> B[Seleccionar servicio especial original]
+    B --> C[Ingresar productos y cantidades a devolver]
+    C --> D[des_mueve_inventario = S?]
+    D -- No --> E[Sin impacto en stock]
+    D -- Sí --> F[INSERT b_totventaserviciosespeciales\\ntos_tipo_documento=DE]
+    F --> G[INSERT b_detventaserviciosespeciales\\ndes_Cantidad_Devolver]
+    G --> H[Stock incrementado en recálculo SP]
+    H --> I([Devolución Especial registrada])`
+    },
+    ajuinv: {
+      title: 'Ajuste de Inventario',
+      desc: 'Corrección del stock tras toma física. Puede aumentar (AI tipo A) o disminuir (AI tipo D). El ajuste es la diferencia entre stock físico y stock sistema. Se muestra neteado en el A13.',
+      badges: ['<span class="badge badge-blue">M_AjuInv.frm</span>', '<span class="badge badge-yellow">tipdoc: AI</span>', '<span class="badge badge-yellow">Afecta stock (+ o -)</span>'],
+      diagram: `flowchart TD
+    A([Inicio: Toma de Inventario Físico]) --> B[Contar físicamente todos los productos]
+    B --> C[Ingresar stock físico tin_stofis\\nen b_tomainv]
+    C --> D[Sistema calcula diferencia:\\nDif = tin_stofis - tin_stosis]
+    D --> E{Diferencia > 0?}
+    E -- Sí Aumenta --> F[Ajuste tipo A\\na_tipoajuste.aju_tipo=A]
+    E -- No Disminuye --> G[Ajuste tipo D\\na_tipoajuste.aju_tipo=D]
+    F --> H[INSERT b_totventas tov_tipdoc=AI]
+    G --> H
+    H --> I[INSERT b_detventas\\ndev_mueinv=S]
+    I --> J[UPDATE b_bodegas\\nbod_canmer ajustado]
+    J --> K([Ajuste registrado])
+    K --> L{¿Es cierre de mes?}
+    L -- Sí --> M[tin_ciemes=1\\nBase para próximo período]
+    L -- No --> N[tin_ciemes=0\\nAjuste intramensual]
+    M --> O[Reporte A13: Ajuste Inventario\\nneteado positivo-negativo]
+    N --> O`
+    }
+  };
+
+  function selectProcess(key) {
+    document.querySelectorAll('.process-card').forEach(c => c.classList.remove('selected'));
+    const pc = document.getElementById('pc-' + key);
+    if (pc) pc.classList.add('selected');
+    const f = flows[key];
+    if (!f) return;
+    const panel = document.getElementById('flow-content');
+    panel.innerHTML = `
+      <h3>${f.title}</h3>
+      <p class="flow-desc">${f.desc}</p>
+      <div class="flow-meta">${f.badges.join('')}</div>
+      <div class="mermaid">${f.diagram}</div>
+    `;
+    mermaid.run({ nodes: panel.querySelectorAll('.mermaid') });
+  }
+
+  // Init first flow
+  setTimeout(() => selectProcess('docpro'), 300);
+</script>
+</body>
+</html>

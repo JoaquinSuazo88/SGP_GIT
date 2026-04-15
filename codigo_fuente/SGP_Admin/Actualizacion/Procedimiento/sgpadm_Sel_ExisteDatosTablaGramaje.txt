@@ -1,0 +1,40 @@
+/*            
+==========================================================================            
+Sistema : Sgp Administrador            
+Modulo :  General - Casino (M_EstructuraServicioPanLed)           
+            
+SP o Function : sgpadm_Sel_ExisteDatosTablaGramaje
+Descripcion  : Permite identificar si existe información en tabla de gramaje
+Observaciones :             
+            
+F. creacion:      09/10/2025
+Creador:          Jorge Paz            
+            
+==========================================================================            
+Modificaciones:            
+Fecha             Programador             Motivo y/o Modificacion            
+            
+==========================================================================            
+Test:            
+
+sgpadm_Sel_ExisteDatosTablaGramaje '22700'
+==========================================================================            
+*/            
+            
+create PROC [dbo].[sgpadm_Sel_ExisteDatosTablaGramaje]
+    (
+      @IDCeco AS VARCHAR(10)            
+    )
+AS 
+
+SELECT 
+    CASE 
+        WHEN EXISTS (
+            SELECT 1 FROM b_tablagramajececo WHERE tgc_ceco = @IDCeco
+        ) OR EXISTS (
+            SELECT 1 FROM b_tablagramajececo_nivel WHERE IDCeco = @IDCeco
+        )
+        THEN '1'
+        ELSE '0'
+    END AS Resultado;
+

@@ -1,0 +1,306 @@
+/*                              
+==========================================================================                              
+Sistema : Sgp Administrador                              
+Modulo :  Minuta Bloque - Frecuncia receta minuta bloque (C_FreMinBlo.frm)                              
+                              
+SP o Function : sgpadm_Sel_FrecRecetaMinutaBloque                            
+Descripcion  :  Mostrar frecuencia receta minuta bloque                        
+                              
+Observaciones :                        
+                              
+F. creacion:      20/10/2013                        
+Creador:          Jorge Paz                        
+                              
+==========================================================================                              
+Modificaciones:                        
+Fecha             Programador             Motivo y/o Modificacion                        
+18/01/2022        Jorge Paz Núñez         Cambiar nombre sub procedimiento 
+                                          PA_sgpadm_CostoMinutaProducto x
+										  PA_sgpadm_CostoMinutaProducto_V02
+										  esto incluye dos nuevo cambio a la
+										  tabla excepción formato compras que son
+										  fecha inicio y fin.   
+										  Cambio nom de procedimiento sgpadm_Sel_FrecRecetaMinutaBloque_V04
+										  x sgpadm_Sel_FrecRecetaMinutaBloque_V05                             
+20/08/2025        JPAZN                   incluir taba gramaje x nivel
+==========================================================================                        
+Test:                        
+sgpadm_Sel_FrecRecetaMinutaBloque_V03 '99470', 10759, 10001, 201604, 20160430, '1', 1      
+sgpadm_Sel_FrecRecetaMinutaBloque_V05 '10420', 10520, 10001, 20171113, 20180114, '1', 1    
+sgpadm_Sel_FrecRecetaMinutaBloque_V06 '10420', 10520, 10001, 20171113, 20180114, '1', 1    
+
+==========================================================================                        
+*/                              
+                          
+alter PROC [dbo].[sgpadm_Sel_FrecRecetaMinutaBloque_V06]
+    (
+      @Ceco VARCHAR(10) ,
+      @CodRegimen INT ,
+      @CodServicio INT ,
+      @FecDesde INT ,
+      @FecHasta INT ,
+      @tipmin VARCHAR(1) ,
+      @OpPrecio INT                           
+    )
+AS 
+    DECLARE @nreg AS INT ,
+            @codlpr AS INT                              
+    SELECT  @nreg = 0 ,
+            @codlpr = 0                              
+    DECLARE @Id_Bloque BIGINT                          
+                          
+    SELECT  @Id_Bloque = Id_Bloque
+    FROM    cas_b_minuta WITH ( NOLOCK )
+    WHERE   min_cecori = @Ceco
+            AND min_codreg = @CodRegimen
+            AND min_codser = @CodServicio
+            AND min_fecmin >= @FecDesde
+            AND min_fecmin <= @FecHasta    
+                          
+	/* Sacar numero de receta */                      
+    SELECT DISTINCT
+            a.rec_codigo ,
+            a.rec_nombre ,
+            COUNT(a.rec_codigo) AS nrorec ,
+            CONVERT(FLOAT, 0) AS rec_prerec ,
+            a.rec_tippla ,
+            CONVERT(VARCHAR(200), '') AS nom_tippla ,
+            c.mid_estser AS ess_codigo ,
+            a.rec_indppr AS rec_indppr,
+            c.mid_numlin,
+			c.mid_desest
+    INTO    #tmpNroReceta2
+    FROM    cas_b_minuta b WITH ( NOLOCK )
+            INNER JOIN cas_b_minutadet c WITH ( NOLOCK ) ON b.min_codigo = c.mid_codigo
+                                                            AND b.min_cecori = c.mid_cecori
+            INNER JOIN b_receta a WITH ( NOLOCK ) ON c.mid_codrec = a.rec_codigo
+    WHERE   b.min_cecori = @Ceco
+            AND b.min_codreg = @CodRegimen
+            AND b.min_codser = @CodServicio
+            AND b.min_fecmin >= @FecDesde
+            AND b.min_fecmin <= @FecHasta
+            AND c.mid_tipmin = @tipmin        
+          --AND b.ID_Bloque = @Id_Bloque        
+    GROUP BY a.rec_codigo ,
+             a.rec_nombre ,
+             a.rec_tippla ,
+             c.mid_estser ,
+             a.rec_indppr,
+			 c.mid_numlin,
+			 c.mid_desest            
+
+	/* Sacar detalle receta para calcular tabla gramaje */
+    SELECT a.rec_codigo,
+           b.red_codpro,
+		   b.red_canpro,
+		   a.rec_tippla
+    INTO    #DetReceta
+    FROM    cas_b_minuta h WITH ( NOLOCK )
+            INNER JOIN cas_b_minutadet g WITH ( NOLOCK ) ON h.min_cecori = g.mid_cecori
+                                                            AND h.min_codigo = g.mid_codigo
+            INNER JOIN b_receta a WITH ( NOLOCK ) ON g.mid_codrec = a.rec_codigo
+            INNER JOIN b_recetadet b WITH ( NOLOCK ) ON a.rec_codigo = b.red_codigo
+            INNER JOIN b_clientes bc WITH ( NOLOCK ) ON bc.cli_codigo = h.min_cecori
+            INNER JOIN b_ingrediente c WITH ( NOLOCK ) ON b.red_codpro= c.ing_codigo
+    WHERE   h.min_cecori = @Ceco
+            AND h.min_codreg = @CodRegimen
+            AND h.min_codser = @CodServicio
+            AND h.min_fecmin >= @FecDesde
+            AND h.min_fecmin <= @Fechasta
+            AND g.mid_tipmin = @tipmin        
+    GROUP BY a.rec_codigo ,
+             b.red_codpro ,
+             b.red_canpro ,
+			 a.rec_tippla
+
+		   -- Índice para acelerar JOIN y APPLY
+    CREATE NONCLUSTERED INDEX IX_DetReceta_R ON #DetReceta (rec_codigo, red_codpro) INCLUDE (rec_tippla);
+
+	--Actualizar tabla detalle receta x tabla de gramaje
+	update #DetReceta
+	set red_canpro=isnull(reemplazo.CantIngredienteCambio, a.red_canpro)
+	   ,red_codpro=ISNULL(reemplazo.IdIngredienteCambio, a.red_codpro)
+	from #DetReceta as a
+	OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    @Ceco,
+				    @CodRegimen,
+				    a.rec_codigo,
+				    a.red_codpro,
+				    a.rec_tippla
+				) AS reemplazo
+    INNER JOIN b_ingrediente c WITH ( NOLOCK ) ON ISNULL(reemplazo.IdIngredienteCambio, a.red_codpro) = c.ing_codigo  
+
+	/* Sacar detalle receta */
+    SELECT DISTINCT
+            a.rec_codigo as pas_codrec ,
+            a.red_codpro as pas_coding ,
+            a.red_canpro as pas_canpro ,
+			CONVERT(VARCHAR(20), '') pas_codpro ,
+            CONVERT(INT, 0) pas_codlpr
+    INTO    #tmpReceta2
+    FROM    cas_b_minuta h WITH ( NOLOCK )
+            INNER JOIN cas_b_minutadet g WITH ( NOLOCK ) ON h.min_cecori = g.mid_cecori
+                                                            AND h.min_codigo = g.mid_codigo
+            INNER JOIN #DetReceta a WITH ( NOLOCK ) ON g.mid_codrec = a.rec_codigo
+            INNER JOIN b_clientes bc WITH ( NOLOCK ) ON bc.cli_codigo = h.min_cecori
+            INNER JOIN b_ingrediente c WITH ( NOLOCK ) ON a.red_codpro = c.ing_codigo
+    WHERE   h.min_cecori = @Ceco
+            AND h.min_codreg = @CodRegimen
+            AND h.min_codser = @CodServicio
+            AND h.min_fecmin >= @FecDesde
+            AND h.min_fecmin <= @Fechasta
+            AND g.mid_tipmin = @tipmin        
+    GROUP BY a.rec_codigo ,
+             a.red_codpro ,
+             a.red_canpro
+                                  
+                
+    CREATE TABLE #sgpadm_Fun_CostoMinutaProducto
+        (
+          ing_codigo VARCHAR(20) COLLATE DATABASE_DEFAULT ,
+          pro_codigo VARCHAR(20) COLLATE DATABASE_DEFAULT ,
+          pro_nombre VARCHAR(100) COLLATE DATABASE_DEFAULT ,
+          pro_facing FLOAT ,
+          fi INT ,
+          ft INT ,
+          PMP FLOAT ,
+          Convenio FLOAT ,
+          Lista FLOAT
+        )                          
+                                        
+                                        
+    INSERT  #sgpadm_Fun_CostoMinutaProducto
+            ( ing_codigo ,
+              pro_codigo ,
+              pro_nombre ,
+              pro_facing ,
+              fi ,
+              ft ,
+              PMP ,
+              Convenio ,
+              Lista                          
+            )
+            EXEC dbo.PA_sgpadm_CostoMinutaProducto_V03 @Id_Bloque, @Ceco, @OpPrecio                                
+                                  
+                                  
+    SELECT  ing_codigo ,
+            pro_codigo ,
+            pro_nombre ,
+            pro_facing ,
+            fi ,
+            ft ,
+            PMP ,
+            Convenio ,
+            Lista ,
+            ( ISNULL(CASE WHEN @OpPrecio = 1 THEN Convenio
+                          WHEN @OpPrecio = 2 THEN PMP
+                          ELSE Lista
+                     END, 0) / ISNULL(pro_facing, 0) ) AS pmp1
+    INTO    #sgpadm_Fun_CostoMinutaProducto2
+    FROM    #sgpadm_Fun_CostoMinutaProducto
+    WHERE   ( ISNULL(CASE WHEN @OpPrecio = 1 THEN Convenio
+                          WHEN @OpPrecio = 2 THEN PMP
+                          ELSE Lista
+                     END, 0) ) > 0                 
+                
+	--> Traer fecha maxima minuta              
+    DECLARE @FechaMaxMinuta AS INT               
+    SET @FechaMaxMinuta = 0              
+              
+    SELECT  @FechaMaxMinuta = MAX(b.min_fecmin)
+    FROM    cas_b_minuta b WITH ( NOLOCK )
+    INNER JOIN cas_b_minutadet c WITH ( NOLOCK ) ON b.min_codigo = c.mid_codigo
+                                                AND b.min_cecori = c.mid_cecori
+    WHERE   b.min_cecori = @Ceco
+            AND b.min_codreg = @CodRegimen
+            AND b.min_codser = @CodServicio
+            AND b.min_fecmin >= @FecDesde
+            AND b.min_fecmin <= @FecHasta
+            AND c.mid_tipmin = @tipmin
+            AND b.ID_Bloque = @Id_Bloque                
+              
+    PRINT @FechaMaxMinuta        
+        
+    SELECT DISTINCT
+            g.pas_codrec ,
+            a.rec_nombre ,
+            g.pas_coding ,
+            ISNULL(AVG(PIng.PMP1) * MAX(g.pas_canpro), 0) AS rec_prerec
+    INTO    #PasoCostoReceta
+    FROM    #tmpReceta2 g WITH ( NOLOCK )
+            INNER JOIN b_receta a WITH ( NOLOCK ) ON g.pas_codrec = a.rec_codigo
+            LEFT JOIN ( SELECT  fun.ing_codigo ,
+                                fun.pmp1 ,
+                                fun.fi
+                        FROM    #sgpadm_Fun_CostoMinutaProducto2 AS fun
+                                INNER JOIN ( SELECT sfcmp.ing_codigo ,
+                                                    MAX(sfcmp.fi) AS fi
+                                             FROM   #sgpadm_Fun_CostoMinutaProducto2 AS sfcmp
+                                             GROUP BY sfcmp.ing_codigo
+                                           ) MaxFecIng ON MAXFecIng.ing_codigo = fun.ing_codigo
+                                                          AND fun.fi = MAXFecIng.fi
+                      ) PIng ON PIng.ing_codigo = g.pas_coding        
+    GROUP BY g.pas_codrec ,
+            a.rec_nombre ,
+            g.pas_coding        
+                
+    SELECT DISTINCT
+            pcr.pas_codrec ,
+            CONVERT(NUMERIC(18, 2), SUM(pcr.rec_prerec)) AS rec_prerec
+    INTO    #tmpCostoRece2
+    FROM    #PasoCostoReceta AS pcr
+    GROUP BY pcr.pas_codrec ,
+            pcr.rec_nombre
+    ORDER BY pcr.pas_codrec                          
+                          
+    UPDATE  #tmpNroReceta2
+    SET     #tmpNroReceta2.rec_prerec = b.rec_prerec
+    FROM    #tmpNroReceta2 a WITH ( NOLOCK )
+            INNER JOIN #tmpCostoRece2 b WITH ( NOLOCK ) ON a.rec_codigo = b.pas_codrec                          
+                                    
+    UPDATE  #tmpNroReceta2
+    SET     #tmpNroReceta2.mid_desest = nomest.mid_desest
+    FROM    #tmpNroReceta2 a WITH ( NOLOCK )
+    INNER JOIN (select ess_codigo, mid_desest
+	            from #tmpNroReceta2
+				where isnull(mid_desest,'')<>'') as nomest on nomest.ess_codigo = a.ess_codigo
+	where   isnull(a.mid_desest,'')=''
+
+    UPDATE  #tmpNroReceta2
+    SET     #tmpNroReceta2.mid_desest = ae.ess_nombre
+    FROM    #tmpNroReceta2 a WITH ( NOLOCK )
+    INNER JOIN dbo.a_estservicio AS ae ON a.ess_codigo = ae.ess_codigo
+	                                  and ae.ess_codser = @CodServicio
+	where   isnull(a.mid_desest,'')=''
+
+    SELECT  a.rec_codigo AS pas_codrec ,
+            a.rec_nombre ,
+            sum(a.nrorec) as nrorec ,
+            a.rec_prerec ,
+            a.rec_tippla ,
+            SUBSTRING(dbo.sgpadm_p_buscararboltipplato1(a.rec_tippla), 1,
+                      LEN(dbo.sgpadm_p_buscararboltipplato1(a.rec_tippla)) - 1) AS nom_tippla ,
+            a.ess_codigo ,
+            a.mid_desest as ess_nombre,
+            a.rec_indppr
+    FROM    #tmpNroReceta2 as a WITH ( NOLOCK )
+	group by a.rec_codigo,
+            a.rec_nombre ,
+            a.rec_prerec ,
+a.rec_tippla ,
+            SUBSTRING(dbo.sgpadm_p_buscararboltipplato1(a.rec_tippla), 1,
+                      LEN(dbo.sgpadm_p_buscararboltipplato1(a.rec_tippla)) - 1) ,
+            a.ess_codigo ,
+            a.mid_desest,
+            a.rec_indppr,
+			a.nom_tippla
+    ORDER BY --a.mid_numlin,
+			 a.nom_tippla ,
+             a.rec_nombre                 
+                
+                
+    DROP TABLE #sgpadm_Fun_CostoMinutaProducto2                          
+    DROP TABLE #sgpadm_Fun_CostoMinutaProducto                 
+    DROP TABLE #tmpNroReceta2                
+    DROP TABLE #PasoCostoReceta 
+

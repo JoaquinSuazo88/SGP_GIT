@@ -1,0 +1,173 @@
+/*                                          
+==========================================================================                                          
+Sistema : Sgp Administrador                                          
+Modulo  : Mantenedor recetas (M_Receta.frm)                                          
+                                          
+SP o Function : sgpadm_Sel_CostoDetalladorecetaOrgCompras
+Descripcion  :  Mostrar detalle de receta costo                  
+                                          
+Observaciones :                                           
+                                          
+F. creacion:      08/01/2020                                          
+Creador:          Jorge Andrés Paz Núñez
+                                          
+==========================================================================                                          
+Modificaciones:                                          
+Fecha             Programador             Motivo y/o Modificacion   
+07/08/2025        JPAZN                   incluye a la consulta un nuevo item huella de carbono                                        
+==========================================================================                                
+Test:                                          
+sgpadm_Sel_CostoDetalladorecetaOrgCompras 21966, 'CL14', 1, 20200108
+                                          
+==========================================================================                                
+*/                                          
+    
+CREATE PROC [dbo].[sgpadm_Sel_CostoDetalladorecetaOrgCompras_V02]
+    (
+      @codigo     INT ,
+	  @OrgCompras varchar(4),
+	  @OpPrecio   int,
+	  @fecha      int
+    )
+AS 
+
+SET NOCOUNT ON 
+
+/*INI Crear tabla costo receta producto*/
+CREATE TABLE #sgpadm_Fun_CostoRecetaProducto  
+    (  
+        ing_codigo VARCHAR(20) COLLATE DATABASE_DEFAULT ,  
+        pro_codigo VARCHAR(20) COLLATE DATABASE_DEFAULT ,  
+        pro_nombre VARCHAR(100) COLLATE DATABASE_DEFAULT ,  
+        pro_facing FLOAT ,  
+        fi INT ,  
+        ft INT ,  
+        PMP FLOAT ,  
+        PMPIng FLOAT ,  
+        Convenio FLOAT ,  
+        ConvenioIng FLOAT ,  
+        Lista FLOAT ,  
+        ListaIng FLOAT,
+		Proveedor varchar(10),
+		Material varchar(20),
+		FIniCon datetime ,
+		FFinCon datetime 
+    )                            
+                                    
+INSERT  #sgpadm_Fun_CostoRecetaProducto  
+        ( ing_codigo ,  
+          pro_codigo ,  
+          pro_nombre ,  
+          pro_facing ,  
+          fi ,  
+          ft ,  
+          PMP ,  
+          PMPIng ,  
+          Convenio ,  
+          ConvenioIng ,  
+          Lista ,  
+          ListaIng ,
+		  Proveedor,
+		  Material,
+		  FIniCon,
+		  FFinCon
+        )  
+        EXEC dbo.PA_sgpadm_CostoRecetaxOrgCompras @fecha, @OrgCompras, @codigo
+
+SELECT  ing_codigo ,  
+        pro_codigo ,  
+        pro_nombre ,  
+        pro_facing ,  
+        fi ,  
+        ft ,  
+        PMP ,  
+        PMPIng ,  
+        Convenio ,  
+        ConvenioIng ,  
+        Lista ,  
+        ListaIng ,
+		Proveedor,
+		Material,
+		FIniCon,
+		FFinCon,
+        ( ISNULL(CASE WHEN @OpPrecio = 1 THEN Convenio  
+                        WHEN @OpPrecio = 2 THEN PMP  
+                        ELSE Lista  
+                    END, 0) / ISNULL(pro_facing, 0) ) AS pmp1  
+INTO    #sgpadm_Fun_CostoRecetaProducto2  
+FROM    #sgpadm_Fun_CostoRecetaProducto  
+WHERE   ( ISNULL(CASE WHEN @OpPrecio = 1 THEN Convenio  
+                        WHEN @OpPrecio = 2 THEN PMP  
+                        ELSE Lista  
+                    END, 0) ) > 0                                             
+                                                         
+CREATE INDEX ix_ing_codigo_01 ON #sgpadm_Fun_CostoRecetaProducto2 (ing_codigo)    
+CREATE INDEX ix_ing_codigo_02 ON #sgpadm_Fun_CostoRecetaProducto2 (pro_codigo)    
+/*FIN Crear tabla costo receta producto*/
+
+SELECT  b.red_codigo ,
+		b.red_nroite ,
+        b.red_codpro ,
+        b.red_canpro ,
+        b.red_cospro ,
+        ISNULL(b.red_pctapr, 0) AS red_pctapr ,
+        ISNULL(b.red_pctcoc, 0) AS red_pctcoc ,
+		ISNULL(b.red_pctnut, 0) AS red_pctnut ,
+        ( ISNULL(( b.red_pctnut / 100 ), 0) * ( b.red_canpro ) ) AS canneta ,
+        ( ISNULL(( b.red_pctnut / 100 ), 0) * ( b.red_canpro ) ) AS cangvneta ,
+        CONVERT(FLOAT, 0) AS precos ,
+        ( ( ( b.red_pctapr / 100 ) * b.red_canpro ) * ( b.red_pctcoc / 100 ) ) AS canservida ,
+        isnull(c.ing_nombre ,'') as ing_nombre,
+        isnull(c.ing_indgrv,0) as ing_indgrv,
+        isnull(c.ing_precos,0) as ing_precos,
+        isnull(c.ing_indppr,0) as ing_indppr,
+		isnull(c.Huella_Carbono,0) as HuellaCarbono,
+        isnull(d.unm_codigo,0) as unm_codigo,
+        isnull(d.unm_nomcor,'') as unm_nomcor,
+        isnull(a.rec_indppr,0) as rec_indppr,
+        ISNULL(red_IndentificadorIngSumaTablaGramaje, '0') AS red_IndentificadorIngSumaTablaGramaje,
+		isnull(a.rec_fecvig,'') as rec_fecvig,
+        isnull(a.rec_metpre,'') as rec_metpre,
+        isnull(a.rec_activo,'') as rec_activo,
+		convert(varchar(10),'') as Proveedor,
+		convert(varchar(10),'') as Material,
+		convert(datetime,'') as FIniConvenios,
+		convert(datetime,'') as FFinConvenios
+INTO    #paso
+FROM    b_receta a WITH ( NOLOCK ) 
+inner join b_recetadet b WITH ( NOLOCK ) on b.red_codigo = a.rec_codigo
+inner join b_ingrediente c WITH ( NOLOCK ) on b.red_codpro = c.ing_codigo
+inner join a_unidadmed d WITH ( NOLOCK )   on c.ing_unimed = d.unm_codigo
+WHERE b.red_codigo = @codigo
+AND c.ing_activo = '1'                
+
+CREATE INDEX ix_#paso_01 ON #paso (red_codpro) 
+
+UPDATE  #paso
+SET     #paso.precos = ( red_canpro * ISNULL(( SELECT b.pmp1
+                                               FROM  #sgpadm_Fun_CostoRecetaProducto2 b WITH ( NOLOCK )
+											   inner join b_ingrediente c with (nolock) on c.ing_codigo = red_codpro and b.ing_codigo = c.ing_codigo
+                                               WHERE b.pmp1 > 0 AND c.ing_codigo IS NOT NULL ), 0) ),
+		#paso.Proveedor = ( ISNULL(( SELECT b.Proveedor
+                                     FROM  #sgpadm_Fun_CostoRecetaProducto2 b WITH ( NOLOCK )
+							         inner join b_ingrediente c with (nolock) on c.ing_codigo = red_codpro and b.ing_codigo = c.ing_codigo
+                                     WHERE b.pmp1 > 0 AND c.ing_codigo IS NOT NULL ), 0) ),
+		#paso.Material = ( ISNULL(( SELECT b.Material
+                                     FROM  #sgpadm_Fun_CostoRecetaProducto2 b WITH ( NOLOCK )
+							         inner join b_ingrediente c with (nolock) on c.ing_codigo = red_codpro and b.ing_codigo = c.ing_codigo
+                                     WHERE b.pmp1 > 0 AND c.ing_codigo IS NOT NULL ), 0) ),
+		#paso.FIniConvenios = ( ISNULL(( SELECT b.FIniCon
+                                     FROM  #sgpadm_Fun_CostoRecetaProducto2 b WITH ( NOLOCK )
+							         inner join b_ingrediente c with (nolock) on c.ing_codigo = red_codpro and b.ing_codigo = c.ing_codigo
+                                     WHERE b.pmp1 > 0 AND c.ing_codigo IS NOT NULL ), 0) ),
+		#paso.FFinConvenios = ( ISNULL(( SELECT b.FFinCon
+                                     FROM  #sgpadm_Fun_CostoRecetaProducto2 b WITH ( NOLOCK )
+							         inner join b_ingrediente c with (nolock) on c.ing_codigo = red_codpro and b.ing_codigo = c.ing_codigo
+                                     WHERE b.pmp1 > 0 AND c.ing_codigo IS NOT NULL ), 0) )
+                
+SELECT *
+FROM   #paso WITH ( NOLOCK )
+
+drop table #paso
+drop table #sgpadm_Fun_CostoRecetaProducto2
+drop table #sgpadm_Fun_CostoRecetaProducto

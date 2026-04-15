@@ -1,0 +1,2443 @@
+/*                                                  
+==========================================================================                                                  
+Sistema : Sgp Administrador                                                  
+Modulo :   Minutas - Generación Pedidos                                                  
+                                                  
+SP o Function : sgpadm_Sel_GeneracionPedido_FDespacho_V01              
+Descripcion  : Permite calcular consumo a partir desde una planificación bloque                                  
+Observaciones :                                                   
+                                                  
+F. creacion:      22/07/2014        
+Creador:          Mauricio Muñoz Bustamante        
+                                                  
+==========================================================================        
+Modificaciones:        
+Fecha             Programador             Motivo y/o Modificacion  
+22/10/2014        Jorge Paz Núñez         cambio de las siguientes tablas.  
+                                          b_centrologistico_sap y b_convenio_sap  
+                                          x I_ORG_CECO y I_CONVENIO_SAP.  
+24/02/2015        Jorge Paz Núñez         Incluir concepto despacho exceso y arrastre.  
+                                          de saldo entre carros.  
+04/04/2015        Jorge Paz Núñez         Realizo un cambio en calculo fecha cross, cambiando.  
+                                          metodo traer fecha CD x un cursor.  
+04/11/2016        Jorge Paz Núñez         Borrar Rutas CD que no hayan sido asignada.  
+10/10/2017        Jorge Paz Núñez         Incluir generar saldo proyectado.      
+21/06/2018        Jorge Paz Núñez         Incluir concepto Grupo Despacho.  
+11/04/2019        Jorge Andrés Paz Núñez  Incluir producto que tenga excepción y no tiene ruta  
+                                          dejarlo como nulo.  
+                                          Incluir producto que tenga excepción y cambian material  
+                                          es dejarlo como nulo.    
+13/01/2022		  Jorge Paz Núñez		  Incluir en los filtro expceción formato de compras la 
+                                          fecha inicio y termino. crea con otro nombre el procedimiento
+										  cambia procedimiento sgpadm_Sel_GeneracionPedido_FDespacho_V07
+										  x sgpadm_Sel_GeneracionPedido_FDespacho_V08
+23/08/2025		  JPAZN                   Incluir tabla de gramaje x nivel
+==========================================================================        
+Test:        
+sgpadm_Sel_GeneracionPedido_FDespacho_V08_JPA_V01  '29610', '20230814', '20230820', 3, '',1,0,360115, 'CL16', '', '1'        
+sgpadm_Sel_GeneracionPedido_FDespacho_V08  '29610', '20230814', '20230820', 3, '',1,0,360115, 'CL16', '', '1'        
+sgpadm_Sel_GeneracionPedido_FDespacho_V09  '22700',20241101,20241130,2, '<?xml version="1.0" encoding="iso-8859-1" ?><Fa> <F cod = "2101716"/> <F cod = "2471319"/> <F cod = "3721019"/> <F cod = "2471219"/> <F cod = "2391118"/> <F cod = "2531120"/> <F cod = "2521317"/> <F cod = "2121816"/> <F cod = "1130201"/> <F cod = "1130202"/> <F cod = "2441115"/> <F cod = "1220302"/> <F cod = "1220301"/> <F cod = "1220102"/> <F cod = "1220107"/> <F cod = "1220106"/> <F cod = "1220104"/> <F cod = "1060301"/> <F cod = "1060203"/> <F cod = "1060202"/> <F cod = "1060101"/> <F cod = "1060104"/> <F cod = "1060103"/> <F cod = "1060102"/> <F cod = "1190101"/> <F cod = "1190102"/> <F cod = "1190103"/> <F cod = "1190201"/> <F cod = "2531316"/> <F cod = "1020203"/> <F cod = "1020201"/> <F cod = "1020204"/> <F cod = "1020202"/> <F cod = "1020301"/> <F cod = "1020401"/> <F cod = "1020101"/> <F cod = "1020102"/> <F cod = "1010602"/> <F cod = "1010601"/> <F cod = "1010603"/> <F cod = "1010301"/> <F cod = "1010302"/> <F cod = "1010101"/> <F cod = "1010103"/> <F cod = "1010102"/> <F cod = "1010702"/> <F cod = "1010701"/> <F cod = "1010704"/> <F cod = "1010703"/> <F cod = "1010801"/> <F cod = "1010201"/> <F cod = "1010202"/> <F cod = "1010204"/> <F cod = "1010203"/> <F cod = "1010503"/> <F cod = "1010501"/> <F cod = "1010502"/> <F cod = "2241115"/> <F cod = "2241215"/> <F cod = "2461816"/> <F cod = "1050204"/> <F cod = "1050203"/> <F cod = "1050201"/> <F cod = "1050303"/> <F cod = "1050301"/> <F cod = "1050701"/> <F cod = "1050601"/> <F cod = "1050105"/> <F cod = "1050104"/> <F cod = "1050103"/> <F cod = "1050101"/> <F cod = "2471215"/> <F cod = "2141215"/> <F cod = "2461715"/> <F cod = "2151115"/> <F cod = "1200204"/> <F cod = "1200203"/> <F cod = "1200202"/> <F cod = "1200205"/> <F cod = "1200101"/> <F cod = "2241126"/> <F cod = "3721021"/> <F cod = "2461615"/> <F cod = "2521315"/> <F cod = "2521521"/> <F cod = "2521517"/> <F cod = "1040801"/> <F cod = "1040901"/> <F cod = "1040304"/> <F cod = "1040301"/> <F cod = "1040302"/> <F cod = "1040303"/> <F cod = "1040602"/> <F cod = "1040601"/> <F cod = "1040401"/> <F cod = "1040402"/> <F cod = "1040905"/> <F cod = "1040201"/> <F cod = "1040203"/> <F cod = "1040204"/> <F cod = "1040202"/> <F cod = "1040101"/> <F cod = "1040103"/> <F cod = "1040102"/> <F cod = "1040501"/> <F cod = "2111416"/> <F cod = "2431915"/> <F cod = "2521415"/> <F cod = "3761216"/> <F cod = "3761219"/> <F cod = "2311817"/> <F cod = "2471217"/> <F cod = "2481019"/> <F cod = "2241016"/> <F cod = "2471115"/> <F cod = "2471218"/> <F cod = "2461824"/> <F cod = "2461516"/> <F cod = "2461517"/> <F cod = "2481015"/> <F cod = "2471015"/> <F cod = "2411215"/> <F cod = "2241021"/> <F cod = "2411015"/> <F cod = "2481016"/> <F cod = "2432100"/> <F cod = "2471316"/> <F cod = "2551217"/> <F cod = "2551215"/> <F cod = "2391217"/> <F cod = "2311628"/> <F cod = "2101617"/> <F cod = "1140602"/> <F cod = "1140603"/> <F cod = "1140601"/> <F cod = "1140202"/> <F cod = "1140201"/> <F cod = "1140204"/> <F cod = "1140203"/> <F cod = "1140403"/> <F cod = "1140401"/> <F cod = "1140404"/> <F cod = "1140102"/> <F cod = "1140101"/> <F cod = "1140302"/> <F cod = "1140303"/> <F cod = "1140301"/> <F cod = "1140804"/> <F cod = "1140502"/> <F cod = "1140503"/> <F cod = "1140501"/> <F cod = "1140702"/> <F cod = "1140703"/> <F cod = "1140701"/> <F cod = "1210101"/> <F cod = "1210301"/> <F cod = "1210201"/> <F cod = "1210401"/> <F cod = "1180101"/> <F cod = "1180102"/> <F cod = "1180103"/> <F cod = "1180201"/> <F cod = "1180202"/> <F cod = "2271115"/> <F cod = "1110401"/> <F cod = "1110402"/> <F cod = "1110301"/> <F cod = "1110302"/> <F cod = "1110202"/> <F cod = "1110201"/> <F cod = "1110101"/> <F cod = "3901115"/> <F cod = "3821215"/> <F cod = "2411115"/> <F cod = "2411100"/> <F cod = "2601310"/> <F cod = "2471321"/> <F cod = "2521522"/> <F cod = "2521416"/> <F cod = "2391214"/> <F cod = "2301815"/> <F cod = "2521216"/> <F cod = "2481110"/> <F cod = "2471216"/> <F cod = "2441200"/> <F cod = "2481018"/> <F cod = "1150201"/> <F cod = "1150101"/> <F cod = "1150301"/> <F cod = "2121415"/> <F cod = "2481020"/> <F cod = "2441015"/> <F cod = "2432115"/> <F cod = "2521418"/> <F cod = "1160301"/> <F cod = "1160302"/> <F cod = "1160505"/> <F cod = "1160102"/> <F cod = "1160101"/> <F cod = "1160103"/> <F cod = "1160201"/> <F cod = "1160401"/> <F cod = "2141115"/> <F cod = "2141218"/> <F cod = "2141118"/> <F cod = "1170202"/> <F cod = "1170302"/> <F cod = "1170701"/> <F cod = "1170702"/> <F cod = "1170601"/> <F cod = "1170401"/> <F cod = "1170402"/> <F cod = "1170103"/> <F cod = "1170101"/> <F cod = "1170501"/> <F cod = "1170102"/> <F cod = "2111116"/> <F cod = "1080301"/> <F cod = "1080504"/> <F cod = "1081001"/> <F cod = "1080101"/> <F cod = "1080801"/> <F cod = "1080601"/> <F cod = "1080501"/> <F cod = "1080201"/> <F cod = "1080203"/> <F cod = "1080204"/> <F cod = "1080503"/> <F cod = "1080502"/> <F cod = "1080903"/> <F cod = "1080902"/> <F cod = "1080701"/> <F cod = "1080401"/> <F cod = "2521520"/> <F cod = "3851115"/> <F cod = "1100201"/> <F cod = "1100601"/> <F cod = "1100701"/> <F cod = "1100401"/> <F cod = "1100501"/> <F cod = "1100103"/> <F cod = "1100104"/> <F cod = "1100102"/> <F cod = "1100101"/> <F cod = "1100301"/> <F cod = "1120701"/> <F cod = "1120702"/> <F cod = "1120703"/> <F cod = "1120104"/> <F cod = "1120102"/> <F cod = "1120103"/> <F cod = "1120101"/> <F cod = "1120302"/> <F cod = "1120301"/> <F cod = "1120601"/> <F cod = "1120501"/> <F cod = "1120201"/> <F cod = "1120204"/> <F cod = "1120202"/> <F cod = "1120205"/> <F cod = "1120203"/> <F cod = "1120402"/> <F cod = "1120401"/> <F cod = "1120403"/> <F cod = "2141117"/> <F cod = "2421715"/> <F cod = "1502116"/> <F cod = "2461823"/> <F cod = "2461820"/> <F cod = "2461818"/> <F cod = "2461819"/> <F cod = "2461817"/> <F cod = "1070301"/> <F cod = "1070302"/> <F cod = "1070101"/> <F cod = "1070102"/> <F cod = "1070103"/> <F cod = "1070104"/> <F cod = "2551115"/> <F cod = "2551015"/> <F cod = "3821015"/> <F cod = "2401422"/> <F cod = "2521215"/> <F cod = "2531023"/> <F cod = "2461815"/> <F cod = "2421300"/> <F cod = "2461616"/> <F cod = "3901016"/> <F cod = "3721015"/> <F cod = "3801015"/> <F cod = "3721029"/> <F cod = "2432215"/> <F cod = "2471318"/> <F cod = "1030301"/> <F cod = "1030202"/> <F cod = "1030101"/> <F cod = "2471317"/> <F cod = "2481021"/> <F cod = "2521217"/> <F cod = "3781018"/> <F cod = "3781118"/> <F cod = "2471315"/> <F cod = "2531027"/> <F cod = "2521515"/> <F cod = "2521516"/> <F cod = "2423115"/> <F cod = "1090302"/> <F cod = "1090303"/> <F cod = "1090301"/> <F cod = "1090702"/> <F cod = "1090701"/> <F cod = "1090704"/> <F cod = "1090602"/> <F cod = "1090601"/> <F cod = "1090604"/> <F cod = "1090805"/> <F cod = "1090802"/> <F cod = "1090804"/> <F cod = "1090901"/> <F cod = "1090205"/> <F cod = "1090202"/> <F cod = "1090203"/> <F cod = "1090201"/> <F cod = "1090204"/> <F cod = "1090402"/> <F cod = "1090403"/> <F cod = "1090401"/> <F cod = "1090404"/> <F cod = "1090505"/> <F cod = "1090502"/> <F cod = "1090503"/> <F cod = "1090501"/> <F cod = "1090504"/> <F cod = "1090102"/> <F cod = "1090103"/> <F cod = "1090101"/> <F cod = "1090105"/> <F cod = "1090104"/> <F cod = "1091202"/> <F cod = "1091203"/> <F cod = "1091201"/> <F cod = "1091102"/> <F cod = "1091103"/> <F cod = "2531116"/></Fa>',1,1,429035, 'CL14', '',  '1'
+==========================================================================        
+*/  
+  
+alter PROC [dbo].[sgpadm_Sel_GeneracionPedido_FDespacho_V09]
+    (
+      @Ceco AS VARCHAR(10) ,
+      @Fi AS VARCHAR(10) ,
+      @Ft AS VARCHAR(10) ,
+      @TipoPedido AS INT , --1:pedido PAP 2:proyectado 3: Pedido CD  
+      @Familias AS XML = NULL ,
+      @Incluir_Prod_CD AS INT ,
+      @Incluir_Prod_PAP AS INT ,
+      @IDPedido INT = NULL ,
+      @OrgCompra VARCHAR(4) ,
+      @fechalimite SMALLDATETIME ,
+      @GeneraArrastreSaldo VARCHAR(1)
+    )
+AS
+    SET NOCOUNT ON;
+                                        
+    DECLARE @ErrorMessage NVARCHAR(4000);
+    DECLARE @Rows INT;
+    DECLARE @IDPedido_NEW INT;
+    DECLARE @IndI INT;
+                              
+    SET @IndI = 1;  
+    SET @ErrorMessage = '';  
+    SET @Rows = 0;  
+                                  
+    DECLARE @Ft_Aux AS INT;  
+    DECLARE @FinDeSemana VARCHAR(1);  
+    DECLARE @Ft_min INT;  
+                                  
+    DECLARE @Fi_D AS DATETIME;
+    DECLARE @Fi_D_aux AS DATETIME;
+    DECLARE @Ft_D AS DATETIME;
+    DECLARE @FamiliasXmlData AS VARCHAR(MAX);
+    SELECT  @FamiliasXmlData = CAST(@Familias AS NVARCHAR(MAX));
+                                  
+    SET @Fi_D = CONVERT(DATETIME, CONVERT(VARCHAR(10), @Fi));
+    SET @Ft_D = CONVERT(DATETIME, CONVERT(VARCHAR(10), @Ft));
+    SET @Fi_D_aux = @Fi_D;
+                                  
+    PRINT @Ft_D;
+                                
+    CREATE TABLE #tmp_fechas ( fecha INT );  
+                        
+    CREATE INDEX IX_FECHA_tmp_fechas ON #tmp_fechas (fecha);  
+                 
+    WHILE @Fi_D_aux <= @Ft_D
+        BEGIN  
+            INSERT  #tmp_fechas
+                    ( fecha )
+            VALUES  ( CONVERT(VARCHAR(10), @Fi_D_aux, 112) );  
+            SET @Fi_D_aux = DATEADD(d, 1, @Fi_D_aux);  
+        END;  
+                                  
+                                  
+    SET @Ft_min = CONVERT(VARCHAR(8), DATEADD(d, 15,
+                                              CONVERT(DATETIME, CONVERT(VARCHAR(8), @Ft))), 112);                                                                                            
+                                               
+    SET @FinDeSemana = '0';                                       
+                                
+    SELECT  @FinDeSemana = ISNULL(cli_blockmintrabajafinsemana, '0')
+    FROM    b_clientes
+    WHERE   cli_codigo = @Ceco;                                      
+                                  
+	/* Calculo Necesidades desde planificación */  
+    SELECT  bm.min_fecmin ,
+            bi.ing_codigo ,
+            bm.min_codreg ,
+            br2.red_codigo ,
+            bp2.pro_codigo ,
+            bm2.mid_numrac ,
+            br2.red_canpro ,
+            br.rec_basrac ,
+            bp2.pro_facing,
+			br.rec_tippla
+    INTO    #Tmp_Minuta
+    FROM    dbo.cas_b_minuta AS bm WITH ( NOLOCK )
+            INNER JOIN dbo.cas_b_minutadet AS bm2 WITH ( NOLOCK ) ON bm.min_cecori = bm2.mid_cecori
+                                                              AND bm.min_codigo = bm2.mid_codigo
+            INNER JOIN dbo.b_clientes AS bc WITH ( NOLOCK ) ON bm.min_cecori = bc.cli_codigo
+            INNER JOIN dbo.b_receta AS br WITH ( NOLOCK ) ON bm2.mid_codrec = br.rec_codigo
+            INNER JOIN dbo.b_recetadet AS br2 WITH ( NOLOCK ) ON br.rec_codigo = br2.red_codigo
+            INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON bi.ing_codigo = br2.red_codpro
+            INNER JOIN dbo.b_productosing AS bp WITH ( NOLOCK ) ON bi.ing_codigo = bp.pri_coding
+            INNER JOIN dbo.b_productos AS bp2 WITH ( NOLOCK ) ON bp2.pro_codigo = bp.pri_codpro
+            INNER JOIN dbo.a_servicio AS as2 WITH ( NOLOCK ) ON bm.min_codser = as2.ser_codigo
+    WHERE   bm.min_cecori = @Ceco
+            AND bc.cli_activo = 1
+            AND bc.cli_tipo = 0
+            AND bm2.mid_tipmin = '1'
+            AND bm2.mid_numrac > 0
+            AND as2.ser_activo = '1'
+            AND bm.min_fecmin >= @Fi
+            AND bm.min_fecmin <= @Ft_min
+            AND bp2.pro_codigo = ( SELECT TOP 1
+                                            bp2.pri_codpro
+                                   FROM     dbo.b_productosing AS bp2 WITH ( NOLOCK )
+                                   WHERE    bp2.pri_coding = bi.ing_codigo
+                                 )                               
+    group by bm.min_fecmin ,
+            bi.ing_codigo ,
+            bm.min_codreg ,
+            br2.red_codigo ,
+            bp2.pro_codigo ,
+            bm2.mid_numrac ,
+            br2.red_canpro ,
+            br.rec_basrac ,
+            bp2.pro_facing,
+			br.rec_tippla
+			         
+    CREATE INDEX ix_Tmp_Minuta_01 ON #Tmp_Minuta (red_codigo, ing_codigo, min_codreg);                                                
+    CREATE INDEX ix_Tmp_Minuta_02 ON #Tmp_Minuta (ing_codigo);                                         
+                          
+	/* Actualizar tabla temporal minutas desde la tabla gramaje */  
+    --UPDATE  #Tmp_Minuta
+    --SET     #Tmp_Minuta.red_canpro = a.tgc_cantgr ,
+    --        #Tmp_Minuta.ing_codigo = a.tgc_codins
+    --FROM    b_tablagramajececo AS a WITH ( NOLOCK )
+    --        INNER JOIN #Tmp_Minuta AS b WITH ( NOLOCK ) ON b.red_codigo = a.tgc_codrec
+    --                         AND b.ing_codigo = a.tgc_coding
+    --                                                       AND b.min_codreg = a.tgc_codreg
+    --        INNER JOIN b_ingrediente AS c WITH ( NOLOCK ) ON a.tgc_codins = c.ing_codigo
+    --        INNER JOIN dbo.b_clientes AS bc WITH ( NOLOCK ) ON bc.cli_codigo = a.tgc_ceco
+    --WHERE   c.ing_activo = '1'
+    --        AND bc.cli_tipo = 0
+    --        AND bc.cli_activo = '1'
+    --        AND bc.cli_codigo = @Ceco;  
+                          
+    UPDATE  #Tmp_Minuta
+    SET     #Tmp_Minuta.red_canpro = isnull(reemplazo.CantIngredienteCambio, b.red_canpro) ,
+            #Tmp_Minuta.ing_codigo = ISNULL(reemplazo.IdIngredienteCambio, b.ing_codigo) 
+    FROM    #Tmp_Minuta AS b WITH ( NOLOCK )
+			OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    @Ceco,
+				    b.min_codreg,
+				    b.red_codigo,
+				    b.ing_codigo,
+				    b.rec_tippla
+		) AS reemplazo
+            INNER JOIN b_ingrediente AS c WITH ( NOLOCK ) ON ISNULL(reemplazo.IdIngredienteOrigen, b.ing_codigo) = c.ing_codigo
+    WHERE   c.ing_activo = '1'
+
+	/* Borrar ingrediente que no estan considerado pedido */  
+    DELETE  #Tmp_Minuta
+    WHERE   ing_codigo IN (
+            SELECT  ing_codigo
+            FROM    b_ingrediente_pedido_Excepcion WITH ( NOLOCK ) );               
+                             
+	/* Calcular consumo ingrediente */        
+    SELECT  tm.min_fecmin ,
+            tm.ing_codigo ,
+            bp2.pro_codigo ,
+            ISNULL(SUM(( tm.mid_numrac * ( tm.red_canpro / tm.rec_basrac ) )),
+                   0) AS Cant_ing ,
+            CONVERT(DATETIME, CONVERT(VARCHAR(8), tm.min_fecmin), 112) AS Fecha_Consumo ,
+            0 AS DiasHolgura ,
+            CONVERT(DATETIME, NULL, 103) AS Fecha_en_Sitio
+    INTO    #Tmp_Necesidad
+    FROM    #Tmp_Minuta AS tm WITH ( NOLOCK )
+            INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON bi.ing_codigo = tm.ing_codigo
+            INNER JOIN dbo.b_productosing AS bp WITH ( NOLOCK ) ON bi.ing_codigo = bp.pri_coding
+            INNER JOIN dbo.b_productos AS bp2 WITH ( NOLOCK ) ON bp2.pro_codigo = bp.pri_codpro
+    WHERE   bp2.pro_codigo = ( SELECT TOP 1
+                                        bp2.pri_codpro
+                               FROM     dbo.b_productosing AS bp2 WITH ( NOLOCK )
+                               WHERE    bp2.pri_coding = bi.ing_codigo
+                             )
+    GROUP BY tm.min_fecmin ,
+            tm.ing_codigo ,
+            bp2.pro_codigo;                                
+                                  
+	--	select * from #Tmp_Necesidad
+	--return
+
+
+    CREATE INDEX ix_Tmp_Necesidad_01 ON #Tmp_Necesidad (ing_codigo,min_fecmin);                                                
+    CREATE INDEX ix_Tmp_Necesidad_02 ON #Tmp_Necesidad (ing_codigo);                                         
+    CREATE INDEX ix_Tmp_Necesidad_03 ON #Tmp_Necesidad (pro_codigo);                                         
+    CREATE INDEX ix_Tmp_Necesidad_04 ON #Tmp_Necesidad (DiasHolgura);                                         
+    CREATE INDEX ix_Tmp_Necesidad_05 ON #Tmp_Necesidad (Fecha_en_Sitio);                                         
+                                
+	/* Actualiza dias de seguridad */                                      
+    UPDATE  #Tmp_Necesidad
+    SET     DiasHolgura = dbo.fn_sgpadm_Pro_TraerDiaSeguridad(bp.pro_codtip,
+                                                              @Ceco)
+    FROM    b_productos bp
+    WHERE   #Tmp_Necesidad.pro_codigo = bp.pro_codigo;                                  
+                                
+	/* Actualiza Fecha_en_Sitio restando dias de seguridad a fecha de minuta*/                                      
+    UPDATE  #Tmp_Necesidad
+    SET     Fecha_en_Sitio = DATEADD(DD, ( DiasHolgura * -1 ), Fecha_Consumo)
+    WHERE   DiasHolgura <> 0;                                  
+                                        
+    UPDATE  #Tmp_Necesidad
+    SET     Fecha_en_Sitio = Fecha_Consumo
+    WHERE   DiasHolgura = 0;                                  
+                                        
+	/* Actualiza Fecha_en_Sitio restando 1 dia a fecha de minuta si es domingo*/                                      
+    UPDATE  #Tmp_Necesidad
+    SET     Fecha_en_Sitio = DATEADD(DD, -1, Fecha_en_Sitio)
+    WHERE   ( DATENAME(WEEKDAY, Fecha_en_Sitio) = 'Domingo'
+              OR DATENAME(WEEKDAY, Fecha_en_Sitio) = 'Sunday'
+            )
+            AND @FinDeSemana = '0';                                  
+            
+	/* Actualiza Fecha_en_Sitio restando 1 dia MAS a fecha de minuta si es sabado*/                                      
+    UPDATE  #Tmp_Necesidad
+    SET     Fecha_en_Sitio = DATEADD(DD, -1, Fecha_en_Sitio)
+    WHERE   ( DATENAME(WEEKDAY, Fecha_en_Sitio) = 'Sabado'
+              OR DATENAME(WEEKDAY, Fecha_en_Sitio) = 'Saturday'
+            )
+            AND @FinDeSemana = '0';                                      
+     
+	/* Traer fecha proxima de la ruta */        
+    SET @Ft_Aux = CONVERT(VARCHAR(8), DATEADD(mm, 2, @Ft_D), 112); --ISNULL(@Ft_Aux, @Ft)                            
+                          
+	/***********************************CONVENIO*******************************************************************/      
+	/* Creación tabla temporal grupo despacho */      
+    SELECT  br.Fecha_Despacho ,
+            br.ID_Ceco ,
+            brc.proveedor ,
+            br.Idgrupodespacho ,
+            CONVERT(VARCHAR(1), '0') AS Estado
+    INTO    #rutagrupodespacho
+    FROM    dbo.b_rutagrupodespacho AS br WITH ( NOLOCK )
+            CROSS JOIN dbo.b_Rut_CD AS brc
+    WHERE   br.ID_Ceco = @Ceco
+            AND br.Fecha_Despacho >= @Fi
+            AND br.Fecha_Despacho <= @Ft_Aux
+            AND ISNULL(br.ID_proveedor, '') = '';      
+
+	/* Crear tabla temporal ruta CD normal o bien grupo despacho*/	
+    CREATE TABLE #b_rutadespachoCD
+        (
+          Fecha_Despacho INT ,
+          ID_Ceco VARCHAR(10) COLLATE Database_Default ,
+          ID_proveedor VARCHAR(10) COLLATE Database_Default ,
+          ID_Ruta INT
+        );
+
+    CREATE INDEX ix_b_rutadespachoCD_01 ON #b_rutadespachoCD (Fecha_Despacho, ID_Ceco, ID_proveedor);
+
+    IF EXISTS ( SELECT  1
+                FROM    dbo.b_rutadespacho AS br WITH ( NOLOCK )
+                WHERE   br.Fecha_Despacho >= @Fi
+                        AND br.ID_Ceco = @Ceco
+                        AND ISNULL(br.ID_proveedor, '') = '' )
+        BEGIN
+
+			INSERT  INTO #b_rutadespachoCD
+                    ( Fecha_Despacho ,
+                      ID_Ceco ,
+                      ID_proveedor ,
+                      ID_Ruta
+			        )
+                    SELECT  br.Fecha_Despacho ,
+                            br.ID_Ceco ,
+                            br.ID_proveedor ,
+                            br.ID_Ruta
+                    FROM    dbo.b_rutadespacho AS br WITH ( NOLOCK )
+                    WHERE   br.Fecha_Despacho >= @Fi
+                            AND br.ID_Ceco = @Ceco
+                            AND ISNULL(br.ID_proveedor, '') = '';                          
+
+        END;
+
+    ELSE
+  
+        IF EXISTS ( SELECT  1
+                    FROM    dbo.b_rutagrupodespacho AS br WITH ( NOLOCK )
+                    WHERE   br.ID_Ceco = @Ceco
+                            AND br.Fecha_Despacho >= @Fi
+                            AND ISNULL(br.ID_proveedor, '') = '' )
+            BEGIN
+
+
+                INSERT  INTO #b_rutadespachoCD
+                        ( Fecha_Despacho ,
+                          ID_Ceco ,
+                          ID_proveedor ,
+                          ID_Ruta
+			            )
+                        SELECT  br.Fecha_Despacho ,
+                                br.ID_Ceco ,
+                                br.ID_proveedor ,
+                               br.ID_Ruta
+                        FROM    dbo.b_rutagrupodespacho AS br WITH ( NOLOCK )
+                        WHERE   br.ID_Ceco = @Ceco
+                                AND br.Fecha_Despacho >= @Fi
+                                AND ISNULL(br.ID_proveedor, '') = '';                       
+
+            END;
+
+	/* Creación tabla temporal rutas */      
+    SELECT  br.Fecha_Despacho ,
+            br.ID_Ceco ,
+            br.ID_proveedor ,
+            br.ID_Ruta
+    INTO    #b_rutadespacho
+    FROM    dbo.b_rutadespacho AS br WITH ( NOLOCK )
+    WHERE   br.Fecha_Despacho >= @Fi
+            AND br.Fecha_Despacho <= @Ft_Aux
+			AND br.ID_Ceco = @Ceco
+			AND ISNULL(br.ID_proveedor, '') <> ''
+    UNION ALL
+    SELECT  br.Fecha_Despacho ,
+            br.ID_Ceco ,
+            brc.proveedor ,
+            br.ID_Ruta
+    FROM    #b_rutadespachoCD AS br WITH ( NOLOCK )
+            CROSS JOIN dbo.b_Rut_CD AS brc
+    WHERE   br.Fecha_Despacho >= @Fi
+            AND br.Fecha_Despacho <= @Ft_Aux
+            AND br.ID_Ceco = @Ceco
+            AND ISNULL(br.ID_proveedor, '') = '';                          
+	          
+    CREATE INDEX ix_b_rutadespacho_01 ON #b_rutadespacho (ID_Ceco, Fecha_Despacho, ID_proveedor);                                      
+           
+	/* Borrar rutas que no esten planificada CD */                   
+    IF @Incluir_Prod_CD = 1
+        AND @Incluir_Prod_PAP = 0
+        AND EXISTS ( SELECT 1
+                     FROM   dbo.b_rutadespacho AS br WITH ( NOLOCK )
+                     WHERE  br.ID_Ceco = @Ceco
+                            AND br.ID_proveedor = '965509607'
+                            AND br.Fecha_Despacho >= @Fi
+                            AND br.Fecha_Despacho <= @Ft_Aux )
+        BEGIN                         
+                      
+            DELETE  #b_rutadespacho
+            FROM    #b_rutadespacho AS br WITH ( NOLOCK )
+            WHERE   NOT EXISTS ( SELECT 1
+                                 FROM   dbo.b_rutadespacho AS br2 WITH ( NOLOCK )
+                                 WHERE  br.ID_Ceco = br2.ID_Ceco
+                                        AND br.Fecha_Despacho = br2.Fecha_Despacho
+                                        AND br.ID_proveedor = br2.ID_proveedor )
+                    AND br.ID_proveedor NOT IN ( '946230006' );                  
+                  
+        END;                   
+                  
+	/* Fechas despacho CD, considera la siguiente */        
+    DECLARE @fd_cd_prox INT;                          
+                          
+    SELECT TOP 1
+            @fd_cd_prox = br2.Fecha_Despacho
+    FROM    #b_rutadespachoCD AS br2 WITH ( NOLOCK )
+    WHERE   br2.ID_Ceco = @Ceco
+            AND ISNULL(ID_proveedor, '') = ''
+            AND br2.Fecha_Despacho > @Ft
+    ORDER BY br2.Fecha_Despacho;
+                          
+    SELECT  br.ID_Ceco ,
+            br.Fecha_Despacho ,
+            br.ID_Ruta
+    INTO    #Tmp_RutaCd
+    FROM    #b_rutadespachoCD AS br WITH ( NOLOCK )
+    WHERE   ID_Ceco = @Ceco
+            AND ISNULL(ID_proveedor, '') = ''
+            AND Fecha_Despacho >= @Fi
+            AND Fecha_Despacho <= @fd_cd_prox;
+
+    /* Convenios PAP, para fechas despacho */                               
+    SELECT  DISTINCT
+            ics.ID_PROVEEDOR AS Proveedor
+    INTO    #Tmp_ConvenioProveedor
+    FROM    dbo.I_CONVENIO_SAP AS ics WITH ( NOLOCK )
+            INNER JOIN dbo.I_ORG_CECO AS ioc WITH ( NOLOCK ) ON ics.ID_ORGCOMPRA = ioc.ID_ORGCOMPRA
+            INNER JOIN dbo.b_clientes bc WITH ( NOLOCK ) ON bc.cli_codigo = ioc.ID_CECO
+            INNER JOIN #tmp_fechas f WITH ( NOLOCK ) ON f.fecha BETWEEN CONVERT(INT, CONVERT(VARCHAR(8), ics.FECHA_INICIO_VALIDEZ, 112))
+                                                              AND
+                                                              CONVERT(INT, CONVERT(VARCHAR(8), ics.FECHA_FIN_VALIDEZ, 112))--bcs.Valido_desde AND bcs.Valido_hasta                        
+    WHERE   1 = 1
+            AND bc.cli_codigo = @Ceco
+            AND ioc.ID_ORGCOMPRA = @OrgCompra
+            AND bc.cli_activo = 1
+            AND bc.cli_tipo = 0
+            AND UPPER(ISNULL(ics.BORRADO, '')) <> 'X'
+            AND UPPER(ISNULL(ioc.BORRADO, '')) <> 'X'
+            AND NOT EXISTS ( SELECT 1
+                             FROM   dbo.b_Rut_CD AS brc WITH ( NOLOCK )
+                             WHERE  brc.proveedor = ics.ID_PROVEEDOR )
+            AND NOT EXISTS ( SELECT 1
+                             FROM   dbo.a_param_despacho_proveedor AS apdp
+     WHERE  ics.ID_PROVEEDOR = apdp.proveedor
+	 AND apdp.ceco = @Ceco );
+
+	/* Rutas despacho para proveedores que no tienen configurado rutas */        
+    SELECT DISTINCT
+            t.Fecha_Despacho ,
+			t.ID_Ceco ,
+            z.Proveedor ,
+            t.ID_Ruta
+    INTO    #tmp_RutasPAPCD
+    FROM    #Tmp_ConvenioProveedor AS z
+            CROSS JOIN #Tmp_RutaCd t
+    WHERE   EXISTS ( SELECT 1
+                     FROM   dbo.b_rutadespacho AS br2 WITH ( NOLOCK )
+                     WHERE  br2.ID_Ceco = t.ID_Ceco
+                            AND br2.ID_proveedor = z.Proveedor
+                            AND br2.Fecha_Despacho = t.Fecha_Despacho );
+
+	/* insercion de rutas de proveedores sin rutas con fecha CD */        
+    INSERT  INTO #b_rutadespacho
+            ( Fecha_Despacho ,
+              ID_Ceco ,
+              ID_proveedor ,
+              ID_Ruta                    
+            )
+            SELECT  trp.Fecha_Despacho ,
+                    trp.ID_Ceco ,
+                    trp.Proveedor ,
+                    trp.ID_Ruta
+            FROM    #tmp_RutasPAPCD AS trp;        
+        
+	/* seleccionar convenios para el periodo */        
+    --Seleccionar_convenios:        
+         
+    SELECT DISTINCT
+            'C' AS origen ,
+            bi.ing_codigo ,
+            bi.ing_nombre ,
+            ics.ID_PROVEEDOR AS Proveedor ,
+            ics.ID_MATERIAL AS Codigo_Material ,
+            CONVERT(INT, CONVERT(VARCHAR(8), ics.FECHA_INICIO_VALIDEZ, 112)) AS Valido_desde ,
+            CONVERT(INT, CONVERT(VARCHAR(8), ics.FECHA_FIN_VALIDEZ, 112)) AS Valido_hasta ,
+            bc.cli_codigo ,
+            ics.IMPORTE AS Importe ,
+            ics.CANTIDAD_IMPORTE AS Ctd_Fmto ,
+            ics.FACTOR_REDONDEO AS Perfil_Redondeo ,
+            ISNULL(( ics.IMPORTE / ics.CANTIDAD_IMPORTE ), 0) AS precio ,
+            bc.cli_tipoformatocompras ,
+            ISNULL(bfs.fcs_tipoformatocompras, 3) AS fcs_tipoformatocompras ,
+            ics.CONDICIONES AS preferido ,
+            0 AS DiasHolgura ,
+            bfs.fcs_CodGrpArt ,
+            bfs.fcs_DenMaterial ,
+            bp2.pro_codigo ,
+            bp2.pro_facing ,
+            ics.UNIDAD_MEDIDA_COND AS Unidad_Fmto ,
+            bp2.pro_codtip ,
+            ( bi.ing_codigo + '.' + ics.ID_PROVEEDOR + '.' + ics.ID_MATERIAL
+              + '.' + CONVERT(VARCHAR(40), ISNULL(( ics.IMPORTE
+                                                    / ics.CANTIDAD_IMPORTE ),
+                                                  0)) + '.' ) AS LLAVE ,
+            ics.ID_ORGCOMPRA AS CeLo ,
+            ics.BORRADO AS B ,
+            ics.MINIMA_PEDIDO ,
+            CONVERT(VARCHAR(1), '0') AS Estado_Convenios
+    INTO    #b_convenios_sap
+    FROM    dbo.I_CONVENIO_SAP AS ics WITH ( NOLOCK )
+            INNER JOIN dbo.I_ORG_CECO AS ioc WITH ( NOLOCK ) ON ioc.ID_ORGCOMPRA = ics.ID_ORGCOMPRA
+            INNER JOIN dbo.b_clientes bc WITH ( NOLOCK ) ON bc.cli_codigo = ioc.ID_CECO
+            INNER JOIN dbo.b_formatocompras_sap AS bfs WITH ( NOLOCK ) ON ics.ID_MATERIAL = bfs.fcs_CodMaterial
+            INNER JOIN dbo.b_formatocompras_sap_sgp AS bfss WITH ( NOLOCK ) ON bfss.fss_CodMaterial = bfs.fcs_CodMaterial
+            INNER JOIN dbo.b_productosing AS bp WITH ( NOLOCK ) ON bp.pri_codpro = bfss.fss_CodSgp
+       INNER JOIN dbo.b_productos AS bp2 WITH ( NOLOCK ) ON bp2.pro_codigo = bp.pri_codpro
+            INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON bi.ing_codigo = bp.pri_coding
+            INNER JOIN #tmp_fechas f WITH ( NOLOCK ) ON f.fecha BETWEEN CONVERT(INT, CONVERT(VARCHAR(8), ics.FECHA_INICIO_VALIDEZ, 112))
+                                                              AND
+                                                              CONVERT(INT, CONVERT(VARCHAR(8), ics.FECHA_FIN_VALIDEZ, 112))
+    WHERE   1 = 1
+            AND bc.cli_codigo = @Ceco
+            AND ioc.ID_ORGCOMPRA = @OrgCompra
+            AND bp2.pro_activo = '1'
+        AND ( bp2.pro_fecven > CONVERT(INT, CONVERT(VARCHAR(8), GETDATE(), 112))
+                  OR bp2.pro_fecven <= 0
+                )
+            AND bc.cli_activo = 1
+       AND bc.cli_tipo = 0
+            AND UPPER(ISNULL(ics.BORRADO, '')) <> 'X'
+            AND UPPER(ISNULL(ioc.BORRADO, '')) <> 'X'
+            AND bi.ing_indppr = 1
+            AND EXISTS ( SELECT 1
+                         FROM   #Tmp_Necesidad t
+                         WHERE  t.ing_codigo = bi.ing_codigo )
+            AND EXISTS ( SELECT 1
+                         FROM   #b_rutadespacho AS br
+                         WHERE  br.Fecha_Despacho BETWEEN CONVERT(INT, CONVERT(VARCHAR(8), ics.FECHA_INICIO_VALIDEZ, 112))
+                                                  AND     CONVERT(INT, CONVERT(VARCHAR(8), ics.FECHA_FIN_VALIDEZ, 112))
+                                AND br.ID_Ceco = bc.cli_codigo
+                                AND br.ID_proveedor = ics.ID_PROVEEDOR
+                                AND Fecha_Despacho >= @Fi
+                                AND Fecha_Despacho <= @Ft );        
+ 
+--SELECT * FROM #b_convenios_sap AS bcs       
+ --WHERE bcs.ing_codigo = '114'        
+ --RETURN        
+ 
+	/* Alargar convenios que termina mitad de semana con mismo proveedor y precio igual */        
+    UPDATE  #b_convenios_sap
+    SET     Valido_hasta = CONVERT(INT, CONVERT(VARCHAR(8), ics.FECHA_FIN_VALIDEZ, 112))
+    FROM    #b_convenios_sap AS bcs WITH ( NOLOCK )
+            INNER JOIN dbo.I_CONVENIO_SAP AS ics WITH ( NOLOCK ) ON ics.ID_MATERIAL = bcs.Codigo_Material
+                                                              AND ics.ID_PROVEEDOR = bcs.Proveedor
+                                                              AND ics.ID_ORGCOMPRA = bcs.CeLo
+                                                              AND ISNULL(( ics.IMPORTE / ics.CANTIDAD_IMPORTE ), 0) = bcs.precio
+                                                              AND CONVERT(INT, CONVERT(VARCHAR(8), ics.FECHA_FIN_VALIDEZ, 112)) > bcs.Valido_hasta
+                                                              AND ISNULL(ics.BORRADO,
+                                                              '') <> 'X'
+    WHERE   DATEPART(w, CONVERT(DATE, CONVERT(VARCHAR(8), bcs.Valido_hasta))) >= 2
+            AND DATEPART(w, CONVERT(DATE, CONVERT(VARCHAR(8), bcs.Valido_hasta))) <= 7;        
+ --SELECT * FROM #b_convenios_sap AS bcs WHERE bcs.ing_codigo = '114'        
+ --RETURN        
+        
+	 /* Alargar convenios que termina mitad de semana con mismo proveedor y precio distinto */        
+    UPDATE  #b_convenios_sap
+    SET     Valido_hasta = CONVERT(INT, CONVERT(VARCHAR(8), ics.FECHA_FIN_VALIDEZ, 112))
+    FROM    #b_convenios_sap AS bcs WITH ( NOLOCK )
+            INNER JOIN dbo.I_CONVENIO_SAP AS ics WITH ( NOLOCK ) ON ics.ID_MATERIAL = bcs.Codigo_Material
+                                                              AND ics.ID_PROVEEDOR = bcs.Proveedor
+                                                              AND ics.ID_ORGCOMPRA = bcs.CeLo
+                                                              AND ISNULL(( ics.IMPORTE
+                                                              / ics.CANTIDAD_IMPORTE ),
+                                                              0) <> bcs.precio
+                                                              AND CONVERT(INT, CONVERT(VARCHAR(8), ics.FECHA_FIN_VALIDEZ, 112)) > bcs.Valido_hasta
+                                                              AND ISNULL(ics.BORRADO,
+                                                              '') <> 'X'
+    WHERE   DATEPART(w, CONVERT(DATE, CONVERT(VARCHAR(8), bcs.Valido_hasta))) >= 2
+            AND DATEPART(w,
+                         CONVERT(DATE, CONVERT(VARCHAR(8), bcs.Valido_hasta))) <= 7;        
+        
+ --SELECT * FROM #b_convenios_sap AS bcs WHERE bcs.ing_codigo = '114'        
+ --RETURN        
+         
+    --SELECT  *        
+    --FROM    #b_convenios_sap AS bcs WITH ( NOLOCK )        
+    --        INNER JOIN dbo.I_CONVENIO_SAP AS ics WITH ( NOLOCK ) ON ics.ID_MATERIAL = bcs.Codigo_Material        
+    --                                                                AND ics.ID_PROVEEDOR = bcs.Proveedor        
+    --                                                                AND ics.ID_ORGCOMPRA = bcs.CeLo        
+                                                                    --AND ISNULL(( ics.IMPORTE / ics.CANTIDAD_IMPORTE ), 0) = bcs.precio            
+    --                                                                AND CONVERT(INT, CONVERT(VARCHAR(8), ics.FECHA_FIN_VALIDEZ, 112)) > bcs.Valido_hasta        
+    --                                                                AND ISNULL(ics.BORRADO, '') <> 'X'        
+    --WHERE   DATEPART(w, CONVERT(DATE, CONVERT(VARCHAR(8), bcs.Valido_hasta))) >= 2        
+    --        AND DATEPART(w, CONVERT(DATE, CONVERT(VARCHAR(8), bcs.Valido_hasta))) <= 7        
+    --        AND bcs.ing_codigo = '12'        
+        
+	/* Borrar convenios que se alargaron la fecha y tienen mismo precio */         
+    SELECT  ing_codigo ,
+            Codigo_Material ,
+            Proveedor ,
+            Valido_hasta ,
+            LLAVE ,
+            COUNT(*) AS cantidad ,
+            MAX(Valido_desde) AS valido_desde
+    INTO    #b_convenios_sap_borrar
+    FROM    #b_convenios_sap WITH ( NOLOCK )
+    GROUP BY ing_codigo ,
+            Codigo_Material ,
+            Proveedor ,
+            Valido_hasta ,
+            LLAVE
+    HAVING  COUNT(*) > 1;        
+            
+    DELETE  #b_convenios_sap
+    FROM    #b_convenios_sap AS bcs WITH ( NOLOCK )
+            INNER JOIN #b_convenios_sap_borrar AS bcsb WITH ( NOLOCK ) ON bcs.ing_codigo = bcsb.ing_codigo
+                                                              AND bcs.Codigo_Material = bcsb.Codigo_Material
+                                                              AND bcs.Proveedor = bcsb.Proveedor
+                                                              AND bcs.Valido_desde = bcsb.valido_desde
+                                                              AND bcs.Valido_hasta = bcsb.Valido_hasta;        
+
+	/* Excepción formato compras sin indefinido */
+    UPDATE  #b_convenios_sap
+    SET     origen = 'E'
+    FROM    #b_convenios_sap AS tr
+            INNER JOIN dbo.b_Pedido_ExcepcionFormatoCompra AS bpefc ON tr.cli_codigo = bpefc.cencos
+                                                              AND tr.ing_codigo = bpefc.ing_codigo
+                                                              AND tr.Proveedor = bpefc.proveedor
+                                                              AND tr.Codigo_Material = bpefc.fcs_CodMaterial
+        
+	/* Borrar Excepción formato compras con fecha inicio y termino */
+	----select * from #b_convenios_sap where ing_codigo = '5521'
+    delete  #b_convenios_sap
+    FROM    #b_convenios_sap AS tr
+            INNER JOIN dbo.b_Pedido_ExcepcionFormatoCompra AS bpefc ON tr.cli_codigo = bpefc.cencos
+                                                              AND tr.ing_codigo = bpefc.ing_codigo
+                                                              AND tr.Proveedor = bpefc.proveedor
+                                                  AND tr.Codigo_Material = bpefc.fcs_CodMaterial
+															  and bpefc.fecha_inicio is not null
+															  and (convert(varchar(8),bpefc.fecha_inicio,112) < @Fi
+															  and convert(varchar(8),bpefc.Fecha_Termino,112) < @Ft)
+
+    delete  #b_convenios_sap
+    FROM    #b_convenios_sap AS tr
+            INNER JOIN dbo.b_Pedido_ExcepcionFormatoCompra AS bpefc ON tr.cli_codigo = bpefc.cencos
+                                                              AND tr.ing_codigo = bpefc.ing_codigo
+                                                              AND tr.Proveedor = bpefc.proveedor
+                                      AND tr.Codigo_Material = bpefc.fcs_CodMaterial
+															  and bpefc.fecha_inicio is not null
+															  and (convert(varchar(8),bpefc.fecha_inicio,112) > @fi
+															  and convert(varchar(8),bpefc.Fecha_Termino,112) > @FT) 
+															  --and (convert(varchar(8),bpefc.fecha_inicio,112) not between tr.Valido_desde
+															  --or tr.Valido_hasta
+															  --and  convert(varchar(8),bpefc.Fecha_Termino,112) not between tr.Valido_desde
+															  --or tr.Valido_hasta)
+
+	/* Actualizar dias de holgura */        
+    SELECT DISTINCT
+            pro_codtip ,
+            0 AS DiasHolgura
+    INTO    #Tmp_DiasHolgura
+    FROM    #b_convenios_sap;                          
+        
+    CREATE INDEX ix_Tmp_DiasHolgura_01 ON #Tmp_DiasHolgura (pro_codtip);                                   
+                          
+    UPDATE  #Tmp_DiasHolgura
+    SET     DiasHolgura = dbo.fn_sgpadm_Pro_TraerDiaSeguridad(pro_codtip,
+                                                              @Ceco);  
+                          
+    UPDATE  #b_convenios_sap
+    SET     #b_convenios_sap.DiasHolgura = tdh.DiasHolgura
+    FROM    #Tmp_DiasHolgura AS tdh
+    WHERE   #b_convenios_sap.pro_codtip = tdh.pro_codtip;                          
+                          
+	/* Selección del formato compras */        
+    SELECT  id = IDENTITY( INT,1,1 ),
+            t.origen ,
+            t.ing_codigo ,
+            t.ing_nombre ,
+            t.Proveedor ,
+            t.Codigo_Material ,
+            t.Valido_desde ,
+            t.Valido_hasta ,
+            t.cli_codigo ,
+            t.Importe ,
+            t.Ctd_Fmto ,
+            t.Perfil_Redondeo ,
+            t.precio ,
+            t.cli_tipoformatocompras ,
+            t.fcs_tipoformatocompras ,
+            t.preferido ,
+            CASE WHEN t.origen = 'E' THEN 0
+                 WHEN t.cli_tipoformatocompras = t.fcs_tipoformatocompras
+                      AND t.preferido = 1 THEN 1
+                 WHEN t.cli_tipoformatocompras = t.fcs_tipoformatocompras
+                      AND ISNULL(t.preferido, 0) = 0 THEN 2
+                 WHEN t.fcs_tipoformatocompras = 3
+                      AND preferido = 1 THEN 3
+                 WHEN t.fcs_tipoformatocompras = 3
+                      AND ISNULL(t.preferido, 0) = 0 THEN 4
+                 ELSE 5
+            END AS orden ,
+            t.DiasHolgura ,
+            0 AS Fc_Fin ,
+            0 AS CrossDock ,
+            t.fcs_CodGrpArt AS FamiliaProductoSAP ,
+            t.fcs_DenMaterial ,
+            t.pro_codigo ,
+            t.pro_facing ,
+            t.Unidad_Fmto ,
+            t.LLAVE ,
+            t.MINIMA_PEDIDO
+    INTO    #Tmp_Convenio
+    FROM    #b_convenios_sap t
+    ORDER BY t.ing_codigo ,
+             orden ,
+             t.precio ASC ,
+             t.Codigo_Material ,
+             t.Proveedor;                          
+                                  
+    SELECT  d.ing_codigo ,
+            d.Proveedor ,
+            d.Codigo_Material ,
+            d.orden ,
+            d.precio ,
+            d.LLAVE
+    INTO    #CONVENIO_VALIDO
+    FROM    #Tmp_Convenio d
+            INNER JOIN ( SELECT MIN(id) id ,
+                                ing_codigo
+                       FROM   #Tmp_Convenio
+                         GROUP BY ing_codigo
+                       ) m ON d.id = m.id
+                              AND d.ing_codigo = m.ing_codigo;                          
+                          
+    DELETE  #b_convenios_sap
+    FROM    #b_convenios_sap AS tc
+    WHERE   NOT EXISTS ( SELECT 1
+                         FROM   #CONVENIO_VALIDO AS td
+                         WHERE  tc.ing_codigo = td.ing_codigo
+                                AND tc.LLAVE = td.LLAVE );                          
+        
+	/* Alargar convenios que termina mitad de semana adelante */        
+    UPDATE  #b_convenios_sap
+    SET     Valido_hasta = @Ft
+	FROM    #b_convenios_sap AS bcs WITH ( NOLOCK )
+    WHERE   DATEPART(w, CONVERT(DATE, CONVERT(VARCHAR(8), bcs.Valido_hasta))) >= 2
+            AND DATEPART(w,
+                         CONVERT(DATE, CONVERT(VARCHAR(8), bcs.Valido_hasta))) <= 7
+            AND Valido_hasta < @Ft;         
+        
+	/* Alargar convenios que termina mitad de semana hacia atras */        
+    UPDATE  #b_convenios_sap
+    SET     Valido_desde = @Fi
+    FROM    #b_convenios_sap AS bcs WITH ( NOLOCK )
+    WHERE   DATEPART(w, CONVERT(DATE, CONVERT(VARCHAR(8), bcs.Valido_desde))) >= 2
+            AND DATEPART(w,
+                         CONVERT(DATE, CONVERT(VARCHAR(8), bcs.Valido_desde))) <= 7
+            AND @Fi < Valido_desde;
+
+ --PRINT @Fi        
+ --SELECT * FROM #b_convenios_sap AS bcs WHERE bcs.ing_codigo = '114'        
+ --RETURN         
+             
+ /***********************************RUTAS*******************************************************************/                          
+      
+ /* Seleccionar convenios con rutas grupo despacho */                          
+    SELECT DISTINCT
+           id = IDENTITY( INT,1,1 ),
+            T.origen ,
+            T.ing_codigo ,
+            T.ing_nombre ,
+            T.Proveedor ,
+            T.Codigo_Material ,
+            T.Valido_desde ,
+            T.Valido_hasta ,
+            T.cli_codigo ,
+            br.Fecha_Despacho ,
+            T.Importe ,
+            T.Ctd_Fmto ,
+            T.Perfil_Redondeo ,
+            T.precio ,
+            T.cli_tipoformatocompras ,
+            T.fcs_tipoformatocompras ,
+            T.preferido ,
+            T.DiasHolgura ,
+            T.fcs_CodGrpArt AS FamiliaProductoSAP ,
+            T.fcs_DenMaterial ,
+            T.pro_codigo ,
+            T.pro_facing ,
+            T.Unidad_Fmto ,
+			T.pro_codtip ,
+            CONVERT(VARCHAR(8), DATEADD(d, DiasHolgura,
+                                        CONVERT(DATETIME, CONVERT(VARCHAR(8), br.Fecha_Despacho))), 112) AS fc_Ini ,
+            0 AS Fc_Fin ,
+            0 AS CrossDock ,
+            CASE WHEN br.Fecha_Despacho BETWEEN T.Valido_desde
+                                        AND     T.Valido_hasta THEN 1
+                 ELSE 0
+            END RutaValida ,
+            T.MINIMA_PEDIDO ,
+            CASE WHEN br.Fecha_Despacho BETWEEN T.Valido_desde
+                                        AND     T.Valido_hasta THEN 1
+                 ELSE 2
+            END Estado_Convenios
+    INTO    #Tmp_rutasgrupodespacho
+    FROM    #b_convenios_sap AS T WITH ( NOLOCK )
+            INNER    JOIN #rutagrupodespacho AS br WITH ( NOLOCK ) ON br.Proveedor = T.Proveedor
+                                                              AND br.ID_Ceco = T.cli_codigo
+                                                              AND dbo.fn_sgpadm_Pro_TraerGrupoDespacho(T.pro_codtip) = br.Idgrupodespacho;      
+       
+ /* selecione convenios con rutas */        
+    SELECT DISTINCT
+            id = IDENTITY( INT,1,1 ),
+            T.origen ,
+            T.ing_codigo ,
+            T.ing_nombre ,
+            T.Proveedor ,
+            T.Codigo_Material ,
+            T.Valido_desde ,
+            T.Valido_hasta ,
+            T.cli_codigo ,
+            br.Fecha_Despacho ,
+        T.Importe ,
+            T.Ctd_Fmto ,
+            T.Perfil_Redondeo ,
+            T.precio ,
+            T.cli_tipoformatocompras ,
+            T.fcs_tipoformatocompras ,
+            T.preferido ,
+            T.DiasHolgura ,
+            T.fcs_CodGrpArt AS FamiliaProductoSAP ,
+            T.fcs_DenMaterial ,
+            T.pro_codigo ,
+            T.pro_facing ,
+            T.Unidad_Fmto ,
+            T.pro_codtip ,
+            CONVERT(VARCHAR(8), DATEADD(d, DiasHolgura,
+                                        CONVERT(DATETIME, CONVERT(VARCHAR(8), br.Fecha_Despacho))), 112) AS fc_Ini ,
+            0 AS Fc_Fin ,
+            0 AS CrossDock ,
+            CASE WHEN br.Fecha_Despacho BETWEEN T.Valido_desde
+                                        AND     T.Valido_hasta THEN 1
+                 ELSE 0
+            END RutaValida ,
+            T.MINIMA_PEDIDO ,
+            CASE WHEN br.Fecha_Despacho BETWEEN T.Valido_desde
+                                        AND     T.Valido_hasta THEN 1
+                 ELSE 2
+            END Estado_Convenios
+    INTO    #Tmp_rutas
+    FROM    #b_convenios_sap AS T WITH ( NOLOCK )
+            INNER    JOIN #b_rutadespacho AS br WITH ( NOLOCK ) ON br.ID_proveedor = T.Proveedor
+                                                              AND br.ID_Ceco = T.cli_codigo      
+    --WHERE   br.fecha_despacho BETWEEN T.Valido_desde AND T.Valido_hasta             
+    WHERE   NOT EXISTS ( SELECT 1
+                         FROM   #Tmp_rutasgrupodespacho AS trgd WITH ( NOLOCK )
+                         WHERE  trgd.ing_codigo = T.ing_codigo
+          AND trgd.Proveedor = T.Proveedor
+                                AND br.ID_proveedor = trgd.Proveedor
+                                AND trgd.Codigo_Material = T.Codigo_Material );      
+      
+ /* Insertar datos de la tabla ruta grupo despacho */   
+    INSERT  INTO #Tmp_rutas
+            ( origen ,
+              ing_codigo ,
+              ing_nombre ,
+              Proveedor ,
+              Codigo_Material ,
+              Valido_desde ,
+              Valido_hasta ,
+              cli_codigo ,
+              Fecha_Despacho ,
+              Importe ,
+              Ctd_Fmto ,
+              Perfil_Redondeo ,
+              precio ,
+              cli_tipoformatocompras ,
+              fcs_tipoformatocompras ,
+              preferido ,
+              DiasHolgura ,
+              FamiliaProductoSAP ,
+              fcs_DenMaterial ,
+			  pro_codigo ,
+              pro_facing ,
+              Unidad_Fmto ,
+              pro_codtip ,
+              fc_Ini ,
+              Fc_Fin ,
+              CrossDock ,
+              RutaValida ,
+              MINIMA_PEDIDO ,
+              Estado_Convenios      
+            )
+            SELECT DISTINCT
+                    T.origen ,
+                    T.ing_codigo ,
+                    T.ing_nombre ,
+                    T.Proveedor ,
+                    T.Codigo_Material ,
+                    T.Valido_desde ,
+                    T.Valido_hasta ,
+                    T.cli_codigo ,
+                    T.Fecha_Despacho ,
+                    T.Importe ,
+                    T.Ctd_Fmto ,
+                    T.Perfil_Redondeo ,
+                    T.precio ,
+                    T.cli_tipoformatocompras ,
+                    T.fcs_tipoformatocompras ,
+                    T.preferido ,
+                    T.DiasHolgura ,
+                    T.FamiliaProductoSAP ,
+                    T.fcs_DenMaterial ,
+                    T.pro_codigo ,
+                    T.pro_facing ,
+                    T.Unidad_Fmto ,
+                    T.pro_codtip ,
+                    T.fc_Ini ,
+                    T.Fc_Fin ,
+                    T.CrossDock ,
+                    T.RutaValida ,
+                    T.MINIMA_PEDIDO ,
+                    T.Estado_Convenios
+            FROM    #Tmp_rutasgrupodespacho AS T WITH ( NOLOCK );      
+       
+    CREATE INDEX ix_Tmp_rutas_01 ON #Tmp_rutas (ing_codigo, Fecha_Despacho, Proveedor, Codigo_Material);                                                
+    CREATE INDEX ix_Tmp_rutas_02 ON #Tmp_rutas (ing_codigo, Fecha_Despacho);                                   
+    CREATE INDEX ix_Tmp_rutas_03 ON #Tmp_rutas (pro_codtip);                            
+    CREATE INDEX ix_Tmp_rutas_04 ON #Tmp_rutas (ing_codigo, fc_Ini, Fc_Fin);        
+ /******************************************************************/                                     
+        
+--    SELECT  *      
+--    FROM    #Tmp_rutas AS T      
+ ---- WHERE ing_codigo = '114'        
+ --   SELECT  *      
+ --   FROM    #Tmp_rutasgrupodespacho      
+ --   RETURN     
+ /* Actualizar crossdocking SAP */        
+    UPDATE  #Tmp_rutas
+    SET     CrossDock = 1
+    FROM    #Tmp_rutas AS tc
+            INNER JOIN dbo.I_CECO_SUC_PROVEEDOR AS icsp WITH ( NOLOCK ) ON icsp.ID_CECO = tc.cli_codigo
+                                                              AND icsp.ID_PROVEEDOR = tc.Proveedor
+            INNER JOIN dbo.a_param_despacho_proveedor AS apdp WITH ( NOLOCK ) ON apdp.ceco = tc.cli_codigo
+                                                              AND apdp.proveedor = tc.Proveedor
+    WHERE   ISNULL(icsp.BORRADO, '') <> 'X'
+            AND ISNULL(icsp.[CROSS], '') = 'S'
+            AND ISNULL(apdp.ExcluyecalculoCDMinuta, 0) = 0;                      
+        
+    --SELECT *         
+    --FROM    #Tmp_rutas AS tc        
+    --        INNER JOIN dbo.I_CECO_SUC_PROVEEDOR AS icsp WITH ( NOLOCK ) ON icsp.ID_CECO = tc.cli_codigo       
+    --                                                                       AND icsp.ID_PROVEEDOR = tc.Proveedor        
+    --        INNER JOIN dbo.a_param_despacho_proveedor AS apdp WITH ( NOLOCK ) ON apdp.ceco = tc.cli_codigo        
+    --                                                        AND apdp.proveedor = tc.Proveedor        
+    --WHERE   ISNULL(icsp.BORRADO, '') <> 'X'        
+    --        AND ISNULL(icsp.[CROSS], '') = 'S'        
+    --        AND ISNULL(apdp.ExcluyecalculoCDMinuta, 0) = 0          
+    --        AND apdp.proveedor = '586102'        
+            --AND tc.ing_codigo = '5968'                
+                                
+ /* Actualizar crossdocking SGP */        
+    UPDATE  #Tmp_rutas
+    SET     CrossDock = 1
+    FROM    #Tmp_rutas AS tc
+            INNER JOIN dbo.a_param_despacho_proveedor AS apdp WITH ( NOLOCK ) ON apdp.ceco = tc.cli_codigo
+                                                              AND apdp.proveedor = tc.Proveedor
+    WHERE   apdp.crossdocking = 1
+            AND tc.CrossDock <> 1
+            AND ISNULL(apdp.ExcluyecalculoCDMinuta, 0) = 0;                           
+                                
+ /* fechas de consumo asociado a fecha despacho */        
+    UPDATE  #Tmp_rutas
+    SET     Fc_Fin = ISNULL(CONVERT(VARCHAR(8), DATEADD(d, -1,
+                                                        CONVERT(DATETIME, CONVERT(VARCHAR(8), ( SELECT TOP 1
+                                                              fc_Ini
+                                                              FROM
+                                                              #Tmp_rutas AS tc
+                                                              WHERE
+                                                              tc.id > t.id
+                                                              AND tc.ing_codigo = t.ing_codigo
+                                                              AND tc.origen = t.origen
+                                                              AND tc.Proveedor = t.Proveedor
+                                                              ORDER BY tc.id ASC
+                                                              )))), 112), 0)
+    FROM    #Tmp_rutas t
+    WHERE   Fc_Fin = 0;                                
+                          
+                         
+                                  
+    UPDATE  #Tmp_rutas
+    SET     Fc_Fin = ISNULL(CONVERT(VARCHAR(8), DATEADD(d, DiasHolgura,
+                                                        CONVERT(DATETIME, CONVERT(VARCHAR(8), fc_Ini))), 112),
+                            0)
+    FROM    #Tmp_rutas t
+    WHERE   Fc_Fin = 0;                            
+                          
+    UPDATE  #Tmp_rutas
+    SET     Fecha_Despacho = ( SELECT   MAX(Fecha_Despacho)
+                               FROM     #Tmp_rutas AS tr
+                               WHERE    tr.ing_codigo = t.ing_codigo
+                                        AND tr.Proveedor = t.Proveedor
+             AND tr.Codigo_Material = t.Codigo_Material
+                                        AND RutaValida = 1
+                                        AND tr.Fecha_Despacho < t.Fecha_Despacho
+                             )
+    FROM    #Tmp_rutas t
+    WHERE   RutaValida = 0
+            AND t.Fecha_Despacho >= @Fi
+            AND t.Fecha_Despacho <= @Ft;                          
+                          
+                    
+    UPDATE  #Tmp_rutas
+    SET     Fecha_Despacho = ( SELECT   MIN(Fecha_Despacho)
+                               FROM     #Tmp_rutas AS tr
+                               WHERE    tr.ing_codigo = t.ing_codigo
+                                        AND tr.Proveedor = t.Proveedor
+                                        AND tr.Codigo_Material = t.Codigo_Material
+                                        AND RutaValida = 1
+    )
+    FROM    #Tmp_rutas t
+    WHERE   RutaValida = 0
+            AND t.Fecha_Despacho IS NULL;                          
+          
+ /****************CALCULO FECHAS CD PARA CROSSDOCKING**************************************************/                                   
+    SELECT  tc.ing_codigo ,
+            tc.Proveedor ,
+            tc.Codigo_Material ,
+            tc.fecha_despacho ,
+            tc.DiasHolgura ,
+            0 AS Fecha_Despacho_CD ,
+            0 AS FC_Ini ,
+            0 AS FC_Fin ,
+            0 AS CANT_PLAN
+    INTO    #Tmp_Ruta_Cd
+    FROM    #Tmp_rutas AS tc
+    WHERE   CrossDock = 1;                              
+                  
+    /*INI: FECHA CD*/
+    DECLARE @CurF_Ing_Codigo AS VARCHAR(20);                  
+    DECLARE @CurF_Fecha_Despacho AS INT;            
+    DECLARE @CurF_Dias_Holgura AS INT;                   
+    DECLARE @AuxF_ing_codigo AS VARCHAR(20);                  
+    DECLARE @Aux_Fecha_Despacho_CD AS INT;                   
+                  
+    SET @CurF_Ing_Codigo = '';                  
+    SET @CurF_Fecha_Despacho = 0;                  
+    SET @CurF_Dias_Holgura = 0;                  
+    SET @AuxF_ing_codigo = '';                  
+    SET @Aux_Fecha_Despacho_CD = 0;                  
+
+	IF (SELECT id FROM tempdb.dbo.sysobjects WHERE ID = OBJECT_ID(N'tempdb..#Tmp_Ruta_CdW')) IS NOT NULL
+
+		BEGIN
+
+			DROP TABLE #Tmp_Ruta_CdW
+		
+		END
+
+    SELECT  id = IDENTITY( INT,1,1 ),
+	        ing_codigo ,
+            fecha_despacho ,
+            DiasHolgura
+	into #Tmp_Ruta_CdW
+    FROM    #Tmp_Ruta_Cd
+    ORDER BY ing_codigo,
+             Fecha_Despacho;                  
+    
+	CREATE INDEX ix_#Tmp_Ruta_CdW_01 ON #Tmp_Ruta_CdW (id)
+	
+	DECLARE @CounterCD INT
+    declare @MaxIdCD INT 
+    
+	SELECT @CounterCD = min(Id) , @MaxIdCD = max(Id) 
+    FROM #Tmp_Ruta_CdW with (nolock)
+
+	WHILE(@CounterCD IS NOT NULL
+      AND @CounterCD <= @MaxIdCD)
+
+	BEGIN
+
+		   SELECT @CurF_Ing_Codigo = Ing_Codigo,
+		          @CurF_Fecha_Despacho = Fecha_Despacho,
+				  @CurF_Dias_Holgura = DiasHolgura
+			FROM #Tmp_Ruta_CdW WHERE Id = @CounterCD
+            
+			IF @AuxF_ing_codigo <> @CurF_Ing_Codigo
+            
+			    BEGIN                   
+                    
+                    SET @Aux_Fecha_Despacho_CD = 0;                  
+                  
+                    SET @Aux_Fecha_Despacho_CD = ISNULL(( SELECT TOP 1 br2.Fecha_Despacho
+                                                          FROM dbo.#b_rutadespachoCD AS br2 WITH ( NOLOCK )
+                                                          WHERE ISNULL(br2.ID_proveedor,'') = ''
+                                                          AND br2.ID_Ceco = @Ceco
+                                                          AND br2.Fecha_Despacho >= @CurF_Fecha_Despacho
+                                                          ORDER BY br2.Fecha_Despacho), 0);         
+                   
+                    SET @AuxF_ing_codigo = @CurF_Ing_Codigo;                   
+                  
+                END;                  
+   ELSE
+
+             BEGIN                  
+            
+			        SET @Aux_Fecha_Despacho_CD = ISNULL(( SELECT TOP 1 br2.Fecha_Despacho
+                                                          FROM dbo.#b_rutadespachoCD AS br2 WITH ( NOLOCK )
+                                                          WHERE ISNULL(br2.ID_proveedor,'') = ''
+                                                          AND br2.ID_Ceco = @Ceco
+                                                          AND br2.Fecha_Despacho > @Aux_Fecha_Despacho_CD
+                                                          ORDER BY br2.Fecha_Despacho), 0);                  
+                  
+                END;                  
+                  
+            UPDATE  #Tmp_Ruta_Cd
+            SET     Fecha_Despacho_CD = @Aux_Fecha_Despacho_CD
+            WHERE   fecha_despacho = @CurF_Fecha_Despacho
+                    AND ing_codigo = @CurF_Ing_Codigo;
+					                  
+        SET @CounterCD  = @CounterCD  + 1 
+
+	end                                                         
+                  
+    --DECLARE C_Fecha_CD CURSOR
+    --FOR
+    --    SELECT  ing_codigo ,
+    --            fecha_despacho ,
+    --            DiasHolgura
+    --    FROM    #Tmp_Ruta_Cd
+    --    ORDER BY ing_codigo ,
+    --            Fecha_Despacho;                  
+                                                
+    --OPEN C_Fecha_CD;                  
+ 
+    --FETCH NEXT  FROM C_Fecha_CD                  
+    --  INTO @CurF_Ing_Codigo, @CurF_Fecha_Despacho, @CurF_Dias_Holgura;                  
+                                                  
+    --WHILE @@FETCH_STATUS = 0
+    --    BEGIN                  
+                  
+    --        IF @AuxF_ing_codigo <> @CurF_Ing_Codigo
+    --            BEGIN                   
+                    
+    --                SET @Aux_Fecha_Despacho_CD = 0;                  
+                  
+    --                SET @Aux_Fecha_Despacho_CD = ISNULL(( SELECT TOP 1 br2.Fecha_Despacho
+    --                                                      FROM dbo.#b_rutadespachoCD AS br2 WITH ( NOLOCK )
+    --                                                      WHERE ISNULL(br2.ID_proveedor,'') = ''
+    --                                                      AND br2.ID_Ceco = @Ceco
+    --                                                      AND br2.Fecha_Despacho >= @CurF_Fecha_Despacho
+    --                                                      ORDER BY br2.Fecha_Despacho), 0);         
+                   
+    --                SET @AuxF_ing_codigo = @CurF_Ing_Codigo;                   
+                  
+    --            END;                  
+    --        ELSE
+
+    --            BEGIN                  
+            
+			 --       SET @Aux_Fecha_Despacho_CD = ISNULL(( SELECT TOP 1 br2.Fecha_Despacho
+    --                                                      FROM dbo.#b_rutadespachoCD AS br2 WITH ( NOLOCK )
+    --                                                      WHERE ISNULL(br2.ID_proveedor,'') = ''
+    --                                                      AND br2.ID_Ceco = @Ceco
+    --                                                      AND br2.Fecha_Despacho > @Aux_Fecha_Despacho_CD
+ --                                                      ORDER BY br2.Fecha_Despacho), 0);                  
+                  
+    --            END;                  
+                  
+    --        UPDATE  #Tmp_Ruta_Cd
+    --        SET     Fecha_Despacho_CD = @Aux_Fecha_Despacho_CD
+    --        WHERE   fecha_despacho = @CurF_Fecha_Despacho
+    --                AND ing_codigo = @CurF_Ing_Codigo;                  
+                  
+    --        FETCH NEXT   FROM C_Fecha_CD                  
+    --      INTO @CurF_Ing_Codigo, @CurF_Fecha_Despacho, @CurF_Dias_Holgura;                  
+                  
+    --   END;                                                  
+                
+    --CLOSE C_Fecha_CD;                                                    
+    --DEALLOCATE C_Fecha_CD;                                                  
+
+ /*FIN: FECHA CD*/                                              
+                                
+           
+    CREATE INDEX ix_Tmp_Ruta_Cd_01 ON #Tmp_Ruta_Cd (ing_codigo, FC_Ini, FC_Fin);                                                
+                      
+    UPDATE  #Tmp_Ruta_Cd
+    SET     FC_Ini = CONVERT(VARCHAR(8), DATEADD(DD, ( DiasHolgura ),
+                                                 CONVERT(DATETIME, CONVERT(VARCHAR(8), Fecha_Despacho_CD))), 112)
+    WHERE   Fecha_Despacho_CD > 0;                          
+                                   
+    UPDATE  #Tmp_Ruta_Cd
+    SET     FC_Fin = ISNULL(CONVERT(VARCHAR(8), DATEADD(DD, -1,
+                                                        CONVERT(DATETIME, CONVERT(VARCHAR(8), ( SELECT TOP 1
+                                                              br2.FC_Ini
+                                                              FROM
+                                                              #Tmp_Ruta_Cd AS br2
+                                                              WHERE
+                                                              br2.FC_Ini > trc.FC_Ini
+                                                              AND br2.ing_codigo = trc.ing_codigo
+                                                              ORDER BY br2.ing_codigo ,
+                                                              br2.FC_Ini
+                                                              )))), 112), '')
+    FROM    #Tmp_Ruta_Cd AS trc
+    WHERE   Fecha_Despacho_CD > 0;                          
+                          
+    UPDATE  #Tmp_Ruta_Cd
+    SET     FC_Fin = ISNULL(CONVERT(VARCHAR(8), DATEADD(d, DiasHolgura,
+                                                        CONVERT(DATETIME, CONVERT(VARCHAR(8), FC_Ini))), 112),
+                            0)
+    FROM    #Tmp_Ruta_Cd t
+    WHERE   FC_Fin = 0
+            AND Fecha_Despacho_CD > 0; 
+                
+    UPDATE  #Tmp_Ruta_Cd
+    SET     CANT_PLAN = ISNULL(( SELECT SUM(Cant_ing)
+                                 FROM   #Tmp_Necesidad T
+                                 WHERE  T.ING_CODIGO = trc.ING_CODIGO
+                                        AND T.min_fecmin BETWEEN trc.FC_INI AND trc.FC_FIN
+                               ), 0)
+    FROM    #Tmp_Ruta_Cd AS trc;                                  
+                                  
+    UPDATE  #Tmp_rutas
+    SET     fc_Ini = trc.FC_Ini ,
+            Fc_Fin = trc.FC_Fin
+    FROM    #Tmp_rutas tc
+            INNER JOIN #Tmp_Ruta_Cd AS trc ON tc.ing_codigo = trc.ing_codigo
+                                              AND tc.Proveedor = trc.Proveedor
+                                              AND tc.Codigo_Material = trc.Codigo_Material
+                                              AND tc.fecha_despacho = trc.Fecha_Despacho
+    WHERE   tc.CrossDock = 1;                                  
+                                  
+        
+    --SELECT * FROM #Tmp_rutas tc        
+    --        INNER JOIN #Tmp_Ruta_Cd AS trc ON tc.ing_codigo = trc.ing_codigo        
+    --                                          AND tc.proveedor = trc.proveedor        
+    --                                          AND tc.codigo_material = trc.codigo_material        
+    --                                          AND tc.fecha_despacho = trc.Fecha_Despacho        
+    --WHERE   tc.CrossDock = 1                                  
+    --              RETURN        
+ /******************************************************************/        
+	/* Saca el precio real del convenios */        
+   SELECT  --*       
+   DISTINCT 0 ID_ruta_compra_Aux ,
+			0 ID_ruta_compra ,
+            tc.Proveedor ,
+            tc.FamiliaProductoSAP ,
+     @Ceco ID_centro_de_costo ,
+            tc.Codigo_Material AS ProductoSAP ,
+            tc.fcs_DenMaterial ,
+            tc.ing_codigo ,
+            tc.Unidad_Fmto AS Unidad_Medida ,
+            tc.Fecha_despacho ,
+            n.min_fecmin ,
+            n.Cant_ing ,
+            n.Cant_ing AS Cantidad ,
+            tc.pro_codigo ,
+            tc.origen ,
+            tc.pro_facing ,
+            tc.Ctd_Fmto ,
+            tc.Perfil_Redondeo ,
+            tc.Importe ,        
+            --ISNULL(( ics.IMPORTE / ics.CANTIDAD_IMPORTE ), 0) AS importe ,        
+            tc.MINIMA_PEDIDO ,
+            tc.CrossDock ,
+            tc.Estado_Convenios
+    INTO    #Tabla_Final
+    FROM    #Tmp_rutas AS tc
+            INNER JOIN #Tmp_Necesidad n ON n.ing_codigo = tc.ing_codigo
+                                       AND n.min_fecmin BETWEEN tc.fc_Ini AND tc.Fc_Fin;        
+        
+	/* Actulizar Precio si existe convenios */        
+    UPDATE  #Tabla_Final
+    SET     Importe = ISNULL(( ics.IMPORTE / ics.CANTIDAD_IMPORTE ), 0)
+    FROM    #Tabla_Final AS tf WITH ( NOLOCK )
+            INNER JOIN dbo.I_CONVENIO_SAP AS ics WITH ( NOLOCK ) ON ics.ID_MATERIAL = tf.ProductoSAP
+                                                              AND ics.ID_PROVEEDOR = tf.Proveedor
+                                                              AND tf.Fecha_Despacho BETWEEN CONVERT(INT, CONVERT(VARCHAR(8), ics.FECHA_INICIO_VALIDEZ, 112))
+                                                              AND
+                                                              CONVERT(INT, CONVERT(VARCHAR(8), ics.FECHA_FIN_VALIDEZ, 112))
+                                                              AND ics.ID_ORGCOMPRA = @OrgCompra;        
+        
+ /******************************************************************/        
+                          
+	/*limpieza de ingredientes con fecha de despacho fuera del periodo*/        
+    DELETE  #Tabla_Final
+    WHERE   Fecha_Despacho > @Ft;        
+        
+   -- SELECT  *        
+    --FROM    #Tmp_Necesidad        
+    --WHERE   ing_codigo IN ( '965' )        
+    --ORDER BY ing_codigo ,        
+    --        min_fecmin         
+    --SELECT  *        
+    --FROM    #Tmp_rutas        
+    --WHERE   ing_codigo IN ( '965' )        
+    --SELECT * FROM #Tabla_Final AS tf      
+    -- where ing_codigo IN ('231')        
+    --SELECT @Ft        
+    --RETURN                                    
+   
+	/* limpiar familia, solo dejar las del parametro */        
+    IF @TipoPedido = 2
+        BEGIN        
+            DECLARE @hdoc AS INTEGER;        
+            EXEC sp_xml_preparedocument @hdoc OUTPUT, @Familias;        
+                                                
+            SELECT  codfamilia
+            INTO    #tmp_familias
+            FROM    OPENXML (@hdoc, '/Fa/F')        
+      WITH (codfamilia VARCHAR(20));        
+                                                        
+            IF ( @hdoc IS NOT NULL )
+           EXEC sp_xml_removedocument @hdoc;        
+                                                      
+            DELETE  #Tabla_Final
+            WHERE  FamiliaProductoSAP NOT IN ( SELECT  codfamilia
+                                                FROM    #tmp_familias ); 
+                         
+            DROP TABLE #tmp_familias;        
+        END;                                                
+                                        
+	/* CD son productos con proveedor = sodexo */        
+    IF @Incluir_Prod_CD = 1
+        AND @Incluir_Prod_PAP = 0
+        BEGIN                                                
+                    
+            DELETE  #Tabla_Final
+            WHERE   Proveedor NOT  IN ( SELECT  proveedor
+                                        FROM    b_Rut_CD WITH ( NOLOCK ) );                              
+                          
+        END;          
+                                                
+	/* PAP son productos con proveedor <> sodexo */        
+    IF @Incluir_Prod_PAP = 1
+        AND @Incluir_Prod_CD = 0
+        BEGIN                                                
+            DELETE  #Tabla_Final
+            WHERE   Proveedor IN ( SELECT   proveedor
+                                   FROM     b_Rut_CD WITH ( NOLOCK ) );         
+        END;                                                
+                                                
+                                                
+    IF @Incluir_Prod_PAP = 0
+        AND @Incluir_Prod_CD = 0
+        BEGIN                                                
+            DELETE  #Tabla_Final;                                                
+        END;                                                
+                                                            
+    SELECT  NumLinea = IDENTITY( INT ,1,1 ),
+            ISNULL(tf.ID_ruta_compra, 0) AS ID_ruta_compra ,
+            tf.ing_codigo AS ing_codigo ,
+            bi.ing_nombre AS ing_nombre ,
+            ISNULL(tf.Proveedor, '') AS Proveedor ,
+            ISNULL(tf.FamiliaProductoSAP, '') AS FamiliaProductoSAP ,
+            ISNULL(tf.ID_centro_de_costo, '') AS ID_centro_de_costo ,
+            ISNULL(tf.ProductoSAP, '') AS ProductoSAP ,
+            ISNULL(tf.fcs_DenMaterial, '') AS fcs_DenMaterial ,
+            ( CASE WHEN tf.Cant_ing > 0 THEN tf.Unidad_Medida
+                   ELSE AU.unm_nomcor
+              END ) AS Unidad_Medida ,
+            ISNULL(tf.Fecha_Despacho, '') AS Fecha_Despacho ,
+            ROUND(CONVERT(FLOAT, dbo.fn_sgpadm_Sel_RedMultiplo_v3(ISNULL(SUM(( tf.Cant_ing / tf.pro_facing )), 0), tf.Perfil_Redondeo, tf.MINIMA_PEDIDO)),
+                  2) AS total ,
+            tf.pro_codigo AS pro_codigo ,
+            ISNULL(SUM(tf.Cant_ing), 0) AS CantidadIngrediente ,
+            ISNULL(SUM(( tf.Cant_ing / tf.pro_facing )), 0) AS CantidadProducto ,
+            tf.Ctd_Fmto ,
+            tf.pro_facing ,
+            CONVERT(FLOAT, 0) AS Saldo ,
+            CONVERT(FLOAT, 0) AS Cant_uso_Saldo ,
+            CASE WHEN ISNULL(tf.Perfil_Redondeo, '') <> ''
+       AND ISNULL(tf.Fecha_Despacho, '') <> '' THEN 1
+                 ELSE 0
+            END AS activo ,
+            tf.Perfil_Redondeo ,
+            tf.Importe AS precio ,
+            CONVERT(VARCHAR(255), '') AS Observacion ,
+            tf.MINIMA_PEDIDO ,
+            tf.CrossDock ,
+            CONVERT(FLOAT, 0) AS Exceso ,
+            CONVERT(DATETIME, NULL) AS FecMPedAnt ,
+            CONVERT(FLOAT, 0) AS Saldo_Ant ,
+            tf.Estado_Convenios,
+			isnull(tf.origen,'') as origen
+    INTO    #TMP_PEDIDO
+    FROM    #Tabla_Final AS tf
+            INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON bi.ing_codigo = tf.ing_codigo
+            INNER JOIN dbo.a_unidadmed AS AU WITH ( NOLOCK ) ON AU.unm_codigo = bi.ing_unimed
+    WHERE   tf.Cant_ing > 0
+    GROUP BY ISNULL(tf.ID_ruta_compra, 0) ,
+            tf.ing_codigo ,
+            bi.ing_nombre ,
+            tf.pro_codigo ,
+            ISNULL(tf.Proveedor, '') ,
+            ISNULL(tf.FamiliaProductoSAP, '') ,
+            ISNULL(tf.ID_centro_de_costo, '') ,
+            ISNULL(tf.ProductoSAP, '') ,
+            ISNULL(tf.fcs_DenMaterial, '') ,
+            ( CASE WHEN tf.Cant_ing > 0 THEN tf.Unidad_Medida
+                   ELSE AU.unm_nomcor
+              END ) ,
+            ISNULL(tf.Fecha_Despacho, '') ,
+            tf.Ctd_Fmto ,
+            tf.pro_facing ,
+            tf.Perfil_Redondeo ,
+            tf.Importe ,
+            tf.MINIMA_PEDIDO ,
+            tf.CrossDock ,
+            tf.Estado_Convenios,
+			tf.origen
+    ORDER BY ( CASE WHEN ISNULL(tf.Fecha_Despacho, '') <> ''
+                    THEN bi.ing_nombre
+                    ELSE 'ZZ' + bi.ing_nombre
+               END ) ,
+            ISNULL(tf.Fecha_Despacho, '');                    
+
+	/* Inicio traer fecha del ingrediente anterior */        
+	/* conseguir primera fecha del ingrediente */              
+    SELECT  tp.ing_codigo ,
+            MIN(tp.Fecha_Despacho) AS Fecha_Despacho
+    INTO    #Tmp_FechaMinimaIngrediente
+    FROM    #TMP_PEDIDO tp
+    GROUP BY tp.ing_codigo;              
+              
+    CREATE INDEX ix_#Tmp_FechaMinimaIngrediente_01 ON #Tmp_FechaMinimaIngrediente (ing_codigo, Fecha_Despacho);              
+        
+    CREATE INDEX ix_#TMP_PEDIDO_01 ON #TMP_PEDIDO (ing_codigo);                                 
+    CREATE INDEX ix_#TMP_PEDIDO_02 ON #TMP_PEDIDO (ProductoSAP);                                 
+    CREATE INDEX ix_#TMP_PEDIDO_03 ON #TMP_PEDIDO (activo);                            
+    CREATE INDEX ix_#TMP_PEDIDO_04 ON #TMP_PEDIDO (NumLinea);                            
+    CREATE INDEX ix_#TMP_PEDIDO_05 ON #TMP_PEDIDO (Estado_Convenios);              
+              
+	/* Update rutas que no tienen rutas asociadas */          
+    UPDATE  #TMP_PEDIDO
+    SET     Proveedor = '' ,
+            FamiliaProductoSAP = '' ,
+            ProductoSAP = '' ,
+            fcs_DenMaterial = '' ,
+            Unidad_Medida = '' ,
+            total = 0 ,
+            pro_codigo = '' ,
+            CantidadProducto = 0 ,
+            Ctd_Fmto = 0 ,
+            pro_facing = 0 ,
+            Saldo = 0 ,
+            Cant_uso_Saldo = 0 ,
+            activo = 0 ,
+            Perfil_Redondeo = 0 ,
+            precio = 0 ,
+            Observacion = '-2' ,
+            MINIMA_PEDIDO = 0 ,
+            CrossDock = '' ,
+            Exceso = 0 ,
+            FecMPedAnt = 0 ,
+            Saldo_Ant = NULL
+    WHERE   Estado_Convenios = '2';          
+                                    
+ /* Insertar ingredientes que no tienen rutas y convenios */          
+    INSERT  #TMP_PEDIDO
+            ( ID_ruta_compra ,
+              ing_codigo ,
+              ing_nombre ,
+              Proveedor ,
+              FamiliaProductoSAP ,
+              ID_centro_de_costo ,
+              ProductoSAP ,
+              fcs_DenMaterial ,
+              Unidad_Medida ,
+              Fecha_Despacho ,
+              total ,
+              pro_codigo ,
+              CantidadIngrediente ,
+              CantidadProducto ,
+              Ctd_Fmto ,
+              pro_facing ,
+              Saldo ,
+              Cant_uso_Saldo ,
+              activo ,
+              Perfil_Redondeo ,
+              precio ,
+              Observacion ,
+              MINIMA_PEDIDO ,
+              CrossDock ,
+              Exceso ,
+              FecMPedAnt ,
+              Saldo_Ant ,
+              Estado_Convenios,
+			  origen   
+            )
+            SELECT  DISTINCT
+                    0 AS ID_ruta_compra ,
+                    bi.ing_codigo ,
+                    bi.ing_nombre ,
+                    '' AS Proveedor ,
+                    '' AS FamiliaProductoSAP ,
+                    @Ceco AS ID_centro_de_costo ,
+                    '' AS ProductoSAP ,
+                    '' AS fcs_DenMaterial ,
+                    '' AS Unidad_Medida ,
+                    '' AS Fecha_Despacho ,
+                    0 AS total ,
+                    '' AS pro_codigo ,          
+                    --ISNULL(SUM(t.Cant_ing), 0) AS CantidadIngrediente ,           
+                    0 AS CantidadIngrediente ,
+                    0 AS CantidadProducto ,
+                    0 AS Ctd_Fmto ,
+                    0 AS pro_facing ,
+                    0 AS Saldo ,
+                    0 AS Cant_uso_Saldo ,
+                    0 AS activo ,
+                    0 AS Perfil_Redondeo ,
+                    0 AS precio ,
+                    '-2' ,
+                    0 AS MINIMA_PEDIDO ,
+                    '' ,
+                    0 ,
+                    0 ,
+                    NULL ,
+                    3,
+					''
+            FROM    #Tmp_Necesidad t
+                    INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON bi.ing_codigo = t.ing_codigo
+   LEFT JOIN #Tmp_rutas AS t1 ON bi.ing_codigo = t1.ing_codigo
+            WHERE   t1.ing_codigo IS NULL
+                    AND t.Cant_ing > 0
+                    AND t.min_fecmin >= ISNULL(CONVERT(VARCHAR(8), DATEADD(d,
+                                                              t.DiasHolgura,
+                                                              CONVERT(DATETIME, CONVERT(VARCHAR(8), @Fi))), 112),
+                                               0)
+                    AND t.min_fecmin <= ISNULL(CONVERT(VARCHAR(8), DATEADD(d,
+                                                              t.DiasHolgura,
+                                                              CONVERT(DATETIME, CONVERT(VARCHAR(8), @Ft))), 112),
+                                               0)
+            GROUP BY bi.ing_codigo ,
+                    bi.ing_nombre;             
+        
+	/* Validar si existe ingrediente con excepcion formato de compras y no esta carro mover a las ultimas posiciones */          
+    UPDATE  #TMP_PEDIDO
+    SET     Proveedor = '' ,
+            FamiliaProductoSAP = '' ,
+            ProductoSAP = '' ,
+            fcs_DenMaterial = '' ,
+            Unidad_Medida = '' ,          
+            --Fecha_Despacho = '' ,          
+            total = 0 ,
+            pro_codigo = '' ,          
+            --CantidadIngrediente = 0 ,          
+            CantidadProducto = 0 ,
+            Ctd_Fmto = 0 ,
+            pro_facing = 0 ,
+            Saldo = 0 ,
+            Cant_uso_Saldo = 0 ,
+            activo = 0 ,
+            Perfil_Redondeo = 0 ,
+            precio = 0 ,
+            Observacion = '-3' ,
+            MINIMA_PEDIDO = 0 ,
+            CrossDock = '' ,
+            Exceso = 0 ,
+            FecMPedAnt = 0 ,
+            Saldo_Ant = NULL ,
+            Estado_Convenios = 4
+    FROM    #TMP_PEDIDO tp WITH ( NOLOCK )
+            INNER JOIN dbo.b_Pedido_ExcepcionFormatoCompra AS bpefc WITH ( NOLOCK ) ON bpefc.cencos = tp.ID_centro_de_costo
+           AND bpefc.ing_codigo = tp.ing_codigo
+                                                              AND ( bpefc.fcs_CodMaterial = tp.ProductoSAP )  
+                        /* si producto esta con excepción y el proveedor es distincto, lo va dejar nulo */
+                                                              AND bpefc.proveedor <> tp.Proveedor
+															  and tp.origen = 'E'
+  
+    UPDATE  #TMP_PEDIDO
+    SET     Proveedor = '' ,
+            FamiliaProductoSAP = '' ,
+            ProductoSAP = '' ,
+            fcs_DenMaterial = '' ,
+            Unidad_Medida = '' ,          
+            --Fecha_Despacho = '' ,          
+            total = 0 ,
+            pro_codigo = '' ,          
+            --CantidadIngrediente = 0 ,          
+            CantidadProducto = 0 ,
+            Ctd_Fmto = 0 ,
+            pro_facing = 0 ,
+            Saldo = 0 ,
+            Cant_uso_Saldo = 0 ,
+            activo = 0 ,
+            Perfil_Redondeo = 0 ,
+            precio = 0 ,
+            Observacion = '-3' ,
+            MINIMA_PEDIDO = 0 ,
+            CrossDock = '' ,
+            Exceso = 0 ,
+            FecMPedAnt = 0 ,
+            Saldo_Ant = NULL ,
+            Estado_Convenios = 4
+    FROM    #TMP_PEDIDO tp WITH ( NOLOCK )
+            INNER JOIN dbo.b_Pedido_ExcepcionFormatoCompra AS bpefc WITH ( NOLOCK ) ON bpefc.cencos = tp.ID_centro_de_costo
+                                                              AND bpefc.ing_codigo = tp.ing_codigo  
+                                                   /* si hay cambio de producto, lo va dejar nulo */
+                                                              AND bpefc.fcs_CodMaterial <> tp.ProductoSAP
+                                                              AND bpefc.proveedor <> tp.Proveedor   
+															  and tp.origen = 'E'
+  
+
+ /********** Actualizar Observación 0 = S/Convenio; 1 = S/Ruta *********/                                         
+ IF @Incluir_Prod_CD = 1
+        AND @Incluir_Prod_PAP = 0
+        BEGIN                         
+            UPDATE  #TMP_PEDIDO
+            SET     Observacion = CASE WHEN ISNULL(( SELECT TOP ( 1 )
+                                                            1
+                                                     FROM   dbo.b_precio_ingrediente
+                                                            AS bpi WITH ( NOLOCK )
+                                                     WHERE  bpi.Ingrediente = tp.ing_codigo
+                                                            AND bpi.Ceco = @Ceco
+                                                            AND EXISTS ( SELECT
+                                                              1
+                                                              FROM
+                                                              b_Rut_CD t
+                                                              WHERE
+                                                              t.proveedor = bpi.Proveedor )
+                                                            AND EXISTS ( SELECT
+                                                              1
+                                                              FROM
+                                                              #tmp_fechas AS tf
+                                                              WHERE
+                                                              CONVERT(DATETIME, CONVERT(VARCHAR(10), tf.fecha)) BETWEEN bpi.Valido_Desde
+                                                              AND
+                                                              bpi.Valido_Hasta )
+                                                   ), 0) = 0 THEN '0'
+                                       ELSE '1'
+                                  END
+            FROM    #TMP_PEDIDO AS tp
+            WHERE   ISNULL(tp.activo, 0) = 0
+                    AND tp.Observacion = '-1';                     
+        END;                        
+                          
+    IF @Incluir_Prod_CD = 0
+        AND @Incluir_Prod_PAP = 1
+        BEGIN                           
+            UPDATE  #TMP_PEDIDO
+            SET     Observacion = CASE WHEN ISNULL(( SELECT TOP ( 1 )
+                                                            1
+                                                     FROM   dbo.b_precio_ingrediente
+                                                            AS bpi WITH ( NOLOCK )
+                                                     WHERE  bpi.Ingrediente = tp.ing_codigo
+                                                            AND bpi.Ceco = @Ceco
+                                                            AND NOT EXISTS ( SELECT
+                                                              1
+                               FROM
+                                                              b_Rut_CD t
+                                                              WHERE
+                           t.proveedor = bpi.Proveedor )
+                                                            AND EXISTS ( SELECT
+                                                              1
+                                                              FROM
+                                                 #tmp_fechas AS tf
+                                                              WHERE
+                                       CONVERT(DATETIME, CONVERT(VARCHAR(10), tf.fecha)) BETWEEN bpi.Valido_Desde
+                                                              AND
+                                                              bpi.Valido_Hasta )
+                                                   ), 0) = 0 THEN '0'
+                                       ELSE '1'
+                                  END
+            FROM    #TMP_PEDIDO AS tp
+            WHERE   ISNULL(tp.activo, 0) = 0
+                    AND tp.Observacion = '-1';     
+        END;                          
+                                
+--/**** Inicio Mover tabla paso ingrediente proveedor más barato ****/                                
+--  SELECT  bpi.Proveedor                          
+--         ,bpi.ingrediente                          
+--         ,bpi.Codigo_Material                          
+--         ,bfs.fcs_DenMaterial                          
+--         ,MIN(bpi.precio) AS Precio                          
+--  INTO    #Tmp_IngMenorPrecio                          
+--  FROM    #TMP_PEDIDO AS tp                          
+--  INNER JOIN dbo.b_precio_ingrediente AS bpi WITH ( NOLOCK ) ON bpi.ingrediente = tp.ing_codigo                    --  INNER JOIN dbo.b_formatocompras_sap AS bfs WITH ( NOLOCK ) ON bfs.fcs_CodMaterial = bpi.Codigo_Material                          
+--  WHERE   bpi.Ingrediente = tp.ing_codigo                          
+--          AND bpi.Ceco = @Ceco                          
+--          AND ISNULL(tp.activo, 0) = 0                          
+--          AND EXISTS ( SELECT 1                          
+--                       FROM   #tmp_fechas AS tf                          
+--                       WHERE  CONVERT(DATETIME, CONVERT(VARCHAR(10), tf.Fecha)) BETWEEN bpi.Valido_Desde                          
+--                                                       AND     bpi.Valido_Hasta )                          
+--  GROUP BY bpi.proveedor                          
+--         ,bpi.ingrediente                          
+--         ,bpi.Codigo_Material                          
+--         ,bfs.fcs_DenMaterial                                 
+--                                
+--  CREATE INDEX ix_Tmp_IngMenorPrecio_01 ON #Tmp_IngMenorPrecio (proveedor, ingrediente, Codigo_Material)                                
+--                          
+--                          
+--  IF @Incluir_Prod_CD = 1                          
+--    AND @Incluir_Prod_PAP = 0                           
+--    BEGIN                                                
+--      DELETE  #Tmp_IngMenorPrecio                          
+--      WHERE   proveedor NOT  IN ( SELECT  proveedor                          
+--                                  FROM    b_Rut_CD WITH ( NOLOCK ) )                             
+--    END                                                
+--                                                
+------pap son productos con proveedor <> sodexo                                 
+--  IF @Incluir_Prod_PAP = 1                          
+--    AND @Incluir_Prod_CD = 0                           
+--    BEGIN                                                
+--      DELETE  #Tmp_IngMenorPrecio                          
+--      WHERE   proveedor IN ( SELECT proveedor      
+--                             FROM   b_Rut_CD WITH ( NOLOCK ) )                           
+--    END                                            
+--          
+--                          
+--                          
+--  UPDATE  #TMP_PEDIDO                          
+--  SET     Proveedor = timp.Proveedor                          
+--         ,ProductoSAP = timp.Codigo_Material                          
+--         ,fcs_DenMaterial = timp.fcs_DenMaterial                          
+--  FROM    #TMP_PEDIDO AS tp                          
+--  INNER JOIN #Tmp_IngMenorPrecio AS timp ON tp.ing_codigo = timp.ingrediente                          
+--  WHERE   ISNULL(tp.activo, 0) = 0                          
+--          AND tp.observacion = '1'                                
+--                                
+-- /****** Fin Mover tabla paso ingrediente proveedor más barato *******/                                
+                                  
+                          
+                                  
+/*===========================FIN SALIDA============================*/                                                
+             
+                
+--/*INICIO: REPROCESO DEVOLUCION SALDO*/                                                
+--  IF @IdPedido <> 0                                      
+--    AND @TipoPedido IN ( 1, 3 )                                       
+--    BEGIN                                                 
+--      SELECT  @ceco AS ceco                                      
+--            , BPCD.ing_codigo                                      
+--            , ( ( SUM(BPCD.Cant_Des * BP.pro_facing) * -1 ) + SUM(BPCD.Cant_Ing) ) saldo_ped                                      
+--      INTO    #tmp_devolucion                                      
+--      FROM    dbo.b_PedidoCentralizadoDet AS BPCD  
+--      INNER JOIN b_productos BP ON BP.pro_codigo = BPCD.Pro_Codigo                                      
+--      WHERE   IdPedido = @IdPedido                                      
+--      GROUP BY BPCD.ing_codigo                                        
+                                            
+--      --SELECT * FROM #tmp_devolucion                                              
+          
+--      UPDATE  dbo.b_arrastre_saldo                                      
+--      SET     b_arrastre_saldo.Saldo = ROUND(bas.Saldo, 6) + ROUND(TD.saldo_ped, 6)                                      
+--      FROM    dbo.b_arrastre_saldo AS BAS                                      
+--      INNER JOIN #tmp_devolucion AS TD ON BAS.CECO = TD.ceco                                      
+--                                          AND BAS.ing_codigo = td.ing_codigo                                      
+                                      
+--      UPDATE  dbo.b_arrastre_saldo                              
+--      SET     Saldo = 0                                      
+--      WHERE   saldo < 0                                           
+                                                    
+--      DROP TABLE #tmp_devolucion                                  
+--    END                                                
+--/*FIN: REPROCESO DEVOLUCION SALDO*/        
+                                    
+
+DECLARE @Counter INT
+declare @MaxId INT 
+
+DECLARE @Cur_NumLinea INT ,
+        @Cur_ing_codigo VARCHAR(20) ,
+        @Cur_ing_codigo_aux VARCHAR(20) ,
+        @Cur_FamiliaProductoSAP VARCHAR(20) ,
+        @Cur_total FLOAT ,
+        @Cur_ProductoSAP VARCHAR(20) ,
+        @Cur_CantidadProducto FLOAT ,
+        @Cur_CantidadIngrediente FLOAT ,
+        @Cur_Cant_uso_Saldo DECIMAL(18, 6) ,
+        @Cur_saldo_ing DECIMAL(18, 6) ,
+        @Cur_saldo DECIMAL(18, 6) ,
+        @Cur_pro_facing FLOAT ,
+        @Cur_Ctd_Fmto INT ,
+        @Cur_Perfil_Redondeo FLOAT ,
+        @Cur_MINIMA_PEDIDO FLOAT ,
+        @Cur_Fecha_Despacho VARCHAR(10) ,
+        @Cur_Proveedor VARCHAR(10);                    
+           
+DECLARE @Aux_ing_codigo VARCHAR(20);                    
+DECLARE @Saldo_Ant AS FLOAT;     
+DECLARE @FecPedAnt AS DATETIME;                    
+
+SET @Aux_ing_codigo = '';                    
+SET @Saldo_Ant = 0;                    
+                    
+DECLARE @tmp_b_arrastre_saldo TABLE
+        (
+          CECO VARCHAR(10) ,
+          ing_codigo VARCHAR(20) ,
+          Saldo DECIMAL(18, 6) ,
+          Fecha_upd DATETIME
+        );                                      
+
+IF (SELECT id FROM tempdb.dbo.sysobjects WHERE ID = OBJECT_ID(N'tempdb..#Tmp_Arrastre')) IS NOT NULL
+
+BEGIN
+
+	DROP TABLE #Tmp_Arrastre
+END
+
+SELECT  
+id = IDENTITY( INT,1,1 ),
+		convert(int,a.NumLinea) as NumLinea ,
+		a.ing_codigo ,
+		a.FamiliaProductoSAP ,
+		a.total ,
+		a.ProductoSAP ,
+		a.CantidadProducto ,
+		a.CantidadIngrediente ,
+		a.pro_facing ,
+		a.Ctd_Fmto ,
+		a.Perfil_Redondeo ,
+		a.MINIMA_PEDIDO ,
+		a.Fecha_Despacho ,
+		a.Proveedor
+Into    #Tmp_Arrastre
+FROM    #TMP_PEDIDO as a with (nolock)
+WHERE   a.activo = 1
+		AND ( NOT EXISTS ( SELECT   1
+							FROM     dbo.b_no_arrastre_saldo  AS BNAS with (nolock)
+							WHERE    BNAS.fcs_CodMaterial = a.ProductoSAP )
+				OR a.ing_codigo IN ( SELECT ing_codigo
+									FROM   dbo.b_arrastre_saldo AS BAS with (nolock)
+									WHERE  BAS.CECO = @Ceco
+										AND BAS.Saldo > 0 )
+			)
+ORDER BY a.ing_codigo,
+	     a.Fecha_Despacho                                                
+
+CREATE INDEX ix_#Tmp_Arrastre_01 ON #Tmp_Arrastre (id)                                                
+	
+SELECT @Counter = min(id) , @MaxId = max(id) 
+FROM #Tmp_Arrastre with (nolock)
+ 
+WHILE(@Counter IS NOT NULL
+	AND @Counter <= @MaxId)
+
+	BEGIN
+
+			SELECT @Cur_NumLinea=NumLinea,
+			       @Cur_ing_codigo=ing_codigo,
+				   @Cur_FamiliaProductoSAP=FamiliaProductoSAP,
+				   @Cur_total=total,
+                   @Cur_ProductoSAP=ProductoSAP,
+				   @Cur_CantidadProducto=CantidadProducto,
+				   @Cur_CantidadIngrediente=CantidadIngrediente,
+                   @Cur_pro_facing=pro_facing,
+				   @Cur_Ctd_Fmto=Ctd_Fmto,
+				   @Cur_Perfil_Redondeo=Perfil_Redondeo,
+                   @Cur_MINIMA_PEDIDO=MINIMA_PEDIDO,
+				   @Cur_Fecha_Despacho=Fecha_Despacho,
+				   @Cur_Proveedor=Proveedor
+			FROM #Tmp_Arrastre WHERE id = @Counter
+
+            SET @Cur_saldo_ing = 0;                                                
+                    
+			/* Traer saldo del carrito anterior */  
+            IF @Aux_ing_codigo <> @Cur_ing_codigo
+                AND @GeneraArrastreSaldo = '1'
+                BEGIN                      
+                    
+                    SET @Saldo_Ant = 0;                    
+                    PRINT @Cur_ing_codigo;                  
+                  
+                    SELECT  @FecPedAnt = MAX(bpcd1.FechaRuta)
+                    FROM    dbo.b_PedidoCentralizadoDet AS bpcd1 WITH ( NOLOCK )
+                            INNER JOIN dbo.b_PedidoCentralizado AS bpc1 WITH ( NOLOCK ) ON bpcd1.IdPedido = bpc1.IdPedido
+                            INNER JOIN dbo.b_clientes AS bc1 WITH ( NOLOCK ) ON bpc1.Cencos = bc1.cli_codigo
+                    WHERE   bpcd1.cencos = @Ceco
+                            AND bpcd1.Ing_Codigo = @Cur_ing_codigo
+                            AND bpc1.TipoPedido = @TipoPedido
+                            AND bpcd1.FechaRuta < CONVERT(DATETIME, @Cur_Fecha_Despacho, 103);                  
+                  
+                                                                                   
+                    SET @Saldo_Ant = ISNULL(( SELECT TOP 1
+                                                        bpcd.Saldo_Ing
+                                              FROM      dbo.b_PedidoCentralizadoDet AS bpcd WITH ( NOLOCK )
+                                                        INNER JOIN dbo.b_PedidoCentralizado
+                                                        AS bpc WITH ( NOLOCK ) ON bpcd.IdPedido = bpc.IdPedido   
+                                                                                                        --AND bpcd.cencos = bpc.Cencos              
+                                                        INNER JOIN dbo.b_clientes
+                                                        AS bc WITH ( NOLOCK ) ON bpc.Cencos = bc.cli_codigo
+                                              WHERE     bpcd.cencos = @Ceco
+ AND bpcd.Ing_Codigo = @Cur_ing_codigo
+                                                        AND bpc.TipoPedido = @TipoPedido
+                                                        AND bpcd.FechaRuta = @FecPedAnt
+                                              ORDER BY  bpcd.NumLinea DESC
+                                            ), 0);                  
+                  
+                    SET @Saldo_Ant = CASE WHEN @Saldo_Ant < 0 THEN 0
+                                          ELSE @Saldo_Ant
+              END;                  
+                    
+                    UPDATE  #TMP_PEDIDO
+                    SET     Exceso = ISNULL(@Saldo_Ant, 0)
+                    WHERE   NumLinea = @Cur_NumLinea;                  
+                    
+                    SET @Aux_ing_codigo = @Cur_ing_codigo;                    
+                     
+                    SET @Cur_saldo_ing = ISNULL(@Saldo_Ant, 0);                    
+                    
+                END;                     
+            ELSE
+
+                BEGIN                    
+
+                    SELECT  @Cur_saldo_ing = Saldo
+                    FROM    @tmp_b_arrastre_saldo AS BAS
+                    WHERE   CECO = @Ceco
+                            AND ing_codigo = @Cur_ing_codigo;                                            
+
+                END;                                    
+                                          
+            SET @Cur_saldo_ing = ISNULL(@Cur_saldo_ing, 0);                                                              
+                                                
+            IF ISNULL(@Cur_saldo_ing, 0) > @Cur_CantidadIngrediente
+
+                BEGIN                                                
+            
+			        SET @Cur_saldo_ing = ( @Cur_saldo_ing - @Cur_CantidadIngrediente );                                                        
+                    SET @Cur_Cant_uso_Saldo = @Cur_CantidadIngrediente;                                                
+                    SET @Cur_CantidadIngrediente = 0;                                                
+                    SET @Cur_CantidadProducto = 0;                                                
+                    SET @Cur_total = 0;                                                      
+            
+			    END;                                
+            
+			ELSE
+
+                BEGIN                                                        
+
+					SET @Cur_CantidadIngrediente = ( @Cur_CantidadIngrediente - @Cur_saldo_ing )                  
+                    SET @Cur_Cant_uso_Saldo = @Cur_saldo_ing   
+                    SET @Cur_CantidadProducto = ( @Cur_CantidadIngrediente / @Cur_pro_facing );                                                
+                    SET @Cur_total = dbo.fn_sgpadm_Sel_RedMultiplo_v3(ISNULL(@Cur_CantidadProducto,0), @Cur_Perfil_Redondeo, @Cur_MINIMA_PEDIDO);                                       
+                    
+					IF NOT EXISTS ( SELECT  1
+                                    FROM dbo.b_no_arrastre_saldo with (nolock)
+                                    WHERE fcs_CodMaterial = @Cur_ProductoSAP )
+                        BEGIN                    
+                            SET @Cur_saldo_ing = ( @Cur_total - @Cur_CantidadProducto ) * @Cur_pro_facing;                                                
+						END;                         
+                    ELSE
+                        BEGIN                                                
+                            SET @Cur_saldo_ing = 0;                                                
+                        END;                                                      
+                END;                                                
+     
+                                      
+            IF EXISTS ( SELECT  1
+                        FROM    @tmp_b_arrastre_saldo AS BAS
+                        WHERE   CECO = @Ceco
+                                AND ing_codigo = @Cur_ing_codigo )
+                BEGIN                                                               
+                    
+					UPDATE @tmp_b_arrastre_saldo
+                    SET    Saldo = @Cur_saldo_ing
+                    WHERE  CECO = @Ceco
+                    AND    ing_codigo = @Cur_ing_codigo;                                                
+                END;                                                
+            ELSE
+    BEGIN                                                
+                    INSERT  @tmp_b_arrastre_saldo
+                           ( CECO ,
+                   ing_codigo ,
+                              Saldo ,
+                              Fecha_upd                                 
+                            )
+                    VALUES  ( @Ceco ,
+                              @Cur_ing_codigo ,
+                              @Cur_saldo_ing ,
+                              GETDATE()
+                            );                                                
+                END;                                            
+                                                            
+            UPDATE  #TMP_PEDIDO
+            SET     CantidadProducto = ISNULL(@Cur_CantidadProducto, 0) ,
+                    total = ISNULL(@Cur_total, 0) ,
+                    Cant_uso_Saldo = ISNULL(@Cur_Cant_uso_Saldo, 0) ,
+                    Saldo = ISNULL(@Cur_saldo_ing, 0)
+            WHERE   NumLinea = @Cur_NumLinea;                                                
+
+			SET @Counter  = @Counter  + 1  
+	
+end
+
+ /*FIN: ARRASTRE SALDO*/                                              
+                                      
+    --SELECT * FROM #TMP_PEDIDO      
+    --RETURN                  
+   
+ /* INICIO: GRABAMOS EL PEDIDO */                                                             
+    SET @ErrorMessage = '';                                                
+    SET @Rows = 0;                                                
+                                                  
+/*Pedido que son tipo de Pedido=1*/                                                
+    IF @IDPedido = 0
+        AND @TipoPedido IN ( 1, 3 )
+        BEGIN                                                 
+            BEGIN TRY                                                 
+                                                
+                SET @ErrorMessage = '';                                                
+                SET @Rows = 0;                                                
+                                            
+                IF EXISTS ( SELECT  1
+                            FROM    #TMP_PEDIDO )
+                    BEGIN                                                
+                        BEGIN TRAN;                                                
+                        PRINT @Fi_D;                                                 
+                        INSERT  INTO dbo.b_PedidoCentralizado
+                                ( Cencos ,
+                                  Fdesde ,
+                                  Fhasta ,
+                                  FechaPedido ,
+                                  IdEstado ,
+                                  TipoPedido ,
+                                  Id_OrgCompra ,
+                                  fechalimite ,
+                                  FechaReproceso ,
+                                  EstadoGenerarArrastreSaldo              
+                                )
+                        VALUES  ( @Ceco ,
+                                  @Fi_D ,
+                                  @Ft_D ,
+                                  GETDATE() ,
+                                  1 ,
+                                  @TipoPedido ,
+                                  @OrgCompra ,
+                                  @fechalimite ,
+GETDATE() ,
+                                  @GeneraArrastreSaldo              
+                                );                                                
+                                                        
+                        SELECT  @IDPedido_NEW = @@IDENTITY;                                                 
+                        SET @Rows = @Rows + @@ROWCOUNT;                                                
+                        
+INSERT  dbo.b_PedidoCentralizadoDet
+                                ( IdPedido ,
+                                  NumLinea ,
+                            Ing_Codigo ,
+                      Pro_Codigo ,
+                                  fcs_CodMaterial ,
+                                  FechaRuta ,
+                                  Cant_Ing ,
+                                  Cant_Pro ,
+                                  Cant_Des ,
+                                  Cant_Ingresada ,
+                                  Id_Ruta ,
+                                  Activo ,
+                                  Observacion ,
+                                  Proveedor ,
+                                  fcs_CodGrpAtr ,
+                                  fcs_DenMaterial ,
+                        fcs_DenUniMed ,
+                                  cencos ,
+                                  Saldo_Ing ,
+                                  Saldo_Consumido ,
+                                  Perfil_Redondeo ,
+                                  fmto_convenio ,
+                                  precio_convenio ,
+                                  Crossdocking ,
+                                  despacho_exceso                          
+                                )
+                                SELECT  @IDPedido_NEW ,
+                                        NumLinea ,
+                                        ing_codigo ,
+                                        Pro_Codigo ,
+                                        ProductoSAP ,
+                                        CONVERT(VARCHAR(8), CASE
+                                                              WHEN Fecha_Despacho = 0
+                                             THEN NULL
+                                                              ELSE Fecha_Despacho
+                                                            END) ,
+                                        CantidadIngrediente ,
+                                        CantidadProducto ,
+                                        total ,
+                                        total ,
+                                        ID_ruta_compra ,
+                                        activo ,
+                                        CASE WHEN Estado_Convenios = 2
+                                             THEN '2'
+                                             WHEN Estado_Convenios = 3
+                                             THEN '3'
+                                             WHEN Estado_Convenios = 4
+                                             THEN '4'
+                                        END AS Observacion ,                                                  
+                                        --Observacion ,        
+                                        Proveedor ,
+                                        FamiliaProductoSAP ,
+                                        fcs_DenMaterial ,
+                                        Unidad_Medida ,
+                                        @Ceco ,
+                                        Saldo ,
+                                        Cant_uso_Saldo ,
+                                        Perfil_Redondeo ,
+                                        Ctd_Fmto ,
+                                        precio ,
+                                        CrossDock ,
+                                        Exceso
+                                FROM    #TMP_PEDIDO;                         
+                                                              
+                        SET @Rows = @Rows + @@ROWCOUNT;                                       
+              
+      /* Insert parametros */  
+                                                             
+                        INSERT  INTO b_PedidoCentralizadoPar
+                                ( IdPedido, TipoPar, Valor )
+                        VALUES  ( @IDPedido_NEW, '@Ceco', @Ceco );                                                
+        
+                        INSERT  INTO b_PedidoCentralizadoPar
+     ( IdPedido ,
+                                  TipoPar ,
+                                  Valor                                 
+                                )
+                        VALUES  ( @IDPedido_NEW ,
+                                  '@FechaInicial' ,
+                                  @Fi                                 
+                                );                                                
+                       
+                        INSERT  INTO b_PedidoCentralizadoPar
+                                ( IdPedido, TipoPar, Valor )
+                        VALUES  ( @IDPedido_NEW, '@FechaFinal', @Ft );                                                
+                 
+                        INSERT  INTO b_PedidoCentralizadoPar
+                                ( IdPedido ,
+                                  TipoPar ,
+                                  Valor                                 
+                                )
+                        VALUES  ( @IDPedido_NEW ,
+                                  '@TipoPedido' ,
+                                  @TipoPedido                                 
+                                );                                                
+                                                
+                        INSERT  INTO b_PedidoCentralizadoPar
+                                ( IdPedido ,
+                                  TipoPar ,
+                                Valor                                 
+                                )
+                        VALUES  ( @IDPedido_NEW ,
+                                  '@Familias' ,
+                                  @FamiliasXmlData                                 
+                                );    
+                                                              
+                        INSERT  INTO b_PedidoCentralizadoPar
+                                ( IdPedido ,
+                                  TipoPar ,
+                                  Valor                           
+                                )
+                        VALUES  ( @IDPedido_NEW ,
+                                  '@Incluir_Prod_CD' ,
+                                  @Incluir_Prod_CD                                 
+                                );                                                
+                                                              
+                        INSERT  INTO b_PedidoCentralizadoPar
+                                ( IdPedido ,
+                                  TipoPar ,
+                                  Valor                                 
+                                )
+                        VALUES  ( @IDPedido_NEW ,
+                                  '@Incluir_Prod_PAP' ,
+                                  @Incluir_Prod_PAP                                 
+                                );                                                
+                                                              
+                        INSERT  INTO b_PedidoCentralizadoPar
+                                ( IdPedido ,
+                                  TipoPar ,
+                                  Valor                                 
+                                )
+                        VALUES  ( @IDPedido_NEW ,
+     '@IDPedido' ,
+                                  @IDPedido_NEW                                 
+                                );                                                
+                                                              
+                        INSERT  INTO b_PedidoCentralizadoPar
+                                ( IdPedido ,
+                TipoPar ,
+                                  Valor                         
+                                )
+                        VALUES  ( @IDPedido_NEW ,
+                                  '@OrgCompra' ,
+           @OrgCompra                         
+                                );                                                
+                                                      
+      /* dejamos el estado como generado con errores, si existe un detalle sin ruta o producto sap */  
+                        IF EXISTS ( SELECT  1
+                                    FROM    dbo.b_PedidoCentralizadoDet AS BPCD
+                                            WITH ( NOLOCK )
+           WHERE   IdPedido = @IDPedido_NEW
+                                            AND Activo = 0 )
+                            BEGIN                                                
+                    UPDATE  dbo.b_PedidoCentralizado
+                                SET     IdEstado = 3
+                                WHERE   IdPedido = @IDPedido_NEW;                                                
+                            END;                                                
+                                                          
+      /* dejamos el estado como enviado si: cant_des = 0 en todas sus lineas y si activo=1 en todas sus lineas */  
+                        IF EXISTS ( SELECT  1
+                                    FROM    dbo.b_PedidoCentralizadoDet AS BPCD
+                                      WITH ( NOLOCK )
+                                    WHERE   IdPedido = @IDPedido_NEW
+                                            AND Activo = 1
+                                    GROUP BY IdPedido
+                                    HAVING  SUM(Cant_Des) = 0 )
+                            BEGIN                                                
+                                UPDATE  dbo.b_PedidoCentralizado
+                                SET     IdEstado = 2
+                                WHERE   IdPedido = @IDPedido_NEW;                                                
+                            END;                                                
+                                                                
+                        COMMIT TRAN;                                                
+                        PRINT 'Ingreso pedido';                                                
+                    END;                                                
+                                                 
+            END TRY                                                        
+            BEGIN CATCH                                                
+                ROLLBACK TRAN;                              
+                PRINT 'Error: ingreso pedido';                                                
+                SET @ErrorMessage = ERROR_MESSAGE();                                                     
+                GOTO salida;                                                  
+            END CATCH;                                                    
+        END;                                                            
+                                                
+ /*Graba Pedido que son Proyectados tipo de Pedido=2*/ 
+    IF @IDPedido <> 0
+        AND @TipoPedido = 2
+        BEGIN                                                 
+                                                
+            BEGIN TRY                                                
+                                                
+   SET @ErrorMessage = '';                                                
+                SET @Rows = 0;                                     
+                                                       
+                BEGIN TRAN;                              
+                    
+    /* dejamos fecha de reproceso pedido */  
+           IF EXISTS ( SELECT  1
+                            FROM    dbo.b_PedidoCentralizadoDet AS BPCD WITH ( NOLOCK )
+                            WHERE  IdPedido = @IDPedido
+                                    AND Activo = 1
+   GROUP BY IdPedido
+                            HAVING  SUM(Cant_Des) = 0 )
+                    BEGIN                                                
+                        UPDATE  dbo.b_PedidoCentralizado
+                        SET     FechaReproceso = GETDATE()
+                        WHERE   IdPedido = @IDPedido;                                                
+                    END;                                                             
+                                              
+                INSERT  dbo.b_PedidoCentralizadoDet
+                        ( IdPedido ,
+                          NumLinea ,
+                          Ing_Codigo ,
+                          Pro_Codigo ,
+                          fcs_CodMaterial ,
+                          FechaRuta ,
+                          Cant_Ing ,
+                          Cant_Pro ,
+                          Cant_Des ,
+                          Cant_Ingresada ,
+                          Id_Ruta ,
+                          Activo ,
+                          Observacion ,
+                          Proveedor ,
+                          fcs_CodGrpAtr ,
+                          fcs_DenMaterial ,
+                          fcs_DenUniMed ,
+                          cencos ,
+                          Saldo_Ing ,
+                          Saldo_Consumido ,
+        Perfil_Redondeo ,
+                          fmto_convenio ,
+                          precio_convenio ,
+                          Crossdocking ,
+                          despacho_exceso                        
+                        )
+                        SELECT  @IDPedido ,
+								NumLinea ,
+                                ing_codigo ,
+                                Pro_Codigo ,
+                                ProductoSAP ,
+                                CONVERT(VARCHAR(8), CASE WHEN Fecha_Despacho = 0
+                                                         THEN NULL
+                                                         ELSE Fecha_Despacho
+                                                    END) ,
+                                CantidadIngrediente ,
+                                CantidadProducto ,
+                                total ,
+                                total ,
+                                ID_ruta_compra ,
+                                activo ,        
+--                                Observacion ,        
+                                CASE WHEN Estado_Convenios = 2 THEN '2'
+                                     WHEN Estado_Convenios = 3 THEN '3'
+                                     WHEN Estado_Convenios = 4 THEN '4'
+                                END AS Observacion ,
+                                Proveedor ,
+                                FamiliaProductoSAP ,
+                                fcs_DenMaterial ,
+                                Unidad_Medida ,
+                                @Ceco ,
+                                Saldo ,
+                                Cant_uso_Saldo ,
+                                Perfil_Redondeo ,
+                                Ctd_Fmto ,
+                                precio ,
+                                CrossDock ,
+                                Exceso
+                        FROM    #TMP_PEDIDO;                                                
+
+                SET @Rows = @Rows + @@ROWCOUNT;                                                
+                                                              
+                COMMIT TRAN;                                                
+                PRINT 'Ingreso pedido proyectado';                                    
+            END TRY                                                        
+            BEGIN CATCH                
+                ROLLBACK TRAN;                                                  
+                PRINT 'Error: pedido proyectado';                                                  
+                SET @ErrorMessage = ERROR_MESSAGE();                                                                    
+                GOTO salida;                                                  
+            END CATCH;                                                    
+        END; 
+                                                
+ /* Graba Pedido que son Reprocesados tipo de Pedido=1 */                                                
+    IF @IDPedido <> 0
+        AND @TipoPedido IN ( 1, 3 )
+        BEGIN                   
+                         
+            BEGIN TRY                                                 
+                                                
+                SET @ErrorMessage = '';                                                
+                SET @Rows = 0;                                                
+                                                       
+                BEGIN TRAN;                                                 
+                                                
+                DELETE  dbo.b_PedidoCentralizadoDet
+                WHERE   IdPedido = @IDPedido;                              
+                                                                
+                                                
+                INSERT  dbo.b_PedidoCentralizadoDet
+                        ( IdPedido ,
+                          NumLinea ,
+                          Ing_Codigo ,
+                          Pro_Codigo ,
+                          fcs_CodMaterial ,
+                          FechaRuta ,
+                          Cant_Ing ,
+                          Cant_Pro ,
+                          Cant_Des ,
+                          Cant_Ingresada ,
+                          Id_Ruta ,
+                          Activo ,
+                          Observacion ,
+                          Proveedor ,
+                          fcs_CodGrpAtr ,
+                          fcs_DenMaterial ,
+                          fcs_DenUniMed ,
+                          cencos ,
+                          Saldo_Ing ,
+                          Saldo_Consumido ,
+                          Perfil_Redondeo ,
+                          fmto_convenio ,
+                          precio_convenio ,
+                          Crossdocking ,
+                          despacho_exceso                     
+                        )
+                        SELECT  @IDPedido ,
+                                NumLinea ,
+                                ing_codigo ,
+                                Pro_Codigo ,
+                                ProductoSAP ,
+                                CONVERT(VARCHAR(8), CASE WHEN Fecha_Despacho = 0
+                                                         THEN NULL
+                                                         ELSE Fecha_Despacho
+                                                    END) ,
+                                CantidadIngrediente ,
+                                CantidadProducto ,
+                                total ,
+                                total ,
+                                ID_ruta_compra ,
+                                activo ,
+                                CASE WHEN Estado_Convenios = 2 THEN '2'
+                                     WHEN Estado_Convenios = 3 THEN '3'
+                        WHEN Estado_Convenios = 4 THEN '4'
+                                END AS Observacion ,                                          
+                                --Observacion ,        
+                                Proveedor ,
+                              FamiliaProductoSAP ,
+                                fcs_DenMaterial ,
+                                Unidad_Medida ,
+            @Ceco ,
+                                Saldo ,
+                                Cant_uso_Saldo ,
+                                Perfil_Redondeo ,
+                                Ctd_Fmto ,
+                                precio ,
+                                CrossDock ,
+                                Exceso
+                        FROM    #TMP_PEDIDO;                                                
+                                 
+                SET @Rows = @Rows + @@ROWCOUNT;                                                
+                                                          
+    /* dejamos el estado como generado si existe un detalle sin ruta o producto sap */  
+    IF EXISTS ( SELECT  1
+                            FROM    dbo.b_PedidoCentralizadoDet AS BPCD WITH ( NOLOCK )
+                            WHERE   IdPedido = @IDPedido
+                                    AND Activo = 0 )
+                    BEGIN                                                
+                        UPDATE  dbo.b_PedidoCentralizado
+                        SET     IdEstado = 3 ,
+                                FechaReproceso = GETDATE()
+                        WHERE   IdPedido = @IDPedido;                                                
+					END;                                         
+                ELSE
+                    BEGIN                                      
+                        UPDATE  dbo.b_PedidoCentralizado
+                        SET     IdEstado = 1 ,
+                                FechaReproceso = GETDATE()
+                      WHERE   IdPedido = @IDPedido;                                            
+                    END;                                                             
+                                                    
+                COMMIT TRAN;                                                
+                PRINT 'Ingreso pedido reproceso';                                                
+                                                
+            END TRY                      
+            BEGIN CATCH                                                
+                ROLLBACK TRAN;                                                
+                PRINT 'Error: pedido reproceso';                                                    
+                SET @ErrorMessage = ERROR_MESSAGE();                                                                
+                                                            
+                GOTO salida;                                                  
+            END CATCH;                                                    
+        END;                                                            
+                                                
+ /* FIN: GRABAMOS EL PEDIDO */                         
+                                                
+    SALIDA:                                                
+  
+ /* En caso de error mostramos el error */  
+    SELECT  @ErrorMessage AS ErrorMessage ,
+            @Rows cRows ,
+            ISNULL(@IDPedido_NEW, @IDPedido) AS IDPEDIDO;                                       
+                                     
+    DROP TABLE #Tmp_rutas;                                   
+    DROP TABLE #Tmp_Minuta;                                  
+    DROP TABLE #Tmp_Necesidad;                                  
+    DROP TABLE #Tmp_Convenio;                                  
+    DROP TABLE #Tabla_Final;                                  
+    DROP TABLE #tmp_fechas;                              
+    DROP TABLE #TMP_PEDIDO;                                  
+    DROP TABLE #Tmp_Ruta_Cd;                                
+                            
+    DROP TABLE #Tmp_ConvenioProveedor;                   
+    DROP TABLE #Tmp_RutaCd;                            
+    DROP TABLE #b_rutadespacho;                          
+    DROP TABLE #Tmp_DiasHolgura;        
+    DROP TABLE #b_rutadespachoCD;       
+    --DROP TABLE #b_convenios_sap_final 
+

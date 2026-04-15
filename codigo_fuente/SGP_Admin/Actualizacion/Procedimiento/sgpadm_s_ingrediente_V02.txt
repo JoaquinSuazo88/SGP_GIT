@@ -1,0 +1,236 @@
+/*18/08/2025 JPAZ Incluir Huella Carbono */
+
+CREATE PROC [dbo].[sgpadm_s_ingrediente_V02]  
+    (  
+      @aux INT ,  
+      @codigo VARCHAR(20) ,  
+      @descripcion VARCHAR(50)  
+    )  
+AS   
+
+    IF @aux = 1   
+     
+	    SELECT  ing.ing_codigo ,  
+                ing.ing_nombre ,  
+                proing.pri_propre ,  
+                ing.ing_Indppr ,  
+                ing.ing_activo  
+        FROM    b_ingrediente ing WITH ( NOLOCK )  
+        inner join b_productosing proing WITH ( NOLOCK ) on proing.pri_coding = ing.ing_codigo
+        WHERE proing.pri_codpro = @codigo  
+        ORDER BY ing.ing_nombre          
+          
+    IF @aux = 2   
+     
+	    SELECT  ing.ing_codigo,
+				isnull(ing.ing_nombre,'') as ing_nombre,
+				isnull(ing.ing_nomfan,'') as ing_nomfan,
+				isnull(ing.ing_unimed,0) as ing_unimed,
+				isnull(ing.ing_pctapr,0) as ing_pctapr,
+				isnull(ing.ing_pctcoc,0) as ing_pctcoc,
+				isnull(ing.ing_pctnut,0) as ing_pctnut,
+				isnull(ing.ing_facnut,0) as ing_facnut,
+				isnull(ing.ing_indpav,0) as ing_indpav,
+				isnull(ing.ing_indgrv,0) as ing_indgrv,
+				isnull(ing.ing_precos,0) as ing_precos,
+				isnull(ing.ing_feccos,0) as ing_feccos,
+				isnull(ing.ing_codcom,'') as ing_codcom,
+				isnull(ing.ing_codped,'') as ing_codped,
+				isnull(ing.ing_indppr,'') as ing_indppr,
+				isnull(ing.ing_fecmod,'') as ing_fecmod,
+				isnull(ing.ing_codtec,'') as ing_codtec,
+				isnull(ing.ing_activo,'') as ing_activo,
+				isnull(ing.Huella_Carbono,0) as Huella_Carbono,
+                isnull(unm.unm_nombre,'') as unm_nombre  
+        FROM    b_ingrediente ing WITH ( NOLOCK ) 
+        inner join a_unidadmed unm WITH ( NOLOCK ) on unm.unm_codigo = ing.ing_unimed  
+        WHERE ing.ing_codigo = @codigo          
+         
+    IF @aux = 3   
+     
+	    SELECT  ing_codigo  
+        FROM    b_ingrediente WITH ( NOLOCK )  
+        WHERE   ing_codigo = @codigo          
+          
+    IF @aux = 4   
+     
+	    SELECT  ing.ing_codigo,
+		        isnull(ing.ing_nombre,'') as ing_nombre,
+				isnull(ing.ing_nomfan,'') as ing_nomfan,
+				isnull(ing.ing_unimed,0) as ing_unimed,
+				isnull(ing.ing_pctapr,0) as ing_pctapr,
+				isnull(ing.ing_pctcoc,0) as ing_pctcoc,
+				isnull(ing.ing_pctnut,0) as ing_pctnut,
+				isnull(ing.ing_facnut,0) as ing_facnut,
+				isnull(ing.ing_indpav,0) as ing_indpav,
+				isnull(ing.ing_indgrv,0) as ing_indgrv,
+				isnull(ing.ing_precos,0) as ing_precos,
+				isnull(ing.ing_feccos,0) as ing_feccos,
+				isnull(ing.ing_codcom,'') as ing_codcom,
+				isnull(ing.ing_codped,'') as ing_codped,
+				isnull(ing.ing_indppr,'') as ing_indppr,
+				isnull(ing.ing_fecmod,'') as ing_fecmod,
+				isnull(ing.ing_codtec,'') as ing_codtec,
+				isnull(ing.ing_activo,'') as ing_activo,
+				isnull(ing.Huella_Carbono,0) as Huella_Carbono,  
+                isnull(unm.unm_nombre,'') as unm_nombre  
+        FROM    b_ingrediente ing WITH ( NOLOCK )
+        inner join a_unidadmed unm WITH ( NOLOCK ) on unm.unm_codigo = ing.ing_unimed  
+        WHERE ing.ing_codigo = @codigo      
+          
+    IF @aux = 5   
+     
+	    SELECT  ing_unimed  
+        FROM    b_ingrediente WITH ( NOLOCK )  
+        WHERE   ing_codigo = @codigo      
+          
+    IF @aux = 6   
+        SELECT  ing_codigo  
+        FROM    b_ingrediente WITH ( NOLOCK )  
+        ORDER BY CONVERT(INT, ing_codigo) DESC          
+          
+    IF @aux = 7   
+        SELECT  *  
+        FROM    b_ingrediente WITH ( NOLOCK )  
+        WHERE   ing_codigo = @codigo            
+        
+    IF @aux = 8   
+        SELECT  ing_codigo ,  
+                ing_nombre ,  
+                ing_nomfan ,  
+                ing_indppr  
+        FROM    b_ingrediente WITH ( NOLOCK )  
+        ORDER BY ing_codigo          
+          
+        
+    IF @aux = 9   
+        SELECT  a.ing_codigo ,  
+                a.ing_nombre ,  
+                a.ing_nomfan ,  
+                a.ing_indppr ,  
+                b.unm_nomcor ,  
+     a.ing_pctapr ,  
+                a.ing_pctcoc ,  
+                a.ing_pctnut ,  
+                a.ing_facnut ,  
+                a.ing_indpav ,  
+                a.ing_indgrv ,  
+                a.ing_precos ,  
+                a.ing_feccos ,  
+                a.ing_activo  
+        FROM    b_ingrediente a WITH ( NOLOCK ) 
+        inner join a_unidadmed b WITH ( NOLOCK ) on a.ing_unimed = b.unm_codigo  
+        inner join tmp_proding c WITH ( NOLOCK ) on c.tem_codigo = a.ing_codigo  
+        WHERE c.tem_usuario = @descripcion        
+         
+    IF @aux = 10   
+        SELECT  ing_codigo ,  
+                ing_nombre ,  
+                Ing_Indppr  
+        FROM    b_ingrediente WITH ( NOLOCK )  
+        WHERE   ing_nombre LIKE @descripcion  
+                AND ( ing_indppr = convert(int,@codigo)  
+OR @codigo = '3'  
+                    )  
+        ORDER BY ing_nombre      
+      
+    IF @aux = 11   
+        SELECT  ing_codigo ,  
+                ing_nombre ,  
+                Ing_Indppr  
+        FROM    b_ingrediente WITH ( NOLOCK )  
+        WHERE   ing_codigo LIKE @descripcion  
+                AND ( ing_indppr = convert(int,@codigo)  
+                      OR @codigo = '3'  
+                    )  
+        ORDER BY ing_nombre      
+      
+    IF @aux = 12   
+        SELECT DISTINCT  
+                ing_codigo ,  
+                ing_nombre ,  
+                Ing_Indppr  
+        FROM    b_ingrediente WITH ( NOLOCK )  
+        WHERE   ( ing_Indppr = convert(int,@descripcion)  
+                  OR @descripcion <> '1'  
+                )  
+        ORDER BY ing_nombre   
+      
+    IF @aux = 13   
+        SELECT  ing_codigo ,  
+                ing_nombre ,  
+				Ing_Indppr  
+        FROM    b_ingrediente WITH ( NOLOCK )  
+        WHERE   ing_nombre LIKE @descripcion  
+		AND Ing_Indppr = 1
+        ORDER BY ing_nombre      
+      
+    IF @aux = 14   
+      
+        SELECT DISTINCT  
+                ing_codigo ,  
+                ing_nombre ,  
+                Ing_Indppr  
+        FROM    b_ingrediente WITH ( NOLOCK )  
+        WHERE   ( ing_Indppr = convert(int,@descripcion)  
+                  OR @descripcion <> '1'  
+                )  
+                AND Ing_Indppr = 1  
+        ORDER BY ing_nombre      
+      
+    IF @aux = 15   
+      
+        SELECT  ing_codigo ,  
+                ing_nombre ,  
+                Ing_Indppr  
+        FROM    b_ingrediente WITH ( NOLOCK )  
+        WHERE   ing_codigo LIKE @descripcion  
+                AND Ing_Indppr = 1  
+        ORDER BY ing_nombre      
+      
+    IF @aux = 16  
+       
+        SELECT  bi.ing_codigo ,  
+                bi.ing_nombre  
+        FROM    
+        --dbo.b_productonut AS bp WITH ( NOLOCK )  
+                --INNER JOIN 
+                dbo.b_ingrediente AS bi WITH ( NOLOCK ) 
+                --ON bp.pnu_codpro = bi.ing_codigo  
+                INNER JOIN dbo.b_productosing AS bp2 WITH ( NOLOCK ) ON bp2.pri_coding = bi.ing_codigo  
+        WHERE   bi.ing_activo = '1'  
+        GROUP BY bi.ing_codigo, bi.ing_nombre  
+        ORDER BY bi.ing_nombre   
+    
+    IF @aux = 17  
+      
+        SELECT  ing_codigo ,  
+                ing_nombre ,  
+                Ing_Indppr  
+        FROM    b_ingrediente WITH ( NOLOCK )  
+        ORDER BY ing_nombre 
+
+
+	if @aux = 18
+
+	   SELECT a.ing_codigo as [Codigo],  
+              isnull(a.ing_nombre,'') as [Nombre],  
+              isnull(a.ing_nomfan,'') as [Nombre_Fantasia],  
+              case when isnull(a.ing_indppr,0) = 0 or a.ing_indppr = 2
+			       then 'Propuesta'
+				   else 'Real' end as [tipo],  
+              isnull(b.unm_nomcor,'') as [Uni.Medida],  
+              isnull(a.ing_pctapr,0) as [%AProv.],  
+              isnull(a.ing_pctcoc,0) as [%Coc.],  
+              isnull(a.ing_pctnut,0) as [%Aprov.N.],  
+              isnull(a.ing_facnut,0) as [Fac.Nut.],  
+              isnull(a.ing_indpav,0) as [P.A.V.B.],  
+              isnull(a.ing_indgrv,0) as [I.Gr.Verd.],  
+              isnull(a.ing_feccos,0) as [Fec. Ult.Comp.], 
+			  isnull(a.ing_precos,0) as [PMP],  
+              isnull(a.ing_activo,'') as [Activo],
+			  isnull(a.Huella_Carbono,0) as [Huella Carbono]
+       FROM    b_ingrediente a WITH ( NOLOCK ) 
+       inner join a_unidadmed b WITH ( NOLOCK ) on a.ing_unimed = b.unm_codigo  
+       inner join tmp_proding c WITH ( NOLOCK ) on c.tem_codigo = a.ing_codigo  
+       WHERE c.tem_usuario = @descripcion        

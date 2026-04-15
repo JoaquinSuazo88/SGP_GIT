@@ -1,0 +1,1091 @@
+/*                                    
+==========================================================================                                    
+Sistema : Sgp Administrador                                    
+Modulo :   Ayuda - Busqueda Receta (M_MinSR2.frm)                                                                      
+
+SP o Function : sgpadm_s_receta_V02                           
+
+Descripcion  :  MostrarLas recetas que tiene Ofretas y pertencen al Ceco              
+
+Observaciones :                                     
+
+F. creacion:      18/03/2014                                    
+
+Creador:          Alejandro Riquelme              
+                                   
+==========================================================================                                    
+Modificaciones:                                    
+
+Fecha             Programador             Motivo y/o Modificacion    
+
+14/11/2017        Jorge Andres Paz Núñez  Agregar en la opción 19 el nuevo campo estacionaldiad    
+09/01/2021        Jorge Andres Paz Núñez  Agregar en la opción 8 nuevas tablas    
+17/05/2022        Jorge Andres Paz Núñez  Incluir tres nuevo campos a la b_receta segundo ingrediente principal,
+                                          equipamiento cocción y parametro salsa. 
+16/11/2022        Jorge Andres Paz Núñez incluir un nuevo campo incluye receta AMD.
+14/02/2024        Jorge Andres Paz Núñez  Incluye el campo Activo en la tabla b_receta_oferta
+08/08/2025        Jorge Andres Paz Núñez  Incluir el campo huella carbono
+==========================================================================                          
+
+Test:                                    
+
+sgpadm_s_receta_V02 21, 2, 'x', 7, 0, 201709, 'adm'      
+sgpadm_s_receta_V02 26, '2', 'x', 7, 0, 0, 'adm'         
+sgpadm_s_receta_V02 25, 0, '%%', 0, 0, 0, ''                           
+sgpadm_s_receta_V02 19, 2, 'x', 44, 0, 201702, 'adm'    
+sgpadm_s_receta_V02 21, 0, 'x', 44, 0, 0, 'adm'    
+sgpadm_s_receta_V02 8, 8440, '', 0, 0, 0, 'adm'
+select * from a_tipoingredienteprincipalReceta where rec_codigo = 20647
+sgpadm_s_receta_V02 26, '4', 'x', 1, 0, 0, 'adm'
+==========================================================================                          
+*/                            
+
+CREATE PROC [dbo].[sgpadm_s_receta_V07]
+    (
+      @aux INT ,
+      @codigo INT ,
+      @descripcion VARCHAR(50) ,
+      @catdie INT ,
+      @tippla INT ,
+      @anomes INT ,
+      @usuario VARCHAR(20)
+    )
+
+AS 
+
+    DECLARE @fechoy INT, @nreg INT                                            
+
+    SELECT  @fechoy = 0 ,
+            @nreg = 0                      
+
+    DECLARE @GlosaSql NVARCHAR(MAX)                      
+
+    DECLARE @CalCosto AS VARCHAR(1)                
+
+    SET @CalCosto = 'N'                    
+
+    SELECT  @CalCosto = ISNULL(par_valor, 'N')
+    FROM    a_param
+    WHERE   par_codigo = 'cosproingr'                
+
+    SELECT  @fechoy = CONVERT(INT, CONVERT(VARCHAR(4), DATEPART(yy, GETDATE())) + SUBSTRING('00' + CONVERT(VARCHAR(2), DATEPART(MM,GETDATE())),
+	                          DATALENGTH(CONVERT(VARCHAR(2), DATEPART(MM, GETDATE()))) + 1, 2) + SUBSTRING('00'                                                                  + CONVERT(VARCHAR(2), DATEPART(dd,
+                              GETDATE())), DATALENGTH(CONVERT(VARCHAR(2), DATEPART(dd, GETDATE()))) + 1, 2))                     
+                
+    IF @aux IN ( 19, 2, 7, 11, 12, 13, 14, 15, 16, 17, 21, 24, 26 ) 
+
+        BEGIN                
+
+			--> Rutina buscar más una familia categoria dietetica                
+            DECLARE @eof VARCHAR(1)                
+
+            SET @eof = '1'                
+
+            SELECT  0 AS catdie
+            INTO    #TmpCatDie
+            FROM    a_recetacatdie WITH ( NOLOCK )                
+            DELETE  #TmpCatDie                 
+
+            IF @catdie > 0 
+
+                BEGIN                
+
+    INSERT  INTO #TmpCatDie
+                    SELECT  @catdie AS catdie                 
+
+                    BEGIN                
+
+                        WHILE @eof = '1' 
+
+                            IF EXISTS ( SELECT DISTINCT car_codigo
+                                        FROM    a_recetacatdie WITH ( NOLOCK )
+                                        WHERE   car_previo = @catdie ) 
+
+                                BEGIN                
+
+                                    INSERT  INTO #TmpCatDie
+                                    SELECT DISTINCT car_codigo
+                                    FROM    a_recetacatdie WITH ( NOLOCK )
+                                    WHERE   car_previo = @catdie                
+
+                                    SELECT  @catdie = car_codigo
+                                    FROM    a_recetacatdie WITH ( NOLOCK )
+                                    WHERE   car_previo = @catdie                
+
+                                END                
+
+                            ELSE
+
+                                BEGIN   
+
+                                    SET @eof = '0'
+
+                                END
+
+                    END       
+
+                END            
+
+            ELSE
+
+                BEGIN                
+
+                    INSERT  INTO #TmpCatDie
+                    SELECT  car_codigo
+                    FROM    a_recetacatdie WITH ( NOLOCK )                
+
+                END                
+                 
+			--> Rutina buscar más una familia tipo plato                
+
+            SELECT  0 AS tippla
+            INTO    #TmpTipPla
+            FROM    a_recetatippla WITH ( NOLOCK )                
+
+            DELETE  #TmpTipPla                 
+
+            IF @tippla > 0
+
+                BEGIN                
+
+                    SET @eof = '1'                 
+
+                    INSERT  INTO #TmpTipPla
+                    SELECT  @tippla AS tippla                
+
+                    BEGIN                
+
+                        WHILE @eof = '1' 
+
+                            IF EXISTS ( SELECT DISTINCT tip_codigo
+                                        FROM    a_recetatippla WITH ( NOLOCK )
+                                        WHERE   tip_previo = @tippla ) 
+
+                                BEGIN                
+
+                                    INSERT  INTO #TmpTipPla
+                                    SELECT DISTINCT tip_codigo
+                                    FROM    a_recetatippla WITH ( NOLOCK )
+                                    WHERE   tip_previo = @tippla                
+
+                                    SELECT  @tippla = tip_codigo
+                                    FROM    a_recetatippla WITH ( NOLOCK )
+                                    WHERE   tip_previo = @tippla      
+
+                                END
+
+                            ELSE 
+
+                                BEGIN                
+
+                                    SET @eof = '0'                
+
+                                END                
+
+                    END
+
+                END                
+
+            ELSE 
+
+             BEGIN                
+
+                    INSERT  INTO #TmpTipPla
+                    SELECT  tip_codigo AS tippla
+                    FROM    a_recetatippla WITH ( NOLOCK )                
+
+                END
+
+        END
+                
+    IF @aux = 2 
+
+        SELECT  COUNT(*) AS nreg
+        FROM    b_receta WITH ( NOLOCK )
+        WHERE   rec_catdie IN ( SELECT  catdie FROM #TmpCatDie WITH ( NOLOCK ) )
+        AND rec_tippla IN ( SELECT  tippla FROM #TmpTipPla WITH ( NOLOCK ) )
+        AND UPPER(rec_nombre) LIKE @descripcion
+        AND rec_tiprec = '0'
+                                            
+    IF @aux = 3 
+
+        SELECT  rec_codigo ,
+                rec_nombre ,
+rec_fecvig ,
+                rec_metpre ,
+                rec_gruvul ,
+                rec_indppr ,
+                rec_activo
+        FROM    b_receta WITH ( NOLOCK )
+  WHERE   ( rec_catdie = @catdie OR @catdie = 0 )
+        AND     ( rec_tippla = @tippla OR @tippla = 0 )
+        AND     UPPER(rec_nombre) LIKE @descripcion
+        AND     rec_tiprec = '0'
+  ORDER BY rec_nombre                                            
+                                            
+    IF @aux = 4 
+
+        SELECT  rec_metpre
+        FROM    b_receta WITH ( NOLOCK )
+        WHERE   rec_codigo = @codigo                                      
+                                            
+    IF @aux = 5 
+
+        SELECT  rec_codigo
+        FROM    b_receta WITH ( NOLOCK )
+        ORDER BY rec_codigo DESC                                            
+                                            
+    IF @aux = 6 
+
+        SELECT  red_codpro
+        FROM    b_recetadet WITH ( NOLOCK )
+        WHERE   red_codigo = @codigo                                            
+                                            
+    IF @aux = 7 
+
+        SELECT  rec_codigo ,
+                rec_nombre ,
+                rec_fecvig ,
+                rec_metpre ,
+                rec_gruvul ,
+                rec_indppr ,
+                rec_activo
+        FROM    b_receta WITH ( NOLOCK )
+        WHERE   rec_catdie IN ( SELECT  catdie FROM #TmpCatDie WITH ( NOLOCK ) )
+        AND     rec_tippla IN ( SELECT  tippla FROM #TmpTipPla WITH ( NOLOCK ) )
+        AND     rec_tiprec = '0'
+        ORDER BY rec_nombre                                            
+                                            
+    IF @aux = 8 
+
+        SELECT  a.rec_codigo ,
+                a.rec_nombre ,
+                a.rec_nomfan ,
+                a.rec_catdie ,
+                a.rec_tippla ,
+                a.rec_basrac ,
+                a.rec_fecvig ,
+                b.car_nombre ,
+                c.tip_nombre ,
+                a.rec_indppr ,
+                a.rec_canser ,
+                a.rec_activo ,
+                a.cod_uniReceta ,
+                ISNULL(SUBSTRING(dbo.sgpadm_p_buscararbolcatdietetica(a.rec_catdie), 1,
+                                 LEN(dbo.sgpadm_p_buscararbolcatdietetica(a.rec_catdie)) - 1), '') AS CatDietetica ,
+                ISNULL(SUBSTRING(dbo.sgpadm_p_buscararboltipplato1(a.rec_tippla), 1,
+                LEN(dbo.sgpadm_p_buscararboltipplato1(a.rec_tippla) )- 1), '') AS TipPla,
+				isnull(acr.IdCosto, -1) as IdCosto,
+				isnull(atipr.Idtipoingprincipal, -1) as Idtipoingprincipal,
+				isnull(atipr.Nombretipoingprincipal,'') as Nombretipoingprincipal,
+				isnull(amcr.IdMetodoCoccion, -1) as IdMetodoCoccion,
+				isnull(amcr.NombreMetodoCoccion,'') as NombreMetodoCoccion,
+				isnull(accr.IdCategorizacionCompleja, -1) as IdCategorizacionCompleja,
+				isnull(aicgr.IdIngCruceGarnitura, -1) as IdIngCruceGarnitura,
+				isnull(aicgr.NombreIngCruceGarnitura,'') as NombreIngCruceGarnitura,
+				isnull(aemr.IdEfectoMeteorizante, -1) as IdEfectoMeteorizante,
+				isnull(asr.IdSellos, -1) as IdSellos,
+				isnull(atcr.IdTiempoCoccion, -1) as IdTiempoCoccion,
+				convert(varchar(5),ISNULL(atcr.Hora, ''),8) as tiempococcionHora,
+				isnull(atht.IdTiempoHh, -1) as IdTiempoHh,
+				convert(varchar(5),ISNULL(atht.Hora, ''),8) as tiempohhHora,
+				isnull(ac.IdColor, -1) as IdColor,
+				isnull(ac.NombreColor,'') as NombreColor,
+				isnull(aesr.IdEtiquetadoSello, -1) as IdEtiquetadoSello,
+				isnull(atipr2.Idtipoingprincipal, -1) as IdSegundoingprincipal,
+				isnull(atipr2.Nombretipoingprincipal,'')  as NombreSegtipoingprincipal,
+				isnull(aec.IdEquipamientoCoccion, -1) as IdEquipamientoCoccion,
+				isnull(aps.Idparametrosalsa, -1) as Idparametrosalsa,
+				isnull(aia.IdIntegraAMD,1) as IdIntegraAMD 
+        FROM   b_receta a WITH ( NOLOCK ) 
+        inner join a_recetacatdie b WITH ( NOLOCK ) on a.rec_catdie = b.car_codigo
+        inner join a_recetatippla c WITH ( NOLOCK ) on a.rec_tippla = c.tip_codigo
+		left join a_costoreceta acr WITH ( NOLOCK ) on acr.IdCosto = a.IdCosto
+		                                           and isnull(acr.Activo, '') = '1'
+		left join a_tipoingredienteprincipalreceta atipr WITH ( NOLOCK ) on atipr.Idtipoingprincipal = a.Idtipoingprincipal
+		                                                                and isnull(atipr.Activo, '') = '1'
+		left join a_metodococcionreceta amcr WITH ( NOLOCK ) on amcr.IdMetodoCoccion = a.IdMetodoCoccion
+		                                                    and isnull(amcr.Activo, '') = '1'
+		left join a_categorizacioncomplejareceta accr WITH ( NOLOCK ) on accr.IdCategorizacionCompleja = a.IdCategorizacionCompleja
+		                                                              and isnull(accr.Activo, '') = '1'
+		left join a_ingredientecrucegarniturareceta aicgr WITH ( NOLOCK ) on aicgr.IdIngCruceGarnitura = a.IdIngCruceGarnitura
+		                                                                 and isnull(aicgr.Activo, '') = '1'
+        left join a_efectometeorizantereceta aemr WITH ( NOLOCK ) on aemr.IdEfectoMeteorizante = a.IdEfectoMeteorizante
+		                                                         and isnull(aemr.Activo, '') = '1'
+		left join a_sellosreceta asr WITH ( NOLOCK ) on asr.IdSellos = a.IdSellos
+		                                            and isnull(asr.Activo, '') = '1'
+		left join a_etiquetadoselloreceta aesr WITH ( NOLOCK ) on aesr.IdEtiquetadoSello = a.IdEtiquetadoSello
+		                                            and isnull(aesr.Activo, '') = '1'
+		left join a_tiempococcionreceta atcr WITH ( NOLOCK ) on atcr.IdTiempoCoccion = a.IdTiempoCoccion
+		                                                    and isnull(atcr.Activo, '') = '1'
+		left join a_tiempohhreceta atht WITH ( NOLOCK ) on atht.IdTiempoHh = a.IdTiempoHh
+		                                               and isnull(atht.Activo, '') = '1'
+		left join a_color ac WITH ( NOLOCK ) on ac.IdColor = a.IdColor
+		                                    and isnull(ac.Activo, '') = '1'
+		left join a_tipoingredienteprincipalreceta atipr2 WITH ( NOLOCK ) on atipr2.Idtipoingprincipal = a.IdSegundoIngredientePrincipal
+		                                                                and isnull(atipr2.Activo, '') = '1'
+		left join a_equipamientococcion aec WITH ( NOLOCK ) on aec.IdEquipamientoCoccion = a.IdEquipamientoCoccion
+		                                                                and isnull(aec.Activo, '') = '1'
+
+		left join a_parametrosalsa aps WITH ( NOLOCK ) on aps.IdParametroSalsa = a.IdParametroSalsa
+		                                                                and isnull(aps.Activo, '') = '1'
+		left join a_integraAMD aia with (nolock) on aia.IdIntegraAMD = a.IdIntegraAMD
+												and aia.activo = '1'
+        WHERE a.rec_codigo = @codigo                                     
+
+    IF @aux = 9 
+
+        SELECT  b.red_codigo ,
+                b.red_nroite ,
+                b.red_codpro ,
+                b.red_canpro ,
+                b.red_cospro ,
+                b.red_pctapr ,
+                b.red_pctcoc ,
+                b.red_pctnut ,
+                ( ( b.red_pctnut / 100 ) * ( b.red_canpro ) ) AS canneta ,
+                ( ( b.red_pctnut / 100 ) * ( b.red_canpro ) ) AS cangvneta ,
+                ( b.red_canpro * c.ing_precos ) AS precos ,
+                ( ( ( b.red_pctapr / 100 ) * b.red_canpro ) * ( b.red_pctcoc / 100 ) ) AS canservida ,
+                c.ing_nombre ,
+                c.ing_indgrv ,
+                c.ing_precos ,
+                d.unm_codigo ,
+                d.unm_nomcor ,
+                a.rec_indppr
+        FROM    b_receta as a WITH ( NOLOCK )
+        inner join b_recetadet as b WITH ( NOLOCK ) on   b.red_codigo = a.rec_codigo
+        inner join b_ingrediente as c WITH ( NOLOCK ) on b.red_codpro = c.ing_codigo
+                                                     AND   c.ing_activo = '1'                
+        inner join a_unidadmed as d WITH ( NOLOCK ) on c.ing_unimed = d.unm_codigo
+		WHERE b.red_codigo = @codigo
+                                                                                        
+    IF @aux = 10 
+
+        SELECT  rec_gruvul
+        FROM    b_receta WITH ( NOLOCK )
+        WHERE   rec_codigo = @codigo                                            
+                                            
+    IF @aux = 11 
+
+        SELECT a.rec_codigo ,
+               a.rec_nombre ,
+               a.rec_indppr ,
+               SUM(b.red_canpro * c.ing_precos) AS cosrec
+        FROM   b_receta a WITH ( NOLOCK )
+        inner join b_recetadet b WITH ( NOLOCK ) on  a.rec_codigo = b.red_codigo
+        inner join b_ingrediente c WITH ( NOLOCK ) on b.red_codpro = c.ing_codigo
+                                                  AND c.ing_activo = '1'
+        WHERE ( a.rec_fecvig > @fechoy OR a.rec_fecvig <= 0 )
+        AND a.rec_catdie IN ( SELECT catdie FROM #TmpCatDie WITH ( NOLOCK ) )
+        AND a.rec_tippla IN ( SELECT tippla FROM #TmpTipPla WITH ( NOLOCK ) )
+        GROUP BY a.rec_codigo ,
+                a.rec_nombre ,
+                a.rec_indppr
+        ORDER BY a.rec_nombre                                              
+                                  
+    IF @aux = 12 
+
+        SELECT DISTINCT
+                a.rec_codigo ,
+                a.rec_nombre ,
+                b.rec_codrec ,
+                a.rec_indppr
+        FROM    b_receta a WITH ( NOLOCK )
+        LEFT JOIN b_recetacasino b WITH ( NOLOCK ) ON a.rec_codigo = b.rec_codrec
+        WHERE   b.rec_codrec IS NULL
+        AND a.rec_catdie IN ( SELECT catdie FROM #TmpCatDie WITH ( NOLOCK ) )
+        AND a.rec_tippla IN ( SELECT tippla FROM #TmpTipPla WITH ( NOLOCK ) )
+        AND a.rec_tiprec = '0'
+        ORDER BY a.rec_nombre                                            
+                                            
+    IF @aux = 13 
+
+        SELECT DISTINCT
+                a.rec_codigo ,
+                a.rec_nombre ,
+                b.rec_codrec ,
+                a.rec_indppr
+        FROM    b_receta a WITH ( NOLOCK )
+        LEFT JOIN b_recetacasino b WITH ( NOLOCK ) ON a.rec_codigo = b.rec_codrec
+        WHERE   a.rec_catdie IN ( SELECT catdie FROM #TmpCatDie WITH ( NOLOCK ) )
+        AND     a.rec_tippla IN ( SELECT tippla FROM #TmpTipPla WITH ( NOLOCK ) )
+        AND     a.rec_tiprec = '0'
+        ORDER BY a.rec_nombre                
+                                            
+    IF @aux = 14 
+
+        BEGIN                                            
+                                            
+            SELECT  @nreg = COUNT(DISTINCT a.rec_codigo)
+            FROM    b_receta a WITH ( NOLOCK )
+            LEFT JOIN b_recetacasino b WITH ( NOLOCK ) ON a.rec_codigo = b.rec_codrec
+            WHERE   b.rec_codrec IS NULL
+            AND     a.rec_catdie IN ( SELECT catdie FROM #TmpCatDie WITH ( NOLOCK ) )
+            AND     a.rec_tippla IN ( SELECT tippla FROM #TmpTipPla WITH ( NOLOCK ) )
+            AND     a.rec_tiprec = '0'
+            AND     UPPER(a.rec_nombre) LIKE @descripcion                                            
+                                            
+            SELECT DISTINCT
+                    a.rec_codigo ,
+                    a.rec_nombre ,
+                    b.rec_codrec ,
+                    @nreg AS nreg ,
+                    a.rec_indppr
+            FROM    b_receta a WITH ( NOLOCK )
+            LEFT JOIN b_recetacasino b WITH ( NOLOCK ) ON a.rec_codigo = b.rec_codrec
+            WHERE   b.rec_codrec IS NULL
+            AND     a.rec_catdie IN ( SELECT catdie FROM #TmpCatDie WITH ( NOLOCK ) )
+            AND     a.rec_tippla IN ( SELECT tippla FROM #TmpTipPla WITH ( NOLOCK ) )
+            AND     a.rec_tiprec = '0'
+            AND     UPPER(a.rec_nombre) LIKE @descripcion
+            ORDER BY a.rec_nombre            
+      
+        END                                            
+                                            
+    IF @aux = 15 
+
+        BEGIN                                            
+            
+            SELECT  @nreg = COUNT(DISTINCT a.rec_codigo)
+            FROM    b_receta a WITH ( NOLOCK )
+            LEFT JOIN b_recetacasino b WITH ( NOLOCK ) ON a.rec_codigo = b.rec_codrec
+            WHERE   a.rec_catdie IN ( SELECT catdie FROM #TmpCatDie WITH ( NOLOCK ) )
+            AND     a.rec_tippla IN ( SELECT tippla FROM #TmpTipPla WITH ( NOLOCK ) )
+            AND     a.rec_tiprec = '0'
+            AND     UPPER(a.rec_nombre) LIKE @descripcion                                            
+                                                                                        
+            SELECT DISTINCT
+                    a.rec_codigo ,
+                    a.rec_nombre ,
+                    b.rec_codrec ,
+                    @nreg AS nreg ,
+                    a.rec_indppr
+            FROM    b_receta a WITH ( NOLOCK )
+            LEFT JOIN b_recetacasino b WITH ( NOLOCK ) ON a.rec_codigo = b.rec_codrec
+            WHERE   a.rec_catdie IN ( SELECT catdie FROM #TmpCatDie WITH ( NOLOCK ) )
+            AND     a.rec_tippla IN ( SELECT tippla FROM #TmpTipPla WITH ( NOLOCK ) )
+            AND     a.rec_tiprec = '0'
+            AND     UPPER(a.rec_nombre) LIKE @descripcion
+            ORDER BY a.rec_nombre                                            
+                                            
+        END                                            
+                                            
+    IF @aux = 16 
+
+        BEGIN                                            
+                                            
+            SELECT  @nreg = COUNT(DISTINCT a.rec_codigo)
+            FROM    b_receta a WITH ( NOLOCK )
+            LEFT JOIN b_recetacasino b WITH ( NOLOCK ) ON a.rec_codigo = b.rec_codrec
+            WHERE   b.rec_codrec IS NULL
+            AND     a.rec_catdie IN ( SELECT catdie FROM #TmpCatDie WITH ( NOLOCK ) )
+            AND     a.rec_tippla IN ( SELECT tippla FROM #TmpTipPla WITH ( NOLOCK ) )
+            AND     a.rec_tiprec = '0'
+            AND UPPER(a.rec_codigo) LIKE @descripcion                                            
+                                            
+            SELECT DISTINCT
+                    a.rec_codigo ,
+                    a.rec_nombre ,
+                    b.rec_codrec ,
+                    a.rec_indppr
+            FROM    b_receta a WITH ( NOLOCK )
+            LEFT JOIN b_recetacasino b WITH ( NOLOCK ) ON a.rec_codigo = b.rec_codrec
+            WHERE   b.rec_codrec IS NULL
+            AND     a.rec_catdie IN ( SELECT catdie FROM #TmpCatDie WITH ( NOLOCK ) )
+            AND     a.rec_tippla IN ( SELECT tippla FROM #TmpTipPla WITH ( NOLOCK ) )
+            AND     a.rec_tiprec = '0'
+            AND     UPPER(a.rec_codigo) LIKE @descripcion
+            ORDER BY a.rec_codigo                                            
+                                            
+        END                            
+                                            
+    IF @aux = 17 
+
+        BEGIN                                            
+                                            
+            SELECT  @nreg = COUNT(DISTINCT a.rec_codigo)
+            FROM    b_receta a WITH ( NOLOCK )
+            LEFT JOIN b_recetacasino b WITH ( NOLOCK ) ON a.rec_codigo = b.rec_codrec
+            WHERE   a.rec_catdie IN ( SELECT catdie FROM #TmpCatDie WITH ( NOLOCK ) )
+            AND     a.rec_tippla IN ( SELECT tippla FROM #TmpTipPla WITH ( NOLOCK ) )
+            AND     a.rec_tiprec = '0'
+            AND     UPPER(a.rec_codigo) LIKE @descripcion                                            
+ 
+            SELECT DISTINCT
+         a.rec_codigo ,
+                    a.rec_nombre ,
+     b.rec_codrec ,
+       a.rec_indppr
+            FROM    b_receta a WITH ( NOLOCK )
+            LEFT JOIN b_recetacasino b WITH ( NOLOCK ) ON a.rec_codigo = b.rec_codrec
+           WHERE   a.rec_catdie IN ( SELECT catdie FROM #TmpCatDie WITH ( NOLOCK ) )
+            AND     a.rec_tippla IN ( SELECT tippla FROM #TmpTipPla WITH ( NOLOCK ) )
+            AND     a.rec_tiprec = '0'
+            AND     UPPER(a.rec_codigo) LIKE @descripcion
+            ORDER BY a.rec_codigo                                 
+
+        END                                            
+                                            
+IF @aux = 18      -- sgpadm_s_receta 18, 2599, '', 2, 0, 201108, 'adm'                                      
+
+        BEGIN                                            
+                                            
+            SELECT  b.red_codigo ,
+                    isnull(b.red_nroite,0) as  red_nroite,
+                    isnull(b.red_codpro,'') as red_codpro,
+                    isnull(b.red_canpro,0) as red_canpro,
+                    isnull(b.red_cospro,0) as red_cospro,
+                    ISNULL(b.red_pctapr, 0) AS red_pctapr ,
+                    ISNULL(b.red_pctcoc, 0) AS red_pctcoc ,
+                    ISNULL(b.red_pctnut, 0) AS red_pctnut ,
+                    ( ISNULL(( b.red_pctnut / 100 ), 0) * ( b.red_canpro ) ) AS canneta ,
+                    ( ISNULL(( b.red_pctnut / 100 ), 0) * ( b.red_canpro ) ) AS cangvneta ,
+                    CONVERT(FLOAT, 0) AS precos ,
+                    ( ( ( b.red_pctapr / 100 ) * b.red_canpro ) * ( b.red_pctcoc / 100 ) ) AS canservida ,
+                    isnull(c.ing_nombre,'') as ing_nombre,
+                    isnull(c.ing_indgrv,0) as ing_indgrv,
+                    isnull(c.ing_precos,0) as ing_precos,
+                    isnull(c.ing_indppr,0) as ing_indppr,
+                    isnull(d.unm_codigo,0) as unm_codigo,
+                    isnull(d.unm_nomcor,'') as unm_nomcor,
+                    isnull(a.rec_indppr,0) as rec_indppr,
+                    ISNULL(red_IndentificadorIngSumaTablaGramaje, '0') AS red_IndentificadorIngSumaTablaGramaje,
+					isnull(c.Huella_Carbono,0) as HuellaCarbono
+            INTO    #paso
+            FROM    b_receta a WITH ( NOLOCK )
+            inner join b_recetadet b WITH ( NOLOCK ) on b.red_codigo = a.rec_codigo
+            inner join b_ingrediente c WITH ( NOLOCK ) on b.red_codpro = c.ing_codigo
+                                                      AND c.ing_activo = '1'                
+            inner join a_unidadmed d WITH ( NOLOCK ) on c.ing_unimed = d.unm_codigo
+            WHERE  b.red_codigo = @codigo
+                
+            IF @CalCosto = 'N' 
+
+                BEGIN                
+                
+                    UPDATE  #paso
+                    SET     #paso.precos = ISNULL(( a.red_canpro * ( c.dlp_precio / d.pro_facing ) ), 0)
+                    FROM    #paso a WITH ( NOLOCK ) 
+                    inner join b_productosing e WITH ( NOLOCK ) on a.red_codpro = e.pri_coding
+                    inner join b_productos d WITH ( NOLOCK ) on e.pri_codpro = d.pro_codigo
+                                                            AND e.pri_propre = 1
+                    inner join b_detlistaprecio c WITH ( NOLOCK ) on d.pro_codigo = c.dlp_codpro
+                    inner join b_listaprecio b WITH ( NOLOCK ) on b.lpr_codigo = c.dlp_codigo
+                    WHERE b.lpr_codigo = @catdie
+                    AND   c.dlp_anomes = @anomes
+                    AND   c.dlp_precio > 0
+                    AND   d.pro_facing > 0
+                    AND   d.pro_facing IS NOT NULL                 
+                
+                END                
+
+            ELSE 
+
+                BEGIN                
+
+                
+                    UPDATE  #paso
+                    SET     #paso.precos = ( red_canpro * ISNULL(( SELECT AVG(c.dlp_precio / d.pro_facing)
+                                                                   FROM b_productosing e WITH ( NOLOCK )
+                                                                   inner join b_productos d WITH ( NOLOCK ) on e.pri_codpro = d.pro_codigo
+																   inner join b_detlistaprecio c WITH ( NOLOCK ) on d.pro_codigo = c.dlp_codpro
+                                                                   inner join b_listaprecio b WITH ( NOLOCK )  on b.lpr_codigo = c.dlp_codigo
+                                                                   WHERE red_codpro = e.pri_coding
+                                                                   AND   b.lpr_codigo = @catdie
+                                                                   AND   c.dlp_anomes = @anomes
+                                                                   AND   c.dlp_precio > 0
+																   AND   d.pro_facing > 0
+                                                                   AND d.pro_facing IS NOT NULL), 0) )
+                END                
+
+            SELECT  *
+            FROM    #paso WITH ( NOLOCK )                                 
+
+        END                                            
+
+    IF @aux = 19         --sgpadm_s_receta 19, 2, '', 7, 0, 201004, 'adm'                         
+
+        BEGIN                                     
+                    
+            CREATE TABLE #tmpReceta1
+                (
+                  rec_codigo INT ,
+                  rec_nombre VARCHAR(100) ,
+                  rec_fecvig INT ,
+                  rec_gruvul VARCHAR(1) ,
+                  rec_metpre VARCHAR(1) ,
+                  cosrec FLOAT ,
+                  existe VARCHAR(1) ,
+                  rec_indppr int ,
+                  candiet FLOAT ,
+                  rec_activo VARCHAR(1) ,
+                  rec_tippla VARCHAR(80) ,
+                  rec_catdie VARCHAR(80)
+                )      
+                  
+            SET @GlosaSql = ''                  
+                 
+            SET @GlosaSql = @GlosaSql
+                + ' INSERT INTO #tmpReceta1 SELECT  a.rec_codigo , a.rec_nombre , a.rec_fecvig , CASE WHEN CONVERT(VARCHAR(1), a.rec_gruvul) <> '''' THEN ''1'' '      
+            SET @GlosaSql = @GlosaSql + ' ELSE ''0'' END AS rec_gruvul , '      
+            SET @GlosaSql = @GlosaSql
+                + ' CASE WHEN CONVERT(VARCHAR(1), a.rec_metpre) <> '''' THEN ''1''  ELSE ''0'' END AS rec_metpre , '      
+            SET @GlosaSql = @GlosaSql
+                + ' CONVERT(FLOAT, 0) AS cosrec , CONVERT(VARCHAR(1), ''1'') AS existe , a.rec_indppr , CONVERT(FLOAT, 0) AS candiet , '      
+            SET @GlosaSql = @GlosaSql
+                + ' a.rec_activo , dbo.sgpadm_p_buscararboltipplato1(a.rec_tippla) AS rec_tippla , '      
+            SET @GlosaSql = @GlosaSql + ' dbo.sgpadm_p_buscararbolcatdietetica(a.rec_catdie) AS rec_catdie '      
+            --INTO    #tmpReceta1      
+            SET @GlosaSql = @GlosaSql + ' FROM    b_receta a WITH ( NOLOCK ) inner join a_usuarios b WITH ( NOLOCK ) '      
+            SET @GlosaSql = @GlosaSql + ' on b.usu_codigo = ''' + @usuario + ''' '      
+            SET @GlosaSql = @GlosaSql + ' AND ( a.rec_indppr = b.usu_indppr OR b.usu_indppr <> 1 ) '      
+            SET @GlosaSql = @GlosaSql
+                + ' WHERE   ( a.rec_catdie IN ( SELECT  catdie FROM #TmpCatDie ) ) AND ( a.rec_tippla IN ( SELECT  tippla FROM  #TmpTipPla ) ) '      
+     
+            IF @descripcion <> '' 
+
+                BEGIN      
+
+                    SET @GlosaSql = @GlosaSql
+                        + ' AND ( a.rec_fecvig > CONVERT(INT, CONVERT(VARCHAR(8), GETDATE(), 112)) OR a.rec_fecvig <= 0 ) '      
+
+                END      
+         
+            PRINT @GlosaSql                      
+
+            EXEC sp_executesql @GlosaSql ;      
+                     
+            IF @CalCosto = 'N' 
+
+                BEGIN                
+
+                    SELECT  a.rec_codigo ,
+                            a.rec_nombre ,
+                            a.rec_fecvig ,
+                            a.rec_indppr ,
+                           SUM(b.red_canpro * ISNULL(( f.dlp_precio / d.pro_facing ), 0)) AS cosrec     
+						    --, rec_tippla    
+                    INTO    #tmpReceta2
+                    FROM    b_receta a WITH ( NOLOCK )
+                    inner join b_recetadet b WITH ( NOLOCK ) on a.rec_codigo = b.red_codigo
+                    inner join b_ingrediente c WITH ( NOLOCK ) on b.red_codpro = c.ing_codigo
+					                                          and c.ing_activo = '1'
+                    inner join b_productosing g WITH ( NOLOCK ) on c.ing_codigo = g.pri_coding
+					                                           and g.pri_propre = 1
+                    inner join b_productos d WITH ( NOLOCK ) on g.pri_codpro = d.pro_codigo
+                    inner join b_detlistaprecio f WITH ( NOLOCK ) on d.pro_codigo = f.dlp_codpro
+                    inner join b_listaprecio e WITH ( NOLOCK ) on e.lpr_codigo = f.dlp_codigo
+                    inner join a_usuarios h WITH ( NOLOCK ) on h.usu_codigo = @usuario
+                                                           AND ( a.rec_indppr = h.usu_indppr OR h.usu_indppr <> 1)
+                    WHERE a.rec_catdie IN ( SELECT catdie FROM #TmpCatDie WITH ( NOLOCK ) )
+                    AND   a.rec_tippla IN ( SELECT tippla FROM #TmpTipPla WITH ( NOLOCK ) )
+                    AND   f.dlp_codigo = @codigo
+                    AND   f.dlp_anomes = @anomes
+                    GROUP BY a.rec_codigo ,
+                            a.rec_nombre ,
+                            a.rec_fecvig ,
+                            a.rec_indppr                                  
+
+                    UPDATE  #tmpReceta1
+                    SET     #tmpReceta1.existe = '0' ,
+                            #tmpReceta1.cosrec = a.cosrec
+                    FROM    #tmpReceta2 a WITH ( NOLOCK )
+                    inner join #tmpReceta1 b WITH ( NOLOCK ) on a.rec_codigo = b.rec_codigo                                            
+                
+                    SELECT * ,
+                           ISNULL(REPLACE(REPLACE(CONVERT(VARCHAR(MAX), ( SELECT bo.DescripcionCorta
+                                                                          FROM   dbo.b_receta_Oferta AS bro
+                                                                          INNER JOIN dbo.b_Ofertas AS bo ON bro.codigo_oferta = bo.Codigo_oferta
+                                                                          WHERE  bro.rec_codigo = a.rec_codigo
+                                                                          AND    bo.Activo = '1'
+																		  and    bro.Activo = '1'
+                                                                          FOR XML AUTO )), '<bo DescripcionCorta="', '-'), '"/>', ''),
+                                                                          '') AS ofertas_asoc ,
+                           '1' ,
+                           ISNULL(REPLACE(REPLACE(CONVERT(VARCHAR(MAX), ( SELECT ae.NomCorto
+                                                                          FROM   dbo.b_receta_estacionalidad AS bre
+                                                                          INNER JOIN dbo.a_estacionalidad AS ae ON bre.IdCodigo = ae.IdCodigo
+                                                                          WHERE bre.rec_codigo = a.rec_codigo
+                                                                          AND   ae.Activo = 1
+                                                                          FOR XML AUTO )), '<ae NomCorto="', '-'), '"/>', ''), '') AS Estacionalidad_asoc
+                    FROM #tmpReceta1 a
+                    ORDER BY rec_nombre              
+
+       END                
+
+            ELSE 
+
+				BEGIN
+
+                    SELECT DISTINCT
+                            c.ing_codigo ,
+                            ROUND(AVG(ISNULL(f.dlp_precio, 0) / ISNULL(d.pro_facing, 0)), 6) AS precio
+                    INTO    #tmpCostoProm
+                    FROM    b_receta a WITH ( NOLOCK ) 
+                    inner join b_recetadet b WITH ( NOLOCK ) on a.rec_codigo = b.red_codigo
+                    inner join b_ingrediente c WITH ( NOLOCK ) on b.red_codpro = c.ing_codigo
+					                                          and c.ing_activo = '1'
+                    inner join b_productosing g WITH ( NOLOCK ) on c.ing_codigo = g.pri_coding
+                    inner join b_productos d WITH ( NOLOCK ) on g.pri_codpro = d.pro_codigo
+					                                        AND d.pro_activo = '1'
+                    inner join b_detlistaprecio f WITH ( NOLOCK ) on d.pro_codigo = f.dlp_codpro
+                                                                 AND f.dlp_precio > 0
+                    inner join b_listaprecio e WITH ( NOLOCK ) on e.lpr_codigo = f.dlp_codigo
+                    inner join a_usuarios h WITH ( NOLOCK ) on h.usu_codigo = @usuario
+					                                       AND ( a.rec_indppr = h.usu_indppr OR h.usu_indppr <> 1 )
+                    WHERE a.rec_catdie IN ( SELECT catdie FROM #TmpCatDie WITH ( NOLOCK ) )
+                    AND a.rec_tippla IN ( SELECT tippla FROM #TmpTipPla WITH ( NOLOCK ) )
+                    AND f.dlp_codigo = @codigo
+                    AND f.dlp_anomes = @anomes                                                    
+                    GROUP BY c.ing_codigo                
+                
+                    SELECT  a.rec_codigo ,
+                            a.rec_nombre ,
+                            a.rec_fecvig ,
+                            a.rec_indppr ,
+					SUM(b.red_canpro * c.precio) AS cosrec
+                    INTO    #tmpReceta23
+                    FROM    b_receta a WITH ( NOLOCK ) 
+                    inner join b_recetadet b WITH ( NOLOCK ) on a.rec_codigo = b.red_codigo
+                    inner join #tmpCostoProm c WITH ( NOLOCK ) on b.red_codpro = c.ing_codigo
+                    WHERE a.rec_catdie IN ( SELECT catdie FROM #TmpCatDie WITH ( NOLOCK ) )
+                    AND   a.rec_tippla IN ( SELECT tippla FROM #TmpTipPla WITH ( NOLOCK ) )
+                    AND   a.rec_activo = '1'
+                    GROUP BY a.rec_codigo ,
+                            a.rec_nombre ,
+                            a.rec_fecvig ,
+                            a.rec_indppr                    
+
+                    UPDATE  #tmpReceta1
+                    SET     #tmpReceta1.existe = '0' ,
+                            #tmpReceta1.cosrec = a.cosrec
+                    FROM    #tmpReceta23 a WITH ( NOLOCK )
+                    inner join #tmpReceta1 b WITH ( NOLOCK ) on a.rec_codigo = b.rec_codigo
+                
+                    SELECT  * ,
+                            ISNULL(REPLACE(REPLACE(CONVERT(VARCHAR(MAX),
+							( SELECT bo.DescripcionCorta
+                              FROM   dbo.b_receta_Oferta AS bro
+							  INNER JOIN dbo.b_Ofertas AS bo ON bro.codigo_oferta = bo.Codigo_oferta
+							  WHERE  bro.rec_codigo = a.rec_codigo
+							  and    bro.Activo = '1'
+							  FOR XML AUTO )), '<bo DescripcionCorta="', '-'), '"/>', ''), '') AS ofertas_asoc ,
+                            '2' ,
+                            ISNULL(REPLACE(REPLACE(CONVERT(VARCHAR(MAX),
+							( SELECT ae.NomCorto
+							  FROM     dbo.b_receta_estacionalidad AS bre
+							  INNER JOIN dbo.a_estacionalidad AS ae ON bre.IdCodigo = ae.IdCodigo
+							  WHERE    bre.rec_codigo = a.rec_codigo
+							  AND ae.Activo = 1
+							  FOR XML AUTO )), '<ae NomCorto="', '-'), '"/>', ''), '') AS Estacionalidad_asoc
+                    FROM    #tmpReceta1 a WITH ( NOLOCK )
+                    ORDER BY rec_nombre               
+
+                END
+
+        END
+
+    IF @aux = 20 
+
+        BEGIN                                    
+
+            SELECT  a.rec_codigo ,
+                    a.rec_nombre ,
+                    a.rec_indppr ,
+                    SUM(b.red_canpro * ( f.dlp_precio / d.pro_facing )) AS cosrec
+            FROM    b_receta a WITH ( NOLOCK )
+            inner join b_recetadet b WITH ( NOLOCK ) on b.red_codigo = a.rec_codigo
+          inner join b_ingrediente c WITH ( NOLOCK ) on b.red_codpro = c.ing_codigo
+			                                           and c.ing_activo = '1'
+            inner join b_productosing g WITH ( NOLOCK ) on c.ing_codigo = g.pri_coding
+			                                           AND g.pri_propre = 1
+            inner join b_productos d WITH ( NOLOCK ) on g.pri_codpro = d.pro_codigo
+            inner join b_detlistaprecio f WITH ( NOLOCK ) on d.pro_codigo = f.dlp_codpro
+            inner join b_listaprecio e WITH ( NOLOCK ) on f.dlp_codigo = e.lpr_codigo
+            WHERE d.pro_ctacon = @descripcion
+            AND    b.red_codigo = @codigo
+            AND    f.dlp_codigo = @catdie
+            AND    f.dlp_anomes = @anomes
+            GROUP BY a.rec_codigo ,
+                    a.rec_nombre ,
+                    a.rec_indppr                                          
+
+        END                                            
+                                            
+    IF @aux = 21 
+
+        BEGIN                   
+                                            
+            DECLARE @tip_codtip INT , @tip_nombre VARCHAR(200)                                            
+      
+            SELECT  @tip_codtip = 0 ,
+                    @tip_nombre = ''                                                                                                             
+
+            SET @GlosaSql = ''                  
+                 
+			SET @GlosaSql = @GlosaSql
+                + ' SELECT  b.rec_codigo , b.rec_nombre , b.rec_nomfan , b.rec_fecvig , a.car_codigo , b.rec_basrac , b.rec_indppr , b.rec_canser , '      
+            SET @GlosaSql = @GlosaSql
+                + ' b.rec_activo , dbo.sgpadm_p_buscararboltipplato1(b.rec_tippla) AS rec_tippla1 , dbo.sgpadm_p_buscararbolcatdietetica(b.rec_catdie) AS rec_catdie1, '      
+            SET @GlosaSql = @GlosaSql + ' ISNULL(REPLACE(REPLACE(CONVERT(VARCHAR(MAX), ( SELECT   bo.DescripcionCorta '    
+            SET @GlosaSql = @GlosaSql
+                + ' FROM     dbo.b_receta_Oferta AS bro INNER JOIN dbo.b_Ofertas AS bo ON bro.codigo_oferta = bo.Codigo_oferta and bro.Activo = ''1'' '    
+            SET @GlosaSql = @GlosaSql
+                + ' WHERE    bro.rec_codigo = b.rec_codigo FOR XML AUTO )), ''<bo DescripcionCorta="'', ''-''), ''"/>'', ''''), '''') AS ofertas_asoc , '    
+            SET @GlosaSql = @GlosaSql
+                + ' ISNULL(REPLACE(REPLACE(CONVERT(VARCHAR(MAX), ( SELECT   ae.NomCorto FROM  dbo.b_receta_estacionalidad AS bre '    
+            SET @GlosaSql = @GlosaSql
+                + ' INNER JOIN dbo.a_estacionalidad AS ae ON bre.IdCodigo = ae.IdCodigo WHERE bre.rec_codigo = b.rec_codigo AND ae.Activo = 1 '    
+            SET @GlosaSql = @GlosaSql
+                + ' FOR XML AUTO )), ''<ae NomCorto="'', ''-''), ''"/>'', ''''), '''') AS Estacionalidad_asoc '    
+            SET @GlosaSql = @GlosaSql + ' FROM a_recetacatdie a WITH ( NOLOCK ) inner join b_receta b WITH ( NOLOCK ) '      
+            SET @GlosaSql = @GlosaSql + ' on b.rec_catdie = a.car_codigo '      
+            SET @GlosaSql = @GlosaSql + ' where b.rec_catdie IN ( SELECT    catdie FROM #TmpCatDie WITH ( NOLOCK ) ) '      
+            SET @GlosaSql = @GlosaSql
+                + ' AND b.rec_tippla IN ( SELECT tippla FROM #TmpTipPla WITH ( NOLOCK ) ) AND b.rec_tiprec = ''0'' '      
+      
+            IF @descripcion <> '' 
+
+                BEGIN      
+         
+                    SET @GlosaSql = @GlosaSql
+
+                        + ' AND ( b.rec_fecvig > CONVERT(INT, CONVERT(VARCHAR(8), GETDATE(), 112)) OR b.rec_fecvig <= 0 ) '      
+
+                END      
+
+            SET @GlosaSql = @GlosaSql + ' ORDER BY rec_tippla1'      
+
+            PRINT @GlosaSql   
+
+            EXEC sp_executesql @GlosaSql ;           
+
+        END                 
+                                            
+    IF @aux = 22        -- sgpadm_s_receta 22, 2599, '', 0, 2, 201108, 'adm'                
+
+        BEGIN                                            
+                                            
+            SELECT  a.ing_nombre ,
+                    b.red_codigo ,
+                    b.red_nroite ,
+                    b.red_pctnut ,
+                    b.red_pctapr ,
+                    b.red_pctcoc ,
+                    b.red_canpro ,
+                    c.rec_canser ,
+					b.red_cospro ,
+                    c.rec_fecvig ,
+                    c.rec_metpre ,
+                    b.red_codpro ,
+                    CONVERT(FLOAT, 0) AS ing_precos ,
+                    c.rec_indppr ,
+                    c.rec_activo
+            INTO    #tmpReceta3
+            FROM    b_receta c WITH ( NOLOCK )
+            inner join b_recetadet b WITH ( NOLOCK ) on c.rec_codigo = b.red_codigo
+            inner join b_ingrediente a WITH ( NOLOCK ) on b.red_codpro = a.ing_codigo
+			                                          and a.ing_activo = '1'
+            WHERE c.rec_codigo = @codigo                                            
+
+            IF @CalCosto = 'N' 
+
+                BEGIN                                
+
+                    UPDATE  #tmpReceta3
+                    SET     #tmpReceta3.ing_precos = ISNULL(( d.dlp_precio / e.pro_facing ), 0)
+                    FROM    #tmpReceta3 c WITH ( NOLOCK )
+                    inner join b_ingrediente a WITH ( NOLOCK ) on c.red_codpro = a.ing_codigo
+					                                          and a.ing_activo = '1'
+                    inner join b_productosing f WITH ( NOLOCK ) on a.ing_codigo = f.pri_coding
+					                                           AND f.pri_propre = 1
+                    inner join b_productos e WITH ( NOLOCK ) on f.pri_codpro = e.pro_codigo
+                    inner join b_detlistaprecio d WITH ( NOLOCK ) on e.pro_codigo = d.dlp_codpro
+                    WHERE c.red_codigo = @codigo
+                    AND   d.dlp_codigo = @tippla
+                    AND   d.dlp_anomes = @anomes                                            
+
+                END         
+
+            ELSE 
+
+                BEGIN                
+
+                  UPDATE  #tmpReceta3
+                  SET     #tmpReceta3.ing_precos = ISNULL(( SELECT AVG(d.dlp_precio / e.pro_facing)
+                                                            FROM b_ingrediente a WITH ( NOLOCK ) 
+                                                            inner join b_productosing f WITH ( NOLOCK ) on a.ing_codigo = f.pri_coding
+                                                            inner join b_productos e WITH ( NOLOCK )  on f.pri_codpro = e.pro_codigo
+                                                                                                     AND e.pro_facing > 0
+                                                                                                     AND e.pro_facing IS NOT NULL
+                                                            inner join b_detlistaprecio d WITH ( NOLOCK ) on e.pro_codigo = d.dlp_codpro
+                                                                                                         AND d.dlp_precio > 0
+                                                            WHERE red_codpro = a.ing_codigo
+                                                            AND   a.ing_activo = '1'
+                                                            AND   red_codigo = @codigo
+                         AND   d.dlp_codigo = @tippla
+                                                            AND   d.dlp_anomes = @anomes), 0)                      
+
+                END
+
+            SELECT  ing_nombre ,
+                    red_codigo ,
+                    red_nroite ,
+					red_pctnut ,
+                    red_pctapr ,
+                    red_pctcoc ,
+                    red_canpro ,
+                    rec_canser ,
+					red_cospro ,
+       rec_fecvig ,
+                    rec_metpre ,
+                    ing_precos ,
+                    rec_activo
+            FROM    #tmpReceta3 WITH ( NOLOCK )
+            ORDER BY red_codigo ,
+                     red_nroite                    
+
+ END                
+
+    IF @aux = 23 
+
+        BEGIN                                     
+
+            SELECT   DISTINCT
+                    a.rec_codigo ,
+                    a.rec_nombre ,
+                    a.rec_fecvig ,
+                    CASE WHEN CONVERT(VARCHAR(1), a.rec_gruvul) <> '' THEN '1' ELSE '0' END AS rec_gruvul ,
+                    CASE WHEN CONVERT(VARCHAR(1), a.rec_metpre) <> '' THEN '1' ELSE '0' END AS rec_metpre ,
+                    CONVERT(FLOAT, 0) AS cosrec ,
+                    CONVERT(VARCHAR(1), '1') AS existe ,
+                    CONVERT(FLOAT, 0) AS candiet ,
+                    dbo.sgpadm_p_buscararboltipplato1(a.rec_tippla) AS rec_tippla  -- Samuel Melendez 30-09-09                
+                    ,
+                    dbo.sgpadm_p_buscararbolcatdietetica(a.rec_catdie) AS rec_catdie
+            INTO    #tmpReceta4
+            FROM    cas_b_receta a WITH ( NOLOCK )
+            inner join a_usuarios b WITH ( NOLOCK ) on b.usu_codigo = @usuario -- WHERE   (convert(int, substring(convert(varchar(8),rec_fecvig), 1, 6)) >= @fechoy OR rec_fecvig <= 0)                              
+            WHERE   ( a.rec_catdie = @catdie OR @catdie = 0 )
+
+            SELECT  DISTINCT
+                    a.rec_codigo ,
+                    a.rec_nombre ,
+                    a.rec_fecvig ,
+                    i.cpi_precos AS cosrec
+            INTO    #tmpReceta5
+            FROM    cas_b_receta a WITH ( NOLOCK )
+            inner join cas_b_recetadet b WITH ( NOLOCK ) on a.rec_cecori = b.red_cecori
+                                                        AND a.rec_codigo = b.red_codigo
+            inner join b_ingrediente c WITH ( NOLOCK ) on b.red_codpro = c.ing_codigo
+			                                          AND c.ing_activo = '1'
+            inner join cas_b_contlistpreing i WITH ( NOLOCK ) on i.cpi_coding = c.Ing_codigo
+            inner join b_productosing g WITH ( NOLOCK ) on c.ing_codigo = g.pri_coding
+			                                           AND g.pri_propre = 1
+            inner join b_productos d WITH ( NOLOCK ) on g.pri_codpro = d.pro_codigo
+            inner join b_detlistaprecio f WITH ( NOLOCK ) on d.pro_codigo = f.dlp_codpro
+            inner join b_listaprecio e WITH ( NOLOCK ) on e.lpr_codigo = f.dlp_codigo
+            inner join a_usuarios h WITH ( NOLOCK ) on h.usu_codigo = 'adm'--@usuario,
+            WHERE ( a.rec_catdie = @catdie OR @catdie = 0 )
+            AND   f.dlp_anomes = @anomes
+            GROUP BY a.rec_codigo ,
+                    a.rec_nombre ,
+                    a.rec_fecvig ,
+                    cpi_precos--,a.rec_indppr   
+
+            UPDATE  #tmpReceta4
+            SET     #tmpReceta4.existe = '0' ,
+                    #tmpReceta4.cosrec = a.cosrec
+            FROM    #tmpReceta5 a 
+            inner join #tmpReceta4 b on a.rec_codigo = b.rec_codigo                                            
+
+            SELECT  *
+            FROM    #tmpReceta4 a
+            ORDER BY rec_nombre                                            
+
+        END                
+
+    IF @aux = 24 
+
+        BEGIN                                     
+                     
+            SELECT COUNT(*) AS Nro_reg
+            FROM   b_receta a WITH ( NOLOCK )
+            inner join a_usuarios b WITH ( NOLOCK ) on b.usu_codigo = @usuario
+                                                   AND ( a.rec_indppr = b.usu_indppr OR b.usu_indppr <> 1 )                 
+            WHERE   ( a.rec_catdie IN ( SELECT catdie FROM #TmpCatDie WITH ( NOLOCK ) ) )
+            AND     ( a.rec_tippla IN ( SELECT tippla FROM #TmpTipPla WITH ( NOLOCK ) ) )
+            AND     a.rec_activo = 1                
+    
+        END                
+                                
+    IF @aux = 25 
+
+        BEGIN                  
+      
+            SET @GlosaSql = ''                               
+
+            SET @GlosaSql = @GlosaSql + ' SELECT  rec_codigo ,rec_nombre , rec_fecvig '      
+            SET @GlosaSql = @GlosaSql + ' FROM    b_receta WITH ( NOLOCK ) '      
+            SET @GlosaSql = @GlosaSql + ' WHERE   ( rec_catdie = ''' + CONVERT(VARCHAR(5), @catdie) + ''' OR '''
+                + CONVERT(VARCHAR(5), @catdie) + ''' = 0 ) '      
+            SET @GlosaSql = @GlosaSql + ' AND ( rec_tippla = ''' + CONVERT(VARCHAR(5), @tippla) + ''' OR '''
+                + CONVERT(VARCHAR(5), @tippla) + ''' = 0 ) '      
+            SET @GlosaSql = @GlosaSql + ' AND UPPER(rec_nombre) LIKE ''' + @descripcion + ''' AND rec_tiprec = ''0'' '      
+                      
+            IF @usuario <> '' 
+
+                BEGIN      
+         
+                    SET @GlosaSql = @GlosaSql
+                        + ' AND ( rec_fecvig > CONVERT(INT, CONVERT(VARCHAR(8), GETDATE(), 112)) OR rec_fecvig <= 0 ) '      
+         
+                END      
+                                      
+            SET @GlosaSql = @GlosaSql + ' ORDER BY rec_nombre '      
+      
+            PRINT @GlosaSql        
+
+            EXEC sp_executesql @GlosaSql ;                    
+                            
+        END       
+              
+    IF @aux = 26 
+
+        BEGIN                  
+
+            SET @GlosaSql = ''                  
+
+            SET @GlosaSql = @GlosaSql
+                + ' SELECT DISTINCT isnull(a.rec_nombre,'''') rec_nombre, isnull(a.rec_codigo,0) rec_codigo, isnull(a.rec_fecvig,0) rec_fecvig, isnull(b.red_codpro,'''') red_codpro, isnull(b.red_nroite,0) red_nroite, isnull(b.red_canpro,0) red_canpro, ' 
+
+
+
+            SET @GlosaSql = @GlosaSql
+                + ' isnull(b.red_pctapr,0) red_pctapr, isnull(b.red_pctcoc,0) red_pctcoc, isnull(b.red_pctnut,0) red_pctnut, isnull(b.red_IndentificadorIngSumaTablaGramaje,''0'') as red_IndentificadorIngSumaTablaGramaje '      
+            SET @GlosaSql = @GlosaSql + ' FROM  b_receta a With(NoLock) inner join b_recetadet b With(NoLock) '      
+            SET @GlosaSql = @GlosaSql + ' on b.red_codigo = a.rec_codigo '
+            SET @GlosaSql = @GlosaSql + ' WHERE b.red_codpro = '''
+                + CONVERT(VARCHAR(10), @codigo) + ''' '      
+            SET @GlosaSql = @GlosaSql + ' AND  a.rec_catdie IN ( SELECT catdie FROM #TmpCatDie WITH ( NOLOCK ) ) '      
+            SET @GlosaSql = @GlosaSql
+                + ' AND  a.rec_tippla IN ( SELECT tippla FROM #TmpTipPla WITH ( NOLOCK ) ) AND a.rec_tiprec = ''0'''      
+
+            IF @descripcion <> '' 
+
+                BEGIN      
+         
+                    SET @GlosaSql = @GlosaSql
+                        + ' AND ( a.rec_fecvig > CONVERT(INT, CONVERT(VARCHAR(8), GETDATE(), 112)) OR a.rec_fecvig <= 0 ) '      
+         
+                END      
+                      
+            SET @GlosaSql = @GlosaSql + ' ORDER BY rec_nombre '      
+      
+            PRINT @GlosaSql                      
+
+            EXEC sp_executesql @GlosaSql ;                              
+
+        END 
+

@@ -1,0 +1,95 @@
+/*            
+==========================================================================            
+Sistema : Sgp Administrador            
+Modulo :  Receta - Aporte Nutricional (M_Receta.frm)            
+            
+SP o Function : sgpadm_Sel_DetAporteRecetaMinutaBloque          
+Descripcion  :  Mostrar aportes detallado receta minuta bloque        
+            
+Observaciones :             
+            
+F. creacion:      19/10/2013            
+Creador:          Jorge Paz            
+            
+==========================================================================            
+Modificaciones:            
+Fecha             Programador             Motivo y/o Modificacion            
+26/08/2025        JPAZN                   incluir tabla gramaje x nivel            
+==========================================================================            
+Test:            
+sgpadm_Sel_DetAporteRecetaMinutaBloque 2, 12624, 10351, '51760'     
+sgpadm_Sel_AporteNutriMinutaBloque 2, 12624,10361, '20210'  
+         
+==========================================================================            
+*/            
+         
+alter PROC [dbo].[sgpadm_Sel_DetAporteRecetaMinutaBloque_V02]
+    (
+      @CodReceta INT ,
+      @CodRegimen INT ,
+      @Ceco VARCHAR(10)
+    )
+AS 
+    DECLARE @CodSubSeg INT        
+    DECLARE @CodZona INT        
+        
+    SELECT  @CodSubSeg = bc2.cli_subseg ,
+            @CodZona = bc2.cli_codzon
+    FROM    dbo.b_clientes AS bc2
+    WHERE   bc2.cli_codigo = @Ceco        
+        
+    SELECT  a.rec_codigo ,
+            a.rec_basrac ,
+            b.red_codpro ,
+            b.red_pctnut ,
+            b.red_canpro ,
+			a.rec_tippla
+    INTO    #paso
+    FROM    b_receta a WITH ( NOLOCK )
+            INNER JOIN b_recetadet b WITH ( NOLOCK ) ON b.red_codigo = a.rec_codigo
+    WHERE   a.rec_codigo = @CodReceta          
+
+	update #paso
+	set #paso.red_canpro=isnull(reemplazo.CantIngredienteCambio, a.red_canpro)
+	   ,#paso.red_codpro=ISNULL(reemplazo.IdIngredienteCambio, a.red_codpro)
+       ,#paso.red_pctnut = CASE WHEN reemplazo.IdIngredienteCambio is not null and reemplazo.IdIngredienteOrigen <> reemplazo.IdIngredienteCambio
+	                       THEN c.ing_pctnut
+                           ELSE a.red_pctnut
+                               END
+	from #paso as a
+	OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    @Ceco,
+				    @CodRegimen,
+				    a.rec_codigo,
+				    a.red_codpro,
+				    a.rec_tippla
+				) AS reemplazo
+    INNER JOIN b_ingrediente c WITH ( NOLOCK ) ON ISNULL(reemplazo.IdIngredienteCambio, a.red_codpro) = c.ing_codigo  
+          
+    --UPDATE  #paso
+    --SET     #paso.red_codpro = a.tgc_codins ,
+    --        #paso.red_canpro = a.tgc_cantgr ,
+    --        #paso.red_pctnut = CASE WHEN a.tgc_coding <> a.tgc_codins THEN c.ing_pctnut
+    --                                ELSE b.red_pctnut
+    --                           END --c.ing_pctnut      
+    --FROM    b_tablagramajececo a WITH ( NOLOCK )
+    --        INNER JOIN #paso b WITH ( NOLOCK ) ON b.rec_codigo = a.tgc_codrec
+    --                                              AND b.red_codpro = a.tgc_coding
+    --        INNER JOIN b_ingrediente c WITH ( NOLOCK ) ON a.tgc_codins = c.ing_codigo
+    --WHERE   a.tgc_ceco = @Ceco
+    --        AND a.tgc_codreg = @CodRegimen         
+          
+    SELECT DISTINCT
+            e.nut_nombre ,
+            e.nut_codigo ,
+            SUM(( ( ( a.red_pctnut / 100 ) * ( d.pnu_canapo * ( a.red_canpro / a.rec_basrac ) ) ) / c.ing_facnut )) AS candiet ,
+            e.nut_secnro
+    FROM    #paso a WITH ( NOLOCK )
+            INNER JOIN b_ingrediente c WITH ( NOLOCK ) ON a.red_codpro = c.ing_codigo
+            INNER JOIN b_productonut d WITH ( NOLOCK ) ON c.ing_codigo = d.pnu_codpro
+            INNER JOIN a_nutriente e WITH ( NOLOCK ) ON d.pnu_codapo = e.nut_codigo
+    WHERE   c.ing_facnut > 0
+    GROUP BY e.nut_nombre ,
+            e.nut_codigo ,
+            e.nut_secnro
+    ORDER BY e.nut_secnro

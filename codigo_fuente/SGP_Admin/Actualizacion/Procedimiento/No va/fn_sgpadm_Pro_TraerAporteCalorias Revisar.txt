@@ -1,0 +1,72 @@
+/*              
+==========================================================================              
+Sistema : Sgp Administrador              
+Modulo :   None              
+              
+SP o Function : fn_sgpadm_Pro_TraerAporteCalorias        
+Descripcion  : Función encargada de traer los aportes calorias        
+                                  
+Observaciones :               
+              
+F. creacion:      22/01/2014  
+Creador:          Jorge Andres Paz Núñez              
+              
+==========================================================================              
+Modificaciones:               
+==========================================================================              
+Test:              
+select dbo.fn_sgpadm_Pro_TraerAporteCalorias(15818, '45292', 11117)              
+==========================================================================              
+*/              
+                
+alter FUNCTION [dbo].[fn_sgpadm_Pro_TraerAporteCalorias]
+    (
+      @CodReceta INT ,
+      @Ceco VARCHAR(10) ,
+      @CodRegimen INT         
+    )
+RETURNS FLOAT
+AS 
+    BEGIN                
+                  
+        DECLARE @TotAporte FLOAT         
+        SET @TotAporte = 0            
+        
+        BEGIN                
+          
+            SELECT  @TotAporte = SUM(( ( ( CASE WHEN ISNULL(tagra.tgc_codins, '') = '' THEN br2.red_pctnut
+                                                ELSE bi.ing_pctnut
+                                           END / 100 ) * ( bp.pnu_canapo
+                                                           * ( ( CASE WHEN tagra.tgc_cantgr IS null
+                                                                      THEN br2.red_canpro
+                                                                      ELSE tagra.tgc_cantgr
+                                                                 END ) / br.rec_basrac ) ) ) / bi.ing_facnut ))
+            FROM    dbo.b_receta AS br WITH ( NOLOCK )
+                    INNER JOIN dbo.b_recetadet AS br2 WITH ( NOLOCK ) ON br.rec_codigo = br2.red_codigo
+                    LEFT JOIN ( SELECT  bt.tgc_ceco ,
+                                        bt.tgc_codreg ,
+                                        bt.tgc_codrec ,
+                                        bt.tgc_coding ,
+                                        bt.tgc_codins ,
+                                        bt.tgc_cantgr
+                                FROM    dbo.b_tablagramajececo AS bt WITH ( NOLOCK )
+                              ) tagra ON tagra.tgc_ceco = @Ceco
+                                         AND tagra.tgc_codreg = @CodRegimen
+                                         AND tagra.tgc_codrec = br.rec_codigo
+                                         AND tagra.tgc_coding = br2.red_codpro
+                    INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON CASE WHEN ISNULL(tagra.tgc_codins, '') = ''
+                                                                               THEN br2.red_codpro
+                                                                               ELSE tagra.tgc_codins
+                                                                          END = bi.ing_codigo
+                    INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+                    INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON bp.pnu_codapo = an.nut_codigo
+            WHERE   br.rec_codigo = @Codreceta
+                    AND bi.ing_facnut > 0
+                    AND an.nut_codigo = 2        
+                   
+        END                 
+            
+        RETURN (@TotAporte)                
+                
+    END 
+

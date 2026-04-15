@@ -1,0 +1,525 @@
+/*                  
+==========================================================================                  
+Sistema : Sgp Administrador                  
+Modulo :   Minutas - Generación Pedidos                  
+                  
+SP o Function : sgpadm_Fun_CostoMinutaProducto                  
+Descripcion  : Selecciona los precios para ingrediente de minutas                  
+Observaciones :                  
+                  
+F. creacion:      12/12/2013                  
+Creador:          Jorge Paz                  
+                  
+==========================================================================                  
+Modificaciones:                  
+Fecha             Programador             Motivo y/o Modificacion                  
+27-03-2014       Jorge Paz Núñez          Aplica la selección de un solo producto en                  
+                                          calculo precio convenios 
+13-01-2022       Jorge Paz Núñez          Aplica fecha inicio y termino a la
+                                          tabla Excepción formato Compras y
+										  cambia procedimiento PA_sgpadm_CostoMinutaProducto_V01
+										  x PA_sgpadm_FrecuenciaIngMinutaBloque_V01.  										                   
+20/08/2025		JPAZN					  Incluir tabla gramaje x nivel
+==========================================================================                  
+Test:                  
+PA_sgpadm_FrecuenciaIngMinutaBloque_V01_JPA 'ppt0677', 10468, 10001, 20250203, 20250302, 1              
+PA_sgpadm_CostoMinutaProducto_JPA 14502,'99470', 1              
+==========================================================================                  
+*/                  
+                          
+alter PROCEDURE [dbo].[PA_sgpadm_FrecuenciaIngMinutaBloque_V02]
+    (
+      @Ceco AS VARCHAR(10) ,
+      @Regimen AS INT ,
+      @Servicio AS INT ,
+      @FechaIni AS INT ,
+      @FechaFin AS INT ,
+      @OpPrecio AS INT                
+    )
+AS 
+    SET NOCOUNT ON                  
+                                    
+    DECLARE @ErrorMessage NVARCHAR(4000)                  
+                                            
+    BEGIN TRY                  
+                          
+        SET @ErrorMessage = ''                  
+
+	declare @FechaSistema int
+	set @FechaSistema = CONVERT(INT, CONVERT(VARCHAR(8), GETDATE(), 112))
+
+	/* crear tabla paso por tema de transformar campo fecha datetime */
+	DECLARE @tmpMinuta TABLE
+(
+	[min_cecori] VARCHAR(10),
+	[min_codreg] int,
+	[min_codser] int,
+	[min_fecmin] int,
+	[Fecha] datetime,
+	[ID_Bloque] bigint,
+	[min_codigo] int,
+	[min_racteo] int
+)
+
+	INSERT INTO @tmpMinuta
+	select a.min_cecori,
+	       a.min_codreg,
+		   a.min_codser,
+		   a.min_fecmin,
+		   convert(datetime,convert(varchar(8),a.min_fecmin)) as Fecha,
+		   a.ID_Bloque,
+		   a.min_codigo,
+		   a.min_racteo
+	from cas_b_minuta as a with (nolock)
+	inner join cas_b_minutadet as b with (nolock) on b.mid_cecori = a.min_cecori
+                                                 AND b.mid_codigo = a.min_codigo  
+	where a.min_cecori = @Ceco
+	and   a.min_codreg = @Regimen
+	and   a.min_codser = @Servicio
+    AND   a.min_fecmin >= @FechaIni  
+    AND   a.min_fecmin <= @FechaFin  
+	group by a.min_cecori,
+             a.min_codreg,
+		     a.min_codser,
+		     a.min_fecmin,
+		     a.ID_Bloque,
+		     a.min_codigo,
+			 a.min_racteo
+	    
+		-- tabla de paso detalle rceta
+        SELECT br.rec_codigo,  
+		       br2.red_codpro,
+		       br2.red_canpro,
+		       br.rec_tippla
+		into #DetReceta
+        FROM    dbo.cas_b_MinutaBloque AS bmb WITH ( NOLOCK )
+                INNER JOIN dbo.b_clientes AS bc WITH ( NOLOCK ) ON bc.cli_codigo = bmb.Ceco
+                                                               AND bc.cli_tipo = 0
+                INNER JOIN @tmpMinuta AS cbm ON bmb.Ceco = cbm.min_cecori
+                                             AND cbm.ID_Bloque = bmb.ID_Bloque 
+                                             AND cbm.fecha >= bmb.FechaDesde
+                                             AND cbm.fecha <= bmb.FechaHasta
+                INNER JOIN dbo.cas_b_minutadet AS cbm2 WITH ( NOLOCK ) ON cbm2.mid_cecori = bmb.Ceco
+                                                                      AND cbm2.mid_codigo = cbm.min_codigo 
+                INNER JOIN dbo.b_receta AS br WITH ( NOLOCK ) ON br.rec_codigo = cbm2.mid_codrec
+                INNER JOIN dbo.b_recetadet AS br2 WITH ( NOLOCK ) ON br2.red_codigo = br.rec_codigo
+                INNER JOIN dbo.b_ingrediente AS bi ON br2.red_codpro = bi.ing_codigo
+        WHERE   bmb.Ceco = @Ceco
+                AND br.rec_indppr = 1
+                AND ( br.rec_fecvig >= @FechaSistema
+                      OR br.rec_fecvig = 0
+                      OR br.rec_fecvig IS NULL
+                    )
+                AND cbm.min_codreg = @Regimen
+                AND cbm.min_codser = @Servicio
+                AND cbm.min_fecmin >= @FechaIni
+                AND cbm.min_fecmin <= @FechaFin
+		group by br.rec_codigo,  
+		        br2.red_codpro,
+		        br2.red_canpro,
+		        br.rec_tippla
+
+		   -- Índice para acelerar JOIN y APPLY
+    CREATE NONCLUSTERED INDEX IX_DetReceta_R ON #DetReceta (rec_codigo, red_codpro) INCLUDE (rec_tippla);
+
+	--Actualizar tabla detalle receta x tabla de gramaje
+	update #DetReceta
+	set red_canpro=isnull(reemplazo.CantIngredienteCambio, a.red_canpro)
+	   ,red_codpro=ISNULL(reemplazo.IdIngredienteCambio, a.red_codpro)
+	from #DetReceta as a
+	OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    @Ceco,
+				    @Regimen,
+				    a.rec_codigo,
+				    a.red_codpro,
+				    a.rec_tippla
+				) AS reemplazo
+    INNER JOIN b_ingrediente c WITH ( NOLOCK ) ON ISNULL(reemplazo.IdIngredienteCambio, a.red_codpro) = c.ing_codigo  
+
+
+        SELECT DISTINCT
+                bi.ing_codigo ,
+                bp2.pro_codigo ,
+                bp2.pro_nombre ,
+                bp2.pro_facing ,
+                cbm.min_fecmin AS fi ,
+                cbm.min_fecmin AS ft ,
+                CONVERT(FLOAT, 0) AS PMP ,
+                CONVERT(FLOAT, 0) AS Convenio ,
+                CONVERT(FLOAT, 0) AS Lista ,
+                CONVERT(FLOAT, 0) AS IdConvenio
+        INTO    #tabla
+        FROM    dbo.cas_b_MinutaBloque AS bmb WITH ( NOLOCK )
+                INNER JOIN dbo.b_clientes AS bc WITH ( NOLOCK ) ON bc.cli_codigo = bmb.Ceco
+                                                               AND bc.cli_tipo = 0
+                INNER JOIN @tmpMinuta AS cbm ON bmb.Ceco = cbm.min_cecori
+                                             AND cbm.ID_Bloque = bmb.ID_Bloque 
+                                             AND cbm.fecha >= bmb.FechaDesde
+                                             AND cbm.fecha <= bmb.FechaHasta
+                INNER JOIN dbo.cas_b_minutadet AS cbm2 WITH ( NOLOCK ) ON cbm2.mid_cecori = bmb.Ceco
+                                                                      AND cbm2.mid_codigo = cbm.min_codigo 
+                INNER JOIN #DetReceta AS br WITH ( NOLOCK ) ON br.rec_codigo = cbm2.mid_codrec
+                INNER JOIN dbo.b_ingrediente AS bi ON br.red_codpro = bi.ing_codigo
+                INNER JOIN dbo.b_productosing AS bp WITH ( NOLOCK ) ON bp.pri_coding = bi.ing_codigo
+                INNER JOIN dbo.b_productos AS bp2 WITH ( NOLOCK ) ON bp2.pro_codigo = bp.pri_codpro
+        WHERE   bmb.Ceco = @Ceco
+                AND bp2.pro_indppr = 1
+                AND bi.ing_indppr = 1
+                AND ( bp2.pro_fecven >= @FechaSistema
+                      OR bp2.pro_fecven = 0
+                      OR bp2.pro_fecven IS NULL
+                    )
+                AND bp2.pro_facing > 0
+                AND cbm.min_codreg = @Regimen
+                AND cbm.min_codser = @Servicio
+                AND cbm.min_fecmin >= @FechaIni
+                AND cbm.min_fecmin <= @FechaFin
+                       
+        CREATE INDEX ix_#tabla_01 ON #tabla (pro_codigo,fi)                  
+        CREATE INDEX ix_#tabla_02 ON #tabla (pro_codigo)                  
+        CREATE INDEX ix_#tabla_03 ON #tabla (pro_codigo, IdConvenio)                  
+
+		declare @tipoCeco as varchar(1)
+
+		/* Rescatar tipo ceco */
+		set @tipoCeco = (select isnull(a.cli_tipoceco,'0') from b_clientes as a with (nolock) where a.cli_codigo = @Ceco and a.cli_tipo = 0 and a.cli_activo = '1')
+              
+		/*INI: CALCULO DE PRECIO EN BASE A CONVENIO - tipo ceco = 0 corresponde sitio real */
+		IF @OpPrecio = 1 and @tipoCeco = 0
+        
+		    BEGIN              
+        
+		        SELECT  IDrow = IDENTITY( INT, 1,1 )               
+               ,
+                        bpi.[Id_OrgCompra] ,
+                        bpi.[Celo] ,
+                        [Ceco] ,
+                        bpi.[Ingrediente] ,
+                        bpi.[Valido_Desde] ,
+                        bpi.[Valido_Hasta] ,
+                        bpi.[Ctd_Fmto] ,
+                        bpi.[Importe] ,
+                        bpi.[Perfil_Redondeo] ,
+						bpi.[Precio] ,
+                        bpi.[Proveedor] ,
+                        bpi.[Codigo_Material] ,
+                        bpi.[Cod_Sgp] ,
+                        CASE WHEN ISNULL(bpefc.ID, 0) > 0 and bpefc.fecha_inicio is null THEN 0  
+					         when ISNULL(bpefc.ID, 0) > 0 and bpefc.fecha_inicio is not null
+					                              and convert(varchar(8),bpefc.Fecha_inicio,112) >= @FechaIni
+					                  and convert(varchar(8),bpefc.Fecha_Termino,112) <= @FechaFin then 0
+					         when bpefc.fecha_inicio is not null and convert(varchar(8),bpefc.Fecha_inicio,112) < @FechaIni 
+					                                             and convert(varchar(8),bpefc.Fecha_Termino,112) < @FechaFin then 6
+                             WHEN bc.cli_tipoformatocompras = bfs.fcs_tipoformatocompras
+                                  AND ics.CONDICIONES = '1' THEN 1
+                             WHEN bc.cli_tipoformatocompras = bfs.fcs_tipoformatocompras
+                                  AND ISNULL(ics.CONDICIONES, '0') = '0' THEN 2
+                             WHEN bfs.fcs_tipoformatocompras = 3
+                                  AND ics.CONDICIONES = '1' THEN 3
+                             WHEN bfs.fcs_tipoformatocompras = 3
+                                  AND ISNULL(ics.CONDICIONES, '0') = '0' THEN 4
+                             ELSE 5
+                        END AS orden
+                INTO    #Tmp_PrecioIng
+                FROM    dbo.b_precio_ingrediente AS bpi WITH ( NOLOCK )   
+                INNER JOIN dbo.I_CONVENIO_SAP AS ics WITH ( NOLOCK ) ON bpi.Id_OrgCompra = ics.ID_ORGCOMPRA
+                                                                    AND bpi.Codigo_Material = ics.ID_MATERIAL
+                                                                    AND bpi.Proveedor = ics.ID_PROVEEDOR
+                                                                    AND bpi.Valido_Desde = ics.FECHA_INICIO_VALIDEZ
+                                                                    AND bpi.Valido_Hasta = ics.FECHA_FIN_VALIDEZ
+                INNER JOIN dbo.b_formatocompras_sap AS bfs WITH ( NOLOCK ) ON ics.ID_MATERIAL = bfs.fcs_CodMaterial
+                INNER JOIN dbo.b_clientes AS bc WITH ( NOLOCK ) ON bc.cli_codigo = bpi.Ceco
+                LEFT JOIN dbo.b_Pedido_ExcepcionFormatoCompra AS bpefc WITH ( NOLOCK ) ON bpi.Proveedor = bpefc.proveedor
+                                                                                       AND bpefc.cencos = bc.cli_codigo
+                                                                                       AND bpefc.ing_codigo = bpi.Ingrediente
+                                                                                       AND bpefc.fcs_CodMaterial = bpi.Codigo_Material
+                WHERE   bpi.ceco = @Ceco
+                        AND EXISTS ( SELECT 1
+                                     FROM   #tabla AS f
+                                     WHERE  f.ing_codigo = bpi.Ingrediente
+                                            AND ( CONVERT(DATETIME, CONVERT(VARCHAR(8), f.fi)) BETWEEN bpi.Valido_Desde
+                                                                                               AND     bpi.Valido_Hasta
+                                                  OR bpi.Valido_Hasta < CONVERT(DATETIME, CONVERT(VARCHAR(8), f.fi))
+                                                ) )
+                        AND ISNULL(ics.BORRADO, '') <> 'X'
+                ORDER BY bpi.Ingrediente ,
+                         orden ,
+                         bpi.[Precio]  asc            
+          
+                CREATE INDEX ix_Tmp_PrecioIng_01 ON #Tmp_PrecioIng (Ingrediente, Valido_Desde, Valido_Hasta)                  
+                CREATE INDEX ix_Tmp_PrecioIng_02 ON #Tmp_PrecioIng (IDrow, Cod_Sgp)                  
+              
+                UPDATE  #tabla
+                SET     IdConvenio = ISNULL(( SELECT TOP 1
+                            IDrow
+                                              FROM      #Tmp_PrecioIng AS bpi
+                                              WHERE     bpi.Ingrediente = t.ing_codigo
+                                                        AND t.fi BETWEEN CONVERT(VARCHAR(8), bpi.Valido_Desde, 112)
+                                                                 AND     CONVERT(VARCHAR(8), bpi.Valido_Hasta, 112)
+                                              ORDER BY  bpi.orden ,
+                                                        bpi.Precio
+                                            ), 0)
+                FROM    #tabla AS t
+                WHERE   ISNULL(t.Convenio, 0) = 0                
+              
+                UPDATE  #tabla
+                SET     Convenio = ISNULL(bpi.Precio, 0) ,
+                        pro_codigo = bp.pro_codigo ,
+                        pro_nombre = bp.pro_nombre ,
+                        pro_facing = bp.pro_facing
+                FROM    #tabla AS t
+                        INNER JOIN #Tmp_PrecioIng AS bpi ON bpi.IDrow = t.IdConvenio
+                        INNER JOIN dbo.b_productos AS bp with (nolock) ON bp.pro_codigo = bpi.Cod_Sgp
+                WHERE   ISNULL(t.Convenio, 0) = 0                
+          
+     
+                UPDATE  #tabla
+                SET     Convenio = ISNULL(tpi.Precio, 0) ,
+                        pro_codigo = bp.pro_codigo ,
+                        pro_nombre = bp.pro_nombre ,
+                        pro_facing = bp.pro_facing
+                FROM    #tabla AS t
+                        INNER JOIN #Tmp_PrecioIng AS tpi ON tpi.Ingrediente = t.ing_codigo
+                                                            AND tpi.IDrow = ( SELECT TOP 1
+                                                                              bpi2.IDrow--bpi2.Ingrediente      
+																			  FROM #Tmp_PrecioIng AS bpi2
+																			  WHERE     bpi2.Ingrediente = tpi.Ingrediente
+                                                                                        AND CONVERT(VARCHAR(8), bpi2.Valido_Hasta, 112) < t.fi
+                                                                              ORDER BY  bpi2.Valido_Hasta DESC ,
+                                                                                        bpi2.orden ASC ,
+                                                                                        bpi2.Precio ASC
+                                                                            )
+                        INNER JOIN dbo.b_productos AS bp with (nolock) ON bp.pro_codigo = tpi.Cod_Sgp
+                WHERE   ISNULL(t.Convenio, 0) = 0               
+          
+                DROP TABLE #Tmp_PrecioIng           
+      
+            
+            END                          
+                          
+		/*FIN: CALCULO DE PRECIO EN BASE A CONVENIO - tipo ceco = 0 corresponde sitio real */
+                                                    
+		/*INI: CALCULO DE PRECIO EN BASE A CONVENIO - tipo ceco = 1 corresponde sitio propuesta */
+		IF @OpPrecio = 1 and @tipoCeco = 1        
+		    
+			BEGIN              
+        
+		        SELECT  IDrow = IDENTITY( INT, 1,1 ),
+                        bpi.[Id_OrgCompra] ,
+                        bpi.[Celo] ,
+                        [Ceco] ,
+                        bpi.[Ingrediente] ,
+                        bpi.[Valido_Desde] ,
+                        bpi.[Valido_Hasta] ,
+                        bpi.[Ctd_Fmto] ,
+                        bpi.[Importe] ,
+                        bpi.[Perfil_Redondeo] ,
+                        bpi.[Precio] ,
+                        bpi.[Proveedor] ,
+                        bpi.[Codigo_Material] ,
+                        bpi.[Cod_Sgp] ,
+                        CASE WHEN ISNULL(bpefc.ID, 0) > 0 and bpefc.fecha_inicio is null THEN 0  
+					         when ISNULL(bpefc.ID, 0) > 0 and bpefc.fecha_inicio is not null
+					                              and convert(varchar(8),bpefc.Fecha_inicio,112) >= @FechaIni
+					                  and convert(varchar(8),bpefc.Fecha_Termino,112) <= @FechaFin then 0
+					         when bpefc.fecha_inicio is not null and convert(varchar(8),bpefc.Fecha_inicio,112) < @FechaIni 
+					                                             and convert(varchar(8),bpefc.Fecha_Termino,112) < @FechaFin then 6
+                             WHEN bc.cli_tipoformatocompras = bfs.fcs_tipoformatocompras
+                                  AND ics.CONDICIONES = '1' THEN 1
+                             WHEN bc.cli_tipoformatocompras = bfs.fcs_tipoformatocompras
+								  AND ISNULL(ics.CONDICIONES, '0') = '0' THEN 2
+                             WHEN bfs.fcs_tipoformatocompras = 3
+                 AND ics.CONDICIONES = '1' THEN 3
+                             WHEN bfs.fcs_tipoformatocompras = 3
+                                  AND ISNULL(ics.CONDICIONES, '0') = '0' THEN 4
+                             ELSE 5
+                        END AS orden
+                INTO    #Tmp_PrecioIng_Propuesta
+                FROM    dbo.b_precio_ingrediente AS bpi WITH ( NOLOCK )   
+                INNER JOIN dbo.I_CONVENIO_SAP AS ics WITH ( NOLOCK ) ON bpi.Id_OrgCompra = ics.ID_ORGCOMPRA
+                                                                    AND bpi.Codigo_Material = ics.ID_MATERIAL
+                                                                    AND bpi.Proveedor = ics.ID_PROVEEDOR
+                                                                    AND bpi.Valido_Desde = ics.FECHA_INICIO_VALIDEZ
+                                                                    AND bpi.Valido_Hasta = ics.FECHA_FIN_VALIDEZ
+                INNER JOIN dbo.b_formatocompras_sap AS bfs WITH ( NOLOCK ) ON ics.ID_MATERIAL = bfs.fcs_CodMaterial
+                INNER JOIN dbo.b_clientes AS bc WITH ( NOLOCK ) ON bc.cli_codigo = bpi.Ceco
+                LEFT JOIN dbo.b_Pedido_ExcepcionFormatoCompra AS bpefc WITH ( NOLOCK ) ON bpi.Proveedor = bpefc.proveedor
+                                                                                       AND bpefc.cencos = bc.cli_codigo
+                                                                                       AND bpefc.ing_codigo = bpi.Ingrediente
+                                                                                       AND bpefc.fcs_CodMaterial = bpi.Codigo_Material
+                WHERE   bpi.ceco = @Ceco
+                        AND EXISTS ( SELECT 1
+                                     FROM   #tabla AS f
+                                     WHERE  f.ing_codigo = bpi.Ingrediente
+                                            AND ( CONVERT(DATETIME, CONVERT(VARCHAR(8), f.fi)) BETWEEN bpi.Valido_Desde
+                                                                                               AND     bpi.Valido_Hasta
+                                                  OR bpi.Valido_Hasta < CONVERT(DATETIME, CONVERT(VARCHAR(8), f.fi))
+                                                ) )
+                        AND ISNULL(ics.BORRADO, '') <> 'X'
+                ORDER BY bpi.Ingrediente ,
+                         orden ,
+                         bpi.[Precio] asc
+
+                CREATE INDEX ix_Tmp_PrecioIng_Propuesta_01 ON #Tmp_PrecioIng_Propuesta (Ingrediente, Valido_Desde, Valido_Hasta)                  
+                CREATE INDEX ix_Tmp_PrecioIng_Propuesta_02 ON #Tmp_PrecioIng_Propuesta (IDrow, Cod_Sgp)                  
+              
+                UPDATE  #tabla
+                SET     IdConvenio = ISNULL(( SELECT TOP 1
+                                                        IDrow
+                                              FROM      #Tmp_PrecioIng_Propuesta AS bpi
+                                              WHERE     bpi.Ingrediente = t.ing_codigo
+                                                        AND t.fi BETWEEN CONVERT(VARCHAR(8), bpi.Valido_Desde, 112)
+                                                                 AND     CONVERT(VARCHAR(8), bpi.Valido_Hasta, 112)
+                                              ORDER BY  bpi.orden ,
+                                                        bpi.Precio
+                                            ), 0)
+                FROM    #tabla AS t
+                WHERE   ISNULL(t.Convenio, 0) = 0                
+              
+--				select * from #tabla where ing_codigo = '418'
+
+	            UPDATE  #tabla
+                SET     Convenio = ISNULL(bpi.Precio, 0) ,
+                        pro_codigo = bp.pro_codigo ,
+                        pro_nombre = bp.pro_nombre ,
+                        pro_facing = bp.pro_facing
+                FROM    #tabla AS t
+                 INNER JOIN #Tmp_PrecioIng_Propuesta AS bpi ON bpi.IDrow = t.IdConvenio
+                        INNER JOIN dbo.b_productos AS bp with (nolock) ON bp.pro_codigo = bpi.Cod_Sgp
+                WHERE   ISNULL(t.Convenio, 0) = 0                
+                
+--				select * from #tabla where ing_codigo = '418'
+
+                UPDATE  #tabla
+                SET     Convenio = ISNULL(tpi.Precio, 0) ,
+                        pro_codigo = bp.pro_codigo ,
+                        pro_nombre = bp.pro_nombre ,
+                        pro_facing = bp.pro_facing
+                FROM    #tabla AS t
+                        INNER JOIN #Tmp_PrecioIng_Propuesta AS tpi ON tpi.Ingrediente = t.ing_codigo
+                                                            AND tpi.IDrow = ( SELECT TOP 1
+                                                                              bpi2.IDrow--bpi2.Ingrediente      
+																			  FROM      #Tmp_PrecioIng_Propuesta AS bpi2
+																			  WHERE     bpi2.Ingrediente = tpi.Ingrediente
+                                                                                        AND CONVERT(VARCHAR(8), bpi2.Valido_Hasta, 112) < t.fi
+                                                                              ORDER BY  bpi2.Valido_Hasta DESC, bpi2.Precio DESC
+                                                                            )
+                        INNER JOIN dbo.b_productos AS bp with (nolock) ON bp.pro_codigo = tpi.Cod_Sgp
+                WHERE   ISNULL(t.Convenio, 0) = 0               
+
+--				select * from #tabla where ing_codigo = '418'
+
+				/* Actualizar precio tabla comercial */
+				UPDATE  #tabla    
+				SET     Convenio = ISNULL(a.Precio, 0)    
+				FROM    #tabla AS t    
+				INNER JOIN dbo.b_precio_ingrediente_comercial as a with (nolock) on a.idingrediente = t.ing_codigo
+							                                                    and a.Activo = '1'
+				inner join dbo.I_ORG_CECO as d with (nolock) ON d.id_orgcompra = a.idorgcompras
+					                                        and d.id_ceco = @Ceco
+															and d.borrado<>'X'
+          
+                DROP TABLE #Tmp_PrecioIng_Propuesta
+            
+            END                          
+                          
+		/*FIN: CALCULO DE PRECIO EN BASE A CONVENIO - tipo ceco = 1 corresponde sitio propuesta */
+                          
+		/*INI - ACTUALIZAR PMP DIA */                   
+        IF @OpPrecio = 2 
+            BEGIN                     
+                UPDATE  #tabla
+                SET     PMP = ISNULL(cbp.ppd_propon, 0)
+                FROM    #tabla AS t
+                        INNER  JOIN dbo.cas_b_productospmpdia AS cbp WITH ( NOLOCK ) ON cbp.ppd_cecori = @Ceco
+                                                                                        AND cbp.ppd_cencos = @Ceco
+                                                                                        AND cbp.ppd_codpro = t.pro_codigo
+                                                                                        AND cbp.ppd_fecdia = t.fi                          
+                          
+                UPDATE  #tabla
+                SET     PMP = ISNULL(pmp_ant.ppd_propon, 0)
+                FROM    #tabla AS t
+                        INNER JOIN ( SELECT cbp2.ppd_cecori ,
+                                            cbp2.ppd_codpro ,
+                                            cbp2.ppd_fecdia ,
+                                            cbp2.ppd_propon
+                                     FROM   dbo.cas_b_productospmpdia AS cbp2 WITH ( NOLOCK )
+                                            INNER JOIN ( SELECT cbp1.ppd_cecori ,
+                                                                cbp1.ppd_codpro ,
+                                  MAX(cbp1.ppd_fecdia) AS ppd_fecdia
+                                                FROM   dbo.cas_b_productospmpdia AS cbp1 WITH ( NOLOCK )
+                                                         WHERE  cbp1.ppd_cecori = @ceco
+                                                         GROUP BY cbp1.ppd_cecori ,
+                                                                cbp1.ppd_codpro     
+--                                     ,ppd_propon                          
+                                                         
+                                                       ) maxi ON cbp2.ppd_cecori = maxi.ppd_cecori
+                                                                 AND cbp2.ppd_codpro = maxi.ppd_codpro
+                                                                 AND cbp2.ppd_fecdia = maxi.ppd_fecdia
+                                   ) AS pmp_ant ON pmp_ant.ppd_cecori = @ceco
+                                                   AND pmp_ant.ppd_codpro = t.pro_codigo
+                                                   AND pmp_ant.ppd_fecdia < t.fi
+                WHERE   ISNULL(PMP, 0) = 0               
+            END              
+                         
+		/*FIN - ACTUALIZAR PMP DIA */                          
+                       
+		/*INI - ACTUALIZAR LISTA PRECIOS */               
+        IF @OpPrecio = 3 
+            BEGIN                         
+                UPDATE  #tabla
+                SET     Lista = ISNULL(listp.dlp_precio, 0)
+                FROM    #tabla AS t
+                        LEFT JOIN ( SELECT  ba2.api_coding ,
+                                            bd.dlp_anomes ,
+                                            bd.dlp_codpro ,
+                                            bd.dlp_precio
+                                    FROM    dbo.b_detlistaprecio AS bd WITH ( NOLOCK )
+                                            INNER JOIN dbo.cas_b_Minuta AS cbm WITH ( NOLOCK ) ON cbm.min_cecori = @Ceco
+                                                                                                  AND cbm.min_codreg = @Regimen
+                                                                                                  AND cbm.min_codser = @Servicio
+                                                                                                  AND cbm.min_fecmin >= @FechaIni
+                                                                                                  AND cbm.min_fecmin <= @FechaFin
+                                            INNER JOIN dbo.b_asolistaprecio AS ba WITH ( NOLOCK ) ON ba.alp_codreg = cbm.min_codreg
+                                                                                                     AND bd.dlp_codigo = ba.alp_codlpr
+                                            INNER JOIN dbo.b_clientes AS bc WITH ( NOLOCK ) ON bc.cli_codigo = cbm.min_cecori
+                                                                                               AND bc.cli_subseg = ba.alp_codsse
+                                                                                               AND bc.cli_tipo = 0
+                                            LEFT  JOIN dbo.b_asociaproductosing AS ba2 WITH ( NOLOCK ) ON ba2.api_codreg = cbm.min_codreg
+                                                                                                        AND ba2.api_codsse = bc.cli_subseg
+                                                                                                        AND ba2.api_codser = cbm.min_codser
+                                                                                                        AND ba2.api_codpro = bd.dlp_codpro
+                                                                                                        AND bd.dlp_anomes = ba2.api_anomes
+                                  ) AS listp ON listp.dlp_codpro = t.pro_codigo                          
+--                              AND t.ing_codigo = listp.api_coding                          
+                                                AND listp.dlp_anomes = CONVERT(INT, CONVERT(VARCHAR(6), CONVERT(VARCHAR, t.fi)))                          
+                          
+            END              
+		/*FIN - ACTUALIZAR LISTA PRECIOS */                          
+                          
+        SELECT distinct ing_codigo ,
+                pro_codigo ,
+				pro_nombre ,
+                pro_facing ,
+                fi ,
+                ft ,
+                PMP ,
+                Convenio ,
+                Lista
+        FROM    #tabla                
+                          
+    END TRY                                  
+    BEGIN CATCH                          
+        ROLLBACK TRAN                              
+        SET @ErrorMessage = ERROR_MESSAGE() ;                           
+        GOTO salida                            
+    END CATCH                              
+                          
+                          
+    SALIDA:                                     
+    PRINT @ErrorMessage                          
+                                
+                                
+    DROP TABLE #tabla 
+	drop table #DetReceta
+

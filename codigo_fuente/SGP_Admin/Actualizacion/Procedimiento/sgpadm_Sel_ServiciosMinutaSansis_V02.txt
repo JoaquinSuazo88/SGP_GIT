@@ -1,0 +1,49 @@
+/*                                              
+==========================================================================                                              
+Sistema : Sgp Administrador                                              
+Modulo :   Informe - Informes ( I_CostoMinutaResumidoSansis )                                              
+                                              
+SP o Function : sgpadm_Sel_ServiciosMinutaSansis
+Descripcion  : Muestra los servicios planificado
+                                              
+Observaciones :                                               
+                                              
+F. creacion:      28/11/2016
+Creador:          Jorge Paz                                              
+                                              
+==========================================================================                                              
+Modificaciones:                                              
+Fecha             Programador             Motivo y/o Modificacion                                              
+                                              
+==========================================================================                                              
+Test:                                              
+sgpadm_Sel_ServiciosMinutaSansis '22700',  10320, 20150201 , 20150228
+sgpadm_Sel_ServiciosMinutaSansis_V02 '22700', 10320, '20250201' , '20250228'
+==========================================================================                                              
+*/                                              
+                                              
+CREATE PROC [dbo].[sgpadm_Sel_ServiciosMinutaSansis_V02]
+    (
+      @Ceco AS VARCHAR(10) ,
+      @Regimen INT ,
+      @FecIni AS INT ,
+      @FecFin AS INT
+    )
+AS 
+    SET NOCOUNT ON                                              
+                                              
+
+    SELECT DISTINCT
+            as2.ser_codigo ,
+            as2.ser_nombre ,
+            as2.Ser_Posicion
+    FROM    cas_b_minuta AS cbm WITH ( NOLOCK )
+            INNER JOIN dbo.a_servicio AS as2 WITH ( NOLOCK ) ON as2.ser_codigo = cbm.min_codser
+            INNER JOIN dbo.a_regimen AS ar WITH ( NOLOCK ) ON cbm.min_codreg = ar.reg_codigo
+            INNER JOIN dbo.b_clientes AS bc WITH ( NOLOCK ) ON bc.cli_codigo = cbm.min_cecori
+    WHERE   cbm.min_cecori = @Ceco
+            AND cbm.min_codreg = @Regimen
+            AND cbm.min_fecmin >= @FecIni
+            AND cbm.min_fecmin <= @FecFin
+            AND bc.cli_activo = 1
+    ORDER BY as2.Ser_Posicion

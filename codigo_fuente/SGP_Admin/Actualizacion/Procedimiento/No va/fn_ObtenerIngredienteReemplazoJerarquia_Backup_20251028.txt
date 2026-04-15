@@ -1,0 +1,106 @@
+CREATE FUNCTION dbo.fn_ObtenerIngredienteReemplazoJerarquia_Backup_20251028 (
+    @Ceco VARCHAR(10),
+    @CodRegimen INT,
+    @CodReceta INT,
+    @CodIngredienteOrigen INT,
+    @TipoPlato INT
+)
+RETURNS TABLE
+AS
+RETURN (
+    WITH Cliente AS (
+        SELECT cli_codigo
+   
+
+
+     FROM dbo.b_clientes
+        WHERE cli_codigo = @Ceco
+    )
+    SELECT TOP 1
+        r.IdIngredienteOrigen,
+        r.IdIngredienteCambio,
+        r.NivelAplicado,
+        r.CantIngredienteCambio,
+        bi.ing_pctapr AS PctAprovechamiento,
+        bi.ing_pctcoc AS PctCoccion,
+        bi.ing_pctnut AS PctNutriente
+    FROM Cliente c
+
+    OUTER APPLY (
+        SELECT 
+            n1.IdIngredienteOrigen,
+            n1.IdIngredienteCambio,
+            1 AS NivelAplicado,
+            n1.CantidadBruta AS
+ CantIngredienteCambio
+        FROM dbo.b_tablagramajececo_nivel n1
+        WHERE n1.IdCeco = c.cli_codigo
+          AND n1.IdIngredienteOrigen = @CodIngredienteOrigen
+          AND n1.IdRegimen IS NULL
+          AND n1.IdTipoPlato IS NULL
+		  and n1.Activo = '1'
+    ) AS r1
+
+  
+
+  OUTER APPLY (
+        SELECT 
+            n2.IdIngredienteOrigen,
+            n2.IdIngredienteCambio,
+            2 AS NivelAplicado,
+            n2.CantidadBruta AS CantIngredienteCambio
+        FROM dbo.b_tablagramajececo_nivel n2
+        WHERE n2.IdCeco = c.cli_codigo
+          AND n2.IdIngredienteOrigen = @CodIngredienteOrigen
+          AND n2.IdRegimen = @CodRegimen
+          AND n2.IdTipoPlato IS NULL
+          AND r1.IdIngredienteCambio IS NULL
+		  and n2.Activo = '1'
+    ) AS r2
+
+    OUTER APPLY
+ (
+        SELECT 
+
+            n3.IdIngredienteOrigen,
+            n3.IdIngredienteCambio,
+            3 AS NivelAplicado,
+            n3.CantidadBruta AS CantIngredienteCambio
+        FROM dbo.b_tablagramajececo_nivel n3
+        WHERE n3.IdCeco = c.cli_codigo
+          AND n3.IdIngredienteOrigen = @CodIngredienteOrigen
+          AND n3.IdRegimen = @CodRegimen
+          AND n3.IdTipoPlato = @TipoPlato
+          AND r1.IdIngredienteCambio IS NULL
+          AND r2.IdIngredienteCambio IS NULL
+		  and n3.Activo = '1'
+    ) AS r3
+
+    OUTER APPLY (
+        
+
+			SELECT 
+            tg.tgc_coding AS IdIngredienteOrigen,
+            tg.tgc_codins AS IdIngredienteCambio,
+            4 AS NivelAplicado,
+            tg.tgc_cantgr AS CantIngredienteCambio
+        FROM dbo.b_tablagramajececo tg
+        WHERE tg.tgc_ceco = c.cli_codigo
+          AND tg.tgc_codreg = @CodRegimen
+          AND tg.tgc_codrec = @CodReceta
+          AND tg.tgc_coding = @CodIngredienteOrigen
+          AND r1.IdIngredienteCambio IS NULL
+          AND r2.IdIngredienteCambio IS NULL
+          AND r3.IdIngredienteCambio IS NULL
+    ) AS r4
+
+    CROSS APPLY (
+        SELECT 
+            COALESCE(r1.IdIngredienteOrigen, r2.IdIngredienteOrigen, r3.IdIngredienteOrigen, r4.IdIngredienteOrigen) AS IdIngredienteOrigen,
+            COALESCE(r1.IdIngredienteCambio, r2.IdIngredienteCambio, r3.IdIngredienteCambio, r4.IdIngredienteCambio) AS IdIngredienteCambio,
+            COALESCE(r1.NivelAplicado, r2.NivelAplicado, r3.NivelAplicado, r4.NivelAplicado) AS NivelAplicado,
+            COALESCE(r1.CantIngredienteCambio, r2.CantIngredienteCambio, r3.CantIngredienteCambio, r4.CantIngredienteCambio) AS CantIngredienteCambio
+    ) AS r
+
+    LEFT JOIN dbo.b_ingrediente bi ON r.IdIngredienteCambio = bi.ing_codigo
+);

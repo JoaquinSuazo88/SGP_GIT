@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Flujo de Producción – SGP</title>
+<style>
+  body { margin: 0; padding: 20px; background: #eef2f7; font-family: 'Segoe UI', Arial, sans-serif; }
+  h2 { text-align: center; color: #1e3a5f; margin: 0 0 10px; font-size: 18px; letter-spacing: 0.5px; }
+  .wrap { background: #fff; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.12); padding: 20px; overflow-x: auto; }
+</style>
+</head>
+<body>
+<h2>Flujo de Servicio — SGP Producción</h2>
+<div class="wrap">
+<svg id="diagram" width="1520" height="950" viewBox="0 0 1520 950">
+  <defs>
+    <marker id="arr" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto">
+      <polygon points="0 0, 9 3.5, 0 7" fill="#607080"/>
+    </marker>
+    <filter id="sh" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="1" dy="2" stdDeviation="3" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+
+  <!-- S1: PLANIFICACIÓN REAL (columna completa) -->
+  <rect x="10"  y="42" width="193" height="890" rx="8"
+        fill="#D5E8F5" stroke="#4A90E2" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text x="107" y="68" text-anchor="middle" font-size="11" font-weight="bold" fill="#1e3a5f">PLANIFICACIÓN REAL</text>
+
+  <!-- S2: SALIDA A PRODUCCIÓN (columna completa) -->
+  <rect x="213" y="42" width="672" height="890" rx="8"
+        fill="#D5E8F5" stroke="#4A90E2" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text x="549" y="68" text-anchor="middle" font-size="11" font-weight="bold" fill="#1e3a5f">SALIDA A PRODUCCIÓN</text>
+
+  <!-- S3: VENTAS — columna izq. (config) + columna der. (flujo) -->
+  <rect x="893" y="42" width="380" height="640" rx="8"
+        fill="#D5E8F5" stroke="#4A90E2" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text x="1083" y="68" text-anchor="middle" font-size="11" font-weight="bold" fill="#1e3a5f">VENTAS</text>
+
+  <!-- S4: MERMAS (debajo de VENTAS) -->
+  <rect x="893" y="692" width="380" height="250" rx="8"
+        fill="#D5E8F5" stroke="#4A90E2" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text x="1083" y="718" text-anchor="middle" font-size="11" font-weight="bold" fill="#1e3a5f">MERMAS</text>
+
+  <!-- S5: CIERRE DIARIO (columna derecha completa) -->
+  <rect x="1283" y="42" width="227" height="890" rx="8"
+        fill="#D5E8F5" stroke="#4A90E2" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text x="1396" y="68" text-anchor="middle" font-size="11" font-weight="bold" fill="#1e3a5f">CIERRE DIARIO</text>
+
+  <!-- Leyenda (interior inferior de CIERRE DIARIO) -->
+  <rect x="1295" y="775" width="187" height="88" rx="5"
+        fill="white" stroke="#4A90E2" stroke-width="1.2" opacity="0.95"/>
+  <text x="1307" y="795" font-size="13" font-weight="bold" fill="#1e3a5f">Responsables</text>
+  <line x1="1307" y1="800" x2="1476" y2="800" stroke="#e0e8f0" stroke-width="1"/>
+  <circle cx="1317" cy="816" r="7" fill="#4A90E2"/>
+  <text x="1331" y="821" font-size="12" fill="#333">Producción</text>
+  <circle cx="1317" cy="839" r="7" fill="#7ED321"/>
+  <text x="1331" y="844" font-size="12" fill="#333">Inventario</text>
+
+  <g id="arrows"></g>
+  <g id="nodes"></g>
+</svg>
+</div>
+
+<script>
+const NS = 'http://www.w3.org/2000/svg';
+const STROKE = '#607080';
+const SW = '1.8';
+
+const nodes = [
+  // S1
+  { id:'plan_real',  x:107,  y:460, r:54, color:'#4A90E2', lines:['Planificación','Real'] },
+  // S2
+  { id:'requis',     x:310,  y:460, r:50, color:'#4A90E2', lines:['Requisición'] },
+  { id:'adic_serv',  x:510,  y:300, r:50, color:'#4A90E2', lines:['Adicionales','de Servicio'] },
+  { id:'sal_prod',   x:510,  y:460, r:50, color:'#7ED321', lines:['Salida a','Producción'] },
+  { id:'ejec_prod',  x:650,  y:460, r:52, color:'#4A90E2', clock:true, lines:['Ejecución','Producción'] },
+  { id:'devol',      x:800,  y:460, r:52, color:'#7ED321', lines:['Devolución','Salida Prod.'] },
+  // S3 — VENTAS columna izq. (configuración/prerequisito)
+  { id:'lista_caf',  x:955,  y:260, r:48, color:'#4A90E2', lines:['Lista Precio','Cafetería'] },
+  { id:'pv_cli',     x:955,  y:430, r:48, color:'#4A90E2', lines:['Precio Venta','Cliente'] },
+  // S3 — VENTAS columna der. (flujo principal)
+  { id:'vta_dir',    x:1145, y:130, r:48, color:'#7ED321', lines:['Venta','Directa'] },
+  { id:'vta_caf',    x:1145, y:260, r:48, color:'#7ED321', lines:['Venta','Cafetería'] },
+  { id:'vta_esp',    x:1145, y:390, r:48, color:'#7ED321', lines:['Venta Serv.','Especiales'] },
+  { id:'ctrl_rac',   x:1145, y:510, r:48, color:'#4A90E2', lines:['Control de','Raciones'] },
+  { id:'vta_cont',   x:1145, y:620, r:48, color:'#4A90E2', lines:['Venta Servicio','Contado'] },
+  // S4 — MERMAS (debajo de VENTAS)
+  { id:'rac_nv',     x:1065, y:770, r:48, color:'#4A90E2', lines:['Raciones no','Vendidas'] },
+  { id:'merma',      x:1065, y:870, r:48, color:'#4A90E2', lines:['Merma Prod.,','Desconche','y Pan'] },
+  // S5 — CIERRE DIARIO
+  { id:'cierre',     x:1396, y:460, r:58, color:'#4A90E2', lines:['Cierre','Diario'] }
+];
+
+// Corchetes
+const brackets = [
+  // requis → [adic_serv(300), sal_prod(460)]
+  { type:'fanout', source:'requis', bx:415,
+    targets:['adic_serv','sal_prod'] },
+  // devol → 4 nodos cierre diario
+  { type:'fanout', source:'devol', bx:905,
+    targets:['rac_nv','merma','ctrl_rac','vta_cont'] },
+  // todos los nodos (S3 + S4) → cierre_diario  (corchete unificado)
+  { type:'fanin',
+    sources:['vta_dir','vta_caf','vta_esp','rac_nv','merma','ctrl_rac','vta_cont'],
+    bx:1270, target:'cierre' }
+];
+
+// Conexiones simples 1→1
+const simple = [
+  ['plan_real', 'requis'],
+  ['adic_serv', 'sal_prod'],   // flecha vertical
+  ['sal_prod',  'ejec_prod'],
+  ['ejec_prod', 'devol'],
+  ['lista_caf', 'vta_caf'],    // config → flujo cafetería
+  ['pv_cli',    'ctrl_rac'],   // config → control raciones
+];
+
+const nMap = {};
+nodes.forEach(n => nMap[n.id] = n);
+
+function svgEl(tag, attrs) {
+  const e = document.createElementNS(NS, tag);
+  Object.entries(attrs).forEach(([k,v]) => e.setAttribute(k, v));
+  return e;
+}
+const seg = (x1,y1,x2,y2) =>
+  svgEl('line', {x1,y1,x2,y2, stroke:STROKE,'stroke-width':SW,'stroke-linecap':'round'});
+const arr = (x1,y1,x2,y2) =>
+  svgEl('line', {x1,y1,x2,y2, stroke:STROKE,'stroke-width':SW,
+    'stroke-linecap':'round','marker-end':'url(#arr)'});
+
+const ag = document.getElementById('arrows');
+
+// Flechas simples (cálculo de extremos sobre borde del círculo)
+simple.forEach(([fid,tid]) => {
+  const s = nMap[fid], t = nMap[tid];
+  const dx = t.x-s.x, dy = t.y-s.y, len = Math.sqrt(dx*dx+dy*dy);
+  ag.appendChild(arr(
+    +(s.x+dx/len*(s.r+3)).toFixed(1), +(s.y+dy/len*(s.r+3)).toFixed(1),
+    +(t.x-dx/len*(t.r+5)).toFixed(1), +(t.y-dy/len*(t.r+5)).toFixed(1)
+  ));
+});
+
+// Corchetes
+brackets.forEach(b => {
+  if (b.type === 'fanout') {
+    const s = nMap[b.source];
+    const ys = b.targets.map(id => nMap[id].y);
+    const lo = Math.min(s.y, ...ys);   // el palo arranca desde la fuente
+    const hi = Math.max(...ys);
+    ag.appendChild(seg(s.x+s.r+3, s.y, b.bx, s.y));
+    ag.appendChild(seg(b.bx, lo, b.bx, hi));
+    b.targets.forEach(tid => {
+      const t = nMap[tid];
+      ag.appendChild(arr(b.bx, t.y, t.x-t.r-5, t.y));
+    });
+  } else {
+    const t = nMap[b.target];
+    const ys = b.sources.map(id => nMap[id].y);
+    const lo = Math.min(...ys);
+    const hi = Math.max(...ys);
+    b.sources.forEach(sid => {
+      const s = nMap[sid];
+      ag.appendChild(seg(s.x+s.r+3, s.y, b.bx, s.y));
+    });
+    ag.appendChild(seg(b.bx, lo, b.bx, hi));
+    ag.appendChild(arr(b.bx, t.y, t.x-t.r-5, t.y));
+  }
+});
+
+// ── Reloj ──────────────────────────────────────────────────────────────────
+function drawClock(g, cx, cy) {
+  const w = svgEl('g', { transform:`translate(${cx},${cy})` });
+  w.appendChild(svgEl('circle', { r:20, fill:'none', stroke:'white','stroke-width':'2' }));
+  [[0,-20,0,-16],[20,0,16,0],[0,20,0,16],[-20,0,-16,0]].forEach(([x1,y1,x2,y2]) =>
+    w.appendChild(svgEl('line', {x1,y1,x2,y2,stroke:'white','stroke-width':'1.8','stroke-linecap':'round'})));
+  w.appendChild(svgEl('line', {x1:0,y1:0,x2:-10,y2:-11,stroke:'white','stroke-width':'2.8','stroke-linecap':'round'}));
+  w.appendChild(svgEl('line', {x1:0,y1:0,x2:1,y2:-16,stroke:'white','stroke-width':'2','stroke-linecap':'round'}));
+  w.appendChild(svgEl('circle', { r:'2.5', fill:'white' }));
+  g.appendChild(w);
+}
+
+// ── Nodos ──────────────────────────────────────────────────────────────────
+const ng = document.getElementById('nodes');
+nodes.forEach(n => {
+  const g = document.createElementNS(NS, 'g');
+  g.appendChild(svgEl('circle', { cx:n.x,cy:n.y,r:n.r,fill:n.color,filter:'url(#sh)' }));
+  g.appendChild(svgEl('circle', { cx:n.x,cy:n.y,r:n.r-2,fill:'none',
+    stroke:'rgba(255,255,255,0.35)','stroke-width':'2' }));
+
+  if (n.clock) {
+    drawClock(g, n.x, n.y - 16);
+    n.lines.forEach((txt, i) => {
+      const t = svgEl('text', { x:n.x, y:n.y+22+i*15,
+        'text-anchor':'middle','font-size':'12',fill:'white',
+        'font-family':"'Segoe UI',Arial,sans-serif",'font-weight':'bold' });
+      t.textContent = txt;
+      g.appendChild(t);
+    });
+  } else {
+    const lh = 15, nl = n.lines.length;
+    const fs = nl >= 3 ? 11 : (n.r >= 54 ? 13 : 12);
+    const sy = n.y - (nl-1)*lh/2;
+    n.lines.forEach((txt, i) => {
+      const t = svgEl('text', { x:n.x, y:sy+i*lh+4,
+        'text-anchor':'middle','font-size':fs,fill:'white',
+        'font-family':"'Segoe UI',Arial,sans-serif",'font-weight':'bold' });
+      t.textContent = txt;
+      g.appendChild(t);
+    });
+  }
+  ng.appendChild(g);
+});
+</script>
+</body>
+</html>

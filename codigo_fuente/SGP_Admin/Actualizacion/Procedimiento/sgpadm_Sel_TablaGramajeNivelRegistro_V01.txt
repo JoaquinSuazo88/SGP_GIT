@@ -1,0 +1,57 @@
+/*                      
+==========================================================================                      
+Sistema : Sgp Administrador                      
+Modulo :  Minutas - Tabla Gramaje vnivel (M_TabGra.frm)    
+                      
+SP o Function : sgpadm_Sel_TablaGramajeNivelRegistro_V01
+Descripcion   : consultar un registro datos tabla gramaje ceco nivel
+Observaciones :     
+                      
+F. creacion:      13/08/2025
+Creador:          Jorge Paz Núñez    
+                      
+==========================================================================                      
+Modificaciones:                      
+Fecha             Programador             Motivo y/o Modificacion                      
+==========================================================================                      
+test :  sgpadm_Sel_TablaGramajeNivelRegistro_V01
+
+  
+*/                  
+
+create PROCEDURE [dbo].[sgpadm_Sel_TablaGramajeNivelRegistro_V01]
+(
+    @Ceco VARCHAR(10),
+    @IdRegimen VARCHAR(20),
+    @IdTipoPlato VARCHAR(20),
+    @IdIngrediente VARCHAR(20)
+)
+AS
+
+IF ISNULL(@IdRegimen, '') = ''
+   SET @IdRegimen = NULL
+
+IF ISNULL(@IdTipoPlato, '') = ''
+   SET @IdTipoPlato = NULL
+
+;WITH RankedData AS (
+    SELECT *,
+           ROW_NUMBER() OVER (
+               ORDER BY 
+                   Fecha_Creacion DESC
+           ) AS RowNum
+    FROM b_tablagramajececo_nivel
+    WHERE IdCeco = @Ceco
+      AND (
+            (@IdRegimen IS NULL AND IdRegimen IS NULL) OR
+            (@IdRegimen IS NOT NULL AND IdRegimen = @IdRegimen)
+          )
+      AND (
+            (@IdTipoPlato IS NULL AND IdTipoPlato IS NULL) OR
+            (@IdTipoPlato IS NOT NULL AND IdTipoPlato = @IdTipoPlato)
+          )
+      AND IdIngredienteOrigen = @IdIngrediente
+)
+SELECT *
+FROM RankedData
+WHERE RowNum = 1;

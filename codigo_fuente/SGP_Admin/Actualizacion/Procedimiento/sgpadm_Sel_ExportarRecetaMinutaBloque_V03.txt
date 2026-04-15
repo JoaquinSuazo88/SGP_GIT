@@ -1,0 +1,146 @@
+/*                  
+==========================================================================                  
+Sistema : Sgp Administrador                  
+Modulo :   Minutas - Minutas Bloques                  
+                  
+SP o Function : sgpadm_Sel_ExportarRecetaMinutaBloque      
+Descripcion  : Exportar receta minuta bloque  
+Observaciones :                   
+                  
+F. creacion:      23/04/2015  
+Creador:          Jorge Paz                  
+                  
+==========================================================================                  
+Modificaciones:                  
+Fecha             Programador             Motivo y/o Modificacion                  
+20/08/2025        JPAZN                   Incluir tabla gramaje x nivel                  
+==========================================================================                  
+Test:                  
+sgpadm_Sel_ExportarRecetaMinutaBloque_V02 '22700', 10320, 10001, 20240301, 20240331                  
+sgpadm_Sel_ExportarRecetaMinutaBloque_V03 '22700', 10320, 10001, 20240301, 20240331                  
+==========================================================================                  
+
+*/                    
+create PROCEDURE [dbo].[sgpadm_Sel_ExportarRecetaMinutaBloque_V03]
+    (
+      @Ceco VARCHAR(10) ,
+      @codreg INT ,
+      @codser INT ,
+      @fecini INT ,
+      @fecfin INT      
+    )
+AS 
+    SELECT DISTINCT
+            a.min_codser ,
+            d.ser_nombre ,
+            b.mid_codrec ,
+            c.red_codpro ,
+            c.red_codpro AS red_codprorec ,
+            c.red_nroite ,
+            c.red_canpro ,
+            c.red_pctapr ,
+            c.red_pctcoc ,
+            c.red_pctnut ,
+            e.ing_nombre,
+			br.rec_tippla
+    INTO    #paso
+    FROM    cas_b_minuta a WITH ( NOLOCK )
+            INNER JOIN cas_b_minutadet b WITH ( NOLOCK ) ON a.min_cecori = b.mid_cecori
+                                                            AND a.min_codigo = b.mid_codigo
+            INNER JOIN dbo.b_receta AS br WITH ( NOLOCK ) ON br.rec_codigo = b.mid_codrec
+            INNER JOIN b_recetadet c WITH ( NOLOCK ) ON c.red_codigo = br.rec_codigo
+            INNER JOIN a_servicio d WITH ( NOLOCK ) ON d.ser_codigo = a.min_codser
+            INNER JOIN b_ingrediente e WITH ( NOLOCK ) ON e.ing_codigo = c.red_codpro
+            --INNER JOIN a_unidadmed f WITH ( NOLOCK ) ON e.ing_unimed = f.unm_codigo
+    WHERE   a.min_cecori = @Ceco
+            AND a.min_codreg = @codreg
+            AND a.min_codser = @codser
+            AND a.min_fecmin >= @fecini
+            AND a.min_fecmin <= @fecfin      
+          
+    UPDATE  #paso
+	    SET #paso.red_codprorec = ISNULL(reemplazo.IdIngredienteCambio, b.red_codprorec),
+            #paso.red_canpro = isnull(reemplazo.CantIngredienteCambio, b.red_canpro) ,
+            #paso.red_pctapr = CASE WHEN reemplazo.IdIngredienteCambio is not null and reemplazo.IdIngredienteCambio = b.red_codprorec
+			                        THEN b.red_pctapr
+                                    ELSE c.ing_pctapr
+                               END ,
+            #paso.red_pctcoc = CASE WHEN reemplazo.IdIngredienteCambio is not null and reemplazo.IdIngredienteCambio = b.red_codprorec
+			                        THEN b.red_pctcoc
+                                    ELSE c.ing_pctcoc
+                               END ,
+            #paso.red_pctnut = CASE WHEN reemplazo.IdIngredienteCambio is not null and reemplazo.IdIngredienteCambio = b.red_codprorec THEN b.red_pctnut
+                                    ELSE c.ing_pctnut
+                               END
+    from #paso b WITH ( NOLOCK ) 
+	OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    @Ceco,
+				    @codreg,
+				    b.mid_codrec ,
+				    b.red_codprorec,
+				    b.rec_tippla
+				) AS reemplazo
+    INNER JOIN b_ingrediente c WITH ( NOLOCK ) ON  ISNULL(reemplazo.IdIngredienteCambio, b.red_codprorec) = c.ing_codigo
+        
+    SELECT  a.min_codser ,
+            a.ser_nombre ,
+            a.mid_codrec ,
+            b.rec_nombre ,
+            b.rec_nomfan ,
+            c.ing_codigo ,
+            a.red_nroite ,
+            c.ing_nombre ,
+            d.unm_nomcor ,
+            a.red_canpro ,
+            a.red_pctapr ,
+            a.red_pctcoc ,
+            a.red_pctnut ,
+            a.red_codprorec ,
+            c.ing_precos ,
+            c.ing_pctapr ,
+            c.ing_pctcoc ,
+			c.ing_pctnut ,
+            b.rec_catdie ,
+            b.rec_tippla ,
+            b.rec_metpre
+    INTO    #paso_a
+    FROM    #paso a WITH ( NOLOCK )
+            INNER JOIN b_receta b WITH ( NOLOCK ) ON a.mid_codrec = b.rec_codigo
+            INNER JOIN b_ingrediente c WITH ( NOLOCK ) ON a.red_codprorec = c.ing_codigo
+            INNER JOIN a_unidadmed d WITH ( NOLOCK ) ON c.ing_unimed = d.unm_codigo
+    ORDER BY a.min_codser ,
+            b.rec_nombre ,
+            b.rec_nomfan ,
+            a.red_nroite          
+        
+    SELECT   a.min_codser ,
+            a.ser_nombre ,
+            a.mid_codrec ,
+            a.rec_nombre ,
+            a.rec_nomfan ,
+            a.ing_codigo ,
+            a.red_nroite ,
+            a.ing_nombre ,
+            a.unm_nomcor ,
+            a.red_canpro ,
+            a.red_pctapr ,
+            a.red_pctcoc ,
+            a.red_pctnut ,
+            a.red_codprorec ,
+            a.ing_precos ,
+            a.ing_pctapr ,
+            a.ing_pctcoc ,
+            a.ing_pctnut ,
+            a.rec_catdie ,
+            a.rec_tippla ,
+            a.rec_metpre
+    FROM    #paso_a as a WITH ( NOLOCK )
+    ORDER BY a.min_codser ,
+            a.rec_nombre ,
+            a.rec_nomfan ,
+            a.red_nroite 
+
+    DROP TABLE #paso            
+    DROP TABLE #paso_a
+
+

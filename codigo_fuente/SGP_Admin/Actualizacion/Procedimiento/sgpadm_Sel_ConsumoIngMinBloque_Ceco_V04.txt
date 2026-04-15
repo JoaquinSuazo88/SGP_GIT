@@ -1,0 +1,433 @@
+/*                                                                  
+==========================================================================                                                                  
+Sistema : Sgp Administrador                                                                  
+Modulo :  Informe - Consumo Ingrediente Minuta Bloque (C_ConIngMinBlo.frm)                                              
+                                                                  
+SP o Function : sgpadm_Sel_ConsumoIngMinBloque_Ceco                                
+Descripcion   :                                                                   
+Observaciones : Trae datos para informe consumo ingrediente minuta bloque                                              
+                                                                  
+F. creacion:      20/12/2013                                                                  
+Creador:          Jorge Paz Núñez                                              
+                                
+test : 
+
+EXEC sgpadm_Sel_ConsumoIngMinBloque_Ceco_v03 '<?xml version="1.0" encoding="iso-8859-1" ?><RegSer> <DetCodSer CodCeco = "22700" CodRegimen = "10280" CodServicio = "10001"/> <DetCodSer CodCeco = "22700" CodRegimen = "10320" CodServicio = "10001"/> <DetCodSer CodCeco = "22700" CodRegimen = "10320" CodServicio = "10004"/></RegSer>', 22700,20210801,20210831,0,0
+EXEC sgpadm_Sel_ConsumoIngMinBloque_Ceco_v04 '<?xml version="1.0" encoding="iso-8859-1" ?><RegSer> <DetCodSer CodCeco = "22700" CodRegimen = "10280" CodServicio = "10001"/> <DetCodSer CodCeco = "22700" CodRegimen = "10320" CodServicio = "10001"/> <DetCodSer CodCeco = "22700" CodRegimen = "10320" CodServicio = "10004"/></RegSer>', 22700,20210801,20210831,0,0
+select * from b_tablagramajececo_nivel where idceco= '22700'
+update b_tablagramajececo_nivel set activo = '0' where idceco = '22700' and idingredienteorigen = '41' and idingredientecambio='43'
+
+select * from b_ingrediente
+inner join b_productosing on ing_codigo = pri_coding
+where ing_codigo = '754'
+
+==========================================================================                                                                  
+Modificaciones:                                                                  
+Fecha             Programador             Motivo y/o Modificacion                                                                  
+23/10/2014        Jorge Paz Núñez         Cambio de la siguiente tabla                  
+                                          b_convenios_sap x I_CONVENIO_SAP                                                                  
+03/04/2017        Jorge Paz Núñez         Agregan cuatro campos nombre proveedor,        
+										  numero raciones, cantidad consumir y unidad SGP
+18/01/2022        Jorge Paz Núñez         Esto incluye dos nuevo cambio a la
+										  tabla excepción formato compras que son
+										  fecha inicio y fin.   
+										  Cambio de procedimiento sgpadm_Sel_ConsumoIngMinBloque_Ceco_V02
+										  x sgpadm_Sel_ConsumoIngMinBloque_Ceco_V03     
+21/08/2025        JPAZN                   Incluir tabla gramaje x nivel
+==========================================================================                                   
+*/                                                                  
+                                                                  
+alter PROC [dbo].[sgpadm_Sel_ConsumoIngMinBloque_Ceco_V04]  
+    @XmlRegSer AS TEXT ,  
+    @Ceco AS CHAR(10) ,  
+    @FechaDes AS INT ,  
+    @FechaHas AS INT ,  
+    @CodIngrediente AS VARCHAR(20),
+    @FiltroNulos	AS INT
+AS   
+    DECLARE @hdoc AS INTEGER                                
+                                                            
+    EXEC sp_xml_preparedocument @hdoc OUTPUT, @XmlRegSer                                
+                                                            
+    SELECT  CodRegimen ,  
+            CodServicio  
+    INTO    #TmpRegimenServicio  
+    FROM    OPENXML (@hdoc, '/RegSer/DetCodSer', 1)                                
+    WITH                                
+    (                                
+    CodRegimen     INT,                                
+    CodServicio    INT                                
+    )                  
+                                              
+	-- incluir tabla de paso detalle receta
+    SELECT  b.red_codigo,
+	        b.red_codpro,
+			b.red_canpro,
+			a.rec_tippla,
+			cbmb.Regimen as min_codreg
+    INTO    #DetReceta
+    FROM    dbo.cas_b_MinutaBloque AS cbmb WITH ( NOLOCK )  
+            INNER JOIN cas_b_minuta h WITH ( NOLOCK ) ON cbmb.ID_Bloque = h.ID_Bloque  
+                                                         AND h.min_fecmin >= CONVERT(INT, CONVERT(VARCHAR(8), cbmb.FechaDesde, 112))  
+                                                         AND h.min_fecmin <= CONVERT(INT, CONVERT(VARCHAR(8), cbmb.FechaHasta, 112))  
+    													 and h.min_codreg = cbmb.Regimen
+														 and h.min_codser = cbmb.Servicio
+            INNER JOIN cas_b_minutadet g WITH ( NOLOCK ) ON h.min_cecori = g.mid_cecori  
+                                                        AND h.min_codigo = g.mid_codigo  
+            INNER JOIN b_receta a WITH ( NOLOCK ) ON g.mid_codrec = a.rec_codigo  
+            INNER JOIN b_recetadet b WITH ( NOLOCK ) ON a.rec_codigo = b.red_codigo  
+            INNER JOIN b_clientes bc WITH ( NOLOCK ) ON bc.cli_codigo = cbmb.Ceco  
+            INNER JOIN #TmpRegimenServicio AS trs WITH ( NOLOCK ) ON trs.CodRegimen = h.min_codreg  
+                                                                 AND trs.CodServicio = h.min_codser  
+            INNER JOIN b_ingrediente c WITH ( NOLOCK ) ON b.red_codpro = c.ing_codigo  
+    WHERE   g.mid_tipmin = '1'  
+            AND h.min_cecori = @Ceco  
+            AND bc.cli_activo = '1'  
+            AND bc.cli_tipo = 0  
+            AND h.min_fecmin >= @fechades  
+            AND h.min_fecmin <= @fechahas  
+    GROUP BY b.red_codigo,
+	         b.red_canpro,
+			 b.red_codpro,
+			 a.rec_tippla,
+			 cbmb.Regimen                                          
+
+    -- Índice para acelerar JOIN y APPLY
+    CREATE NONCLUSTERED INDEX IX_DetReceta_R ON #DetReceta (red_codigo, red_codpro) INCLUDE (rec_tippla);
+
+	--Actualizar tabla detalle receta x tabla de gramaje
+	update #DetReceta
+	set red_canpro=isnull(reemplazo.CantIngredienteCambio, a.red_canpro)
+	   ,red_codpro=ISNULL(reemplazo.IdIngredienteCambio, a.red_codpro)
+	from #DetReceta as a
+	OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    @Ceco,
+				    a.min_codreg,
+				    a.red_codigo,
+				    a.red_codpro,
+				    a.rec_tippla
+				) AS reemplazo
+    INNER JOIN b_ingrediente c WITH ( NOLOCK ) ON ISNULL(reemplazo.IdIngredienteCambio, a.red_codpro) = c.ing_codigo  
+
+
+    SELECT  CONVERT(DATETIME, CONVERT(VARCHAR(8), h.min_fecmin)) AS min_fecmin ,  
+            h.min_codreg ,  
+            h.min_codser ,  
+            a.red_codpro as ing_codigo ,  
+            c.ing_nombre ,  
+            c.ing_unimed ,  
+			a.red_canpro AS ing_canbru,  
+            CONVERT(VARCHAR(10), '') AS proveedor ,  
+            CONVERT(VARCHAR(18), '') AS CodMaterial ,  
+            CONVERT(VARCHAR(100), '') AS DesMaterial ,  
+            CONVERT(FLOAT, 0) AS PrecioUnit ,  
+            CONVERT(VARCHAR(10), '') AS TipoFormato ,  
+            CONVERT(DATETIME, '') AS Valido_Desde ,  
+            CONVERT(DATETIME, '') AS Valido_Hasta ,  
+            0 AS IdConvenio ,  
+            CONVERT(VARCHAR(20), '') AS CodProducto ,  
+            ISNULL(g.mid_numrac, 0) AS Numrac  
+    INTO    #Tmp_Ing  
+    FROM    dbo.cas_b_MinutaBloque AS cbmb WITH ( NOLOCK )  
+            INNER JOIN cas_b_minuta h WITH ( NOLOCK ) ON cbmb.ID_Bloque = h.ID_Bloque  
+                                                         AND h.min_fecmin >= CONVERT(INT, CONVERT(VARCHAR(8), cbmb.FechaDesde, 112))  
+                                                         AND h.min_fecmin <= CONVERT(INT, CONVERT(VARCHAR(8), cbmb.FechaHasta, 112))  
+    													 and h.min_codreg = cbmb.Regimen
+														 and h.min_codser = cbmb.Servicio
+            INNER JOIN cas_b_minutadet g WITH ( NOLOCK ) ON h.min_cecori = g.mid_cecori  
+                                                            AND h.min_codigo = g.mid_codigo  
+            INNER JOIN #DetReceta a WITH ( NOLOCK ) ON g.mid_codrec = a.red_codigo  
+            INNER JOIN b_clientes bc WITH ( NOLOCK ) ON bc.cli_codigo = cbmb.Ceco  
+            INNER JOIN #TmpRegimenServicio AS trs WITH ( NOLOCK ) ON trs.CodRegimen = h.min_codreg  
+			                                                     AND trs.CodServicio = h.min_codser  
+            INNER JOIN b_ingrediente c WITH ( NOLOCK ) ON a.red_codpro = c.ing_codigo  
+    WHERE   g.mid_tipmin = '1'  
+            AND h.min_cecori = @Ceco  
+            AND bc.cli_activo = '1'  
+            AND bc.cli_tipo = 0  
+            AND h.min_fecmin >= @fechades  
+            AND h.min_fecmin <= @fechahas  
+            AND ( a.red_codpro = @CodIngrediente  
+                  OR @CodIngrediente = '0'  
+                )  
+    GROUP BY h.min_fecmin ,  
+            h.min_codreg ,  
+            h.min_codser ,  
+            c.ing_unimed ,  
+            a.red_codpro ,  
+            c.ing_nombre ,  
+            a.red_canpro ,
+			g.mid_numrac                                          
+                              
+    CREATE INDEX IX_tmp_ing_01 ON #Tmp_Ing  (ing_codigo, min_fecmin, min_codreg, min_codser)                                  
+                                         
+    SELECT  IDrow = IDENTITY( INT,1, 1 )                             
+         ,  
+            bpi.[Id_OrgCompra] , 
+			bpi.[Celo] ,  
+            [Ceco] ,  
+            bpi.[Ingrediente] ,  
+            bpi.[Valido_Desde] ,  
+            bpi.[Valido_Hasta] ,  
+            bpi.[Ctd_Fmto] ,  
+            bpi.[Importe] ,  
+            bpi.[Perfil_Redondeo] ,  
+            bpi.[Precio] ,  
+            bpi.[Proveedor] ,  
+            bpi.[Codigo_Material] ,  
+            bfs.fcs_DenMaterial ,  
+            bpi.[Cod_Sgp] ,  
+            bfs.[fcs_tipoformatocompras] ,  
+            CASE WHEN ISNULL(bpefc.ID, 0) > 0 and bpefc.fecha_inicio is null THEN 0  
+				 when ISNULL(bpefc.ID, 0) > 0 and bpefc.fecha_inicio is not null
+					                          and convert(varchar(8),bpefc.Fecha_inicio,112) >= @fechades
+					                          and convert(varchar(8),bpefc.Fecha_Termino,112) <= @fechahas then 0
+			     when bpefc.fecha_inicio is not null and convert(varchar(8),bpefc.Fecha_inicio,112) < @fechades
+					                                 and convert(varchar(8),bpefc.Fecha_Termino,112) < @fechahas then 6    
+			     WHEN bc.cli_tipoformatocompras = bfs.fcs_tipoformatocompras  
+                      AND ics.CONDICIONES = '1' THEN 1  
+                 WHEN bc.cli_tipoformatocompras = bfs.fcs_tipoformatocompras  
+                      AND ISNULL(ics.CONDICIONES, '0') = '0' THEN 2  
+                 WHEN bfs.fcs_tipoformatocompras = 3  
+                      AND ics.CONDICIONES = '1' THEN 3  
+                 WHEN bfs.fcs_tipoformatocompras = 3  
+                      AND ISNULL(ics.CONDICIONES, '0') = '0' THEN 4  
+                 ELSE 5  
+            END AS orden  
+    INTO    #Tmp_PrecioIng  
+    FROM    dbo.b_precio_ingrediente AS bpi WITH ( NOLOCK )  
+            INNER JOIN dbo.I_CONVENIO_SAP AS ics WITH ( NOLOCK ) ON bpi.Id_OrgCompra = ics.ID_ORGCOMPRA  
+                                                                    AND bpi.Codigo_Material = ics.ID_MATERIAL  
+                                                                    AND bpi.Proveedor = ics.ID_PROVEEDOR  
+                                                                    AND bpi.Valido_Desde = ics.FECHA_INICIO_VALIDEZ  
+                                                                    AND bpi.Valido_Hasta = ics.FECHA_FIN_VALIDEZ  
+            INNER JOIN dbo.b_formatocompras_sap AS bfs WITH ( NOLOCK ) ON ics.ID_MATERIAL = bfs.fcs_CodMaterial  
+            INNER JOIN dbo.b_clientes AS bc WITH ( NOLOCK ) ON bc.cli_codigo = bpi.Ceco  
+            LEFT JOIN dbo.b_Pedido_ExcepcionFormatoCompra AS bpefc WITH ( NOLOCK ) ON bpi.Proveedor = bpefc.proveedor  
+                                                                                      AND bpefc.cencos = bc.cli_codigo  
+                                                                                      AND bpefc.ing_codigo = bpi.Ingrediente  
+                                                                                      AND bpefc.fcs_CodMaterial = bpi.Codigo_Material  
+    WHERE   bpi.ceco = @Ceco  
+            AND EXISTS ( SELECT 1  
+                         FROM   #Tmp_Ing AS f  
+                         WHERE  f.ing_codigo = bpi.Ingrediente  
+                                AND ( f.min_fecmin BETWEEN bpi.Valido_Desde AND bpi.Valido_Hasta  
+                                      OR bpi.Valido_Hasta < f.min_fecmin  
+                                    ) )  
+            AND ISNULL(ics.BORRADO, '') <> 'X'  
+    ORDER BY bpi.[Ingrediente] ,  
+             orden ,  
+             bpi.[Precio]                            
+                            
+                              
+    CREATE INDEX ix_Tmp_PrecioIng_01 ON #Tmp_PrecioIng (Ingrediente, Valido_Desde, Valido_Hasta)                                
+    CREATE INDEX ix_Tmp_PrecioIng_02 ON #Tmp_PrecioIng (IDrow, Cod_Sgp)                                
+                            
+    UPDATE  #Tmp_Ing  
+    SET     IdConvenio = ISNULL(( SELECT TOP 1  
+            IDrow  
+            FROM      #Tmp_PrecioIng AS bpi  
+                                  WHERE     bpi.Ingrediente = t.ing_codigo  
+                                            AND t.min_fecmin BETWEEN bpi.Valido_Desde AND bpi.Valido_Hasta  
+                                  ORDER BY  bpi.orden ,  
+                                            bpi.Precio  
+                                ), 0)  
+    FROM    #Tmp_Ing AS t  
+    WHERE   ISNULL(t.PrecioUnit, 0) = 0                              
+                            
+    UPDATE  #Tmp_Ing  
+    SET     proveedor = bpi.Proveedor ,  
+            CodMaterial = bpi.Codigo_Material ,  
+            DesMaterial = bpi.fcs_DenMaterial ,  
+            PrecioUnit = bpi.Precio ,  
+			Valido_Desde = bpi.Valido_Desde ,  
+            Valido_Hasta = bpi.valido_Hasta ,  
+            TipoFormato = ISNULL(fcs_tipoformatocompras, '') ,  
+            codproducto = bpi.[Cod_Sgp]  
+    FROM    #Tmp_Ing AS t  
+            INNER JOIN #Tmp_PrecioIng AS bpi ON bpi.IDrow = t.IdConvenio  
+    WHERE   ISNULL(t.PrecioUnit, 0) = 0                                                   
+              
+    UPDATE  #Tmp_Ing  
+    SET     IdConvenio = ISNULL(( SELECT TOP 1  
+                                            IDrow  
+                                  FROM      #Tmp_PrecioIng AS bpi  
+                                  WHERE     bpi.Ingrediente = t.ing_codigo              
+                                            AND bpi.Valido_Hasta < t.min_fecmin  
+                                  ORDER BY  bpi.Valido_Hasta DESC ,  
+                                            bpi.orden ASC ,  
+                                            bpi.Precio ASC  
+                                ), 0)  
+    FROM    #Tmp_Ing AS t  
+    WHERE   ISNULL(t.PrecioUnit, 0) = 0                
+              
+    UPDATE  #Tmp_Ing  
+    SET     proveedor = bpi.Proveedor ,  
+            CodMaterial = bpi.Codigo_Material ,  
+            DesMaterial = bpi.fcs_DenMaterial ,  
+            PrecioUnit = bpi.Precio ,  
+            Valido_Desde = bpi.Valido_Desde ,  
+            Valido_Hasta = bpi.valido_Hasta ,  
+            TipoFormato = fcs_tipoformatocompras ,  
+            codproducto = [Cod_Sgp]  
+    FROM    #Tmp_Ing AS t  
+            INNER JOIN #Tmp_PrecioIng AS bpi ON bpi.IDrow = t.IdConvenio  
+    WHERE   ISNULL(t.PrecioUnit, 0) = 0                          
+                              
+/*FIN: CALCULO DE PRECIO EN BASE A CONVENIO*/  
+
+
+----------------------------------------------------------------------------------------------------------
+--SELECT 'XX', * FROM #Tmp_PrecioIng 
+
+--SELECT ingrediente FROM #Tmp_PrecioIng WHERE (proveedor = '' or proveedor is null)
+
+--SELECT 'Tmp_Ing', * FROM #Tmp_Ing
+--WHERE ing_codigo in (SELECT ingrediente FROM #Tmp_PrecioIng WHERE proveedor = '' or proveedor is null)
+
+--SELECT 'Tmp_PrecioIng', * FROM #Tmp_PrecioIng 
+
+----FROM    #Tmp_Ing AS t  
+----            INNER JOIN #Tmp_PrecioIng AS bpi ON bpi.IDrow = t.IdConvenio  
+----    WHERE   ISNULL(t.PrecioUnit, 0) = 0   
+
+
+
+----------------------------------------------------------------------------------------------------------
+
+                                       
+
+IF @FiltroNulos = 0
+BEGIN
+                            
+    SELECT  @Ceco AS Ceco ,  
+            ISNULL(bc.cli_nombre, '') AS [Descripción] ,  
+            ar.reg_codigo AS [Régimen],  
+            ISNULL(ar.reg_nombre, '') AS [Descripción] ,  
+            as2.ser_codigo AS [Servicio],  
+            ISNULL(as2.ser_nombre, '') AS [Descripción] ,  
+            ISNULL(CONVERT(VARCHAR(10), ti.min_fecmin, 103), '') AS [Fecha Minuta] ,  
+            ti.ing_codigo AS [Código Ingrediente] ,  
+            ti.ing_nombre AS [Descripción],     
+            SUM(ti.ing_canbru) AS [Consumo Ingrediente],   
+            au.unm_nomcor AS [Unidad],  
+			Numrac AS [Raciones],  
+			ROUND(ISNULL(( ( SUM(ti.ing_canbru) * numrac ) / bp2.pro_facing ), 0), 4) AS [Cantidad Consumir] ,
+			ISNULL(au2.uni_nomcor, '') AS [Unidad SGP],
+            --ISNULL(bp2.pro_codigo,'') AS pro_codigo,    
+            --ISNULL(bp2.pro_nombre,'') AS pro_nombre,    
+            ISNULL(ti.proveedor, '') AS Proveedor ,  
+            ISNULL(bp.prv_nombre, '') AS [Nombre Proveedor] ,  
+            ISNULL(ti.CodMaterial, '') AS [Código Material] ,  
+            ISNULL(ti.DesMaterial, '') AS [Descripción] ,  
+            ISNULL(ti.PrecioUnit, 0) AS [Ult. Precio Neg.] ,  
+            ISNULL(CONVERT(VARCHAR(10), ti.Valido_Hasta, 103), '') AS [Fecha Vig.] ,  
+            CASE ti.TipoFormato  
+              WHEN 1 THEN 'GR'  
+              WHEN 2 THEN 'CH'  
+              WHEN 3 THEN 'ST'  
+              ELSE 'S/F'  
+            END AS [Formato Compra]             
+    FROM    #tmp_ing AS ti  
+            INNER JOIN dbo.a_regimen AS ar WITH ( NOLOCK ) ON ar.reg_codigo = ti.min_codreg  
+            INNER JOIN dbo.a_servicio AS as2 WITH ( NOLOCK ) ON as2.ser_codigo = ti.min_codser  
+            INNER JOIN dbo.a_unidadmed AS au WITH ( NOLOCK ) ON au.unm_codigo = ti.ing_unimed  
+            INNER JOIN dbo.b_clientes AS bc WITH ( NOLOCK ) ON bc.cli_codigo = @ceco  
+            LEFT JOIN dbo.b_proveedor AS bp WITH ( NOLOCK ) ON bp.prv_codigo = ti.proveedor  
+            LEFT JOIN dbo.b_productos AS bp2 WITH ( NOLOCK ) ON bp2.pro_codigo = ti.codproducto  
+            LEFT JOIN dbo.a_unidad AS au2 WITH ( NOLOCK ) ON bp2.pro_coduni = au2.uni_codigo  
+    WHERE   ti.ing_canbru > 0  
+    GROUP BY bc.cli_nombre ,  
+            ar.reg_codigo ,  
+            ar.reg_nombre ,  
+            as2.ser_codigo ,  
+            as2.ser_nombre ,  
+            ti.min_fecmin ,  
+            ti.ing_codigo ,  
+            ti.ing_nombre ,  
+            ti.proveedor ,  
+            ti.CodMaterial ,  
+            ti.DesMaterial ,  
+            ti.PrecioUnit ,  
+            ti.TipoFormato ,  
+            ti.Valido_Desde ,  
+            ti.Valido_Hasta ,  
+            au.unm_nomcor ,  
+            Numrac ,  
+            bp.prv_nombre ,  
+            au2.uni_nomcor ,  
+          bp2.pro_facing     
+    order by [Fecha Vig.]
+END
+ELSE
+BEGIN
+
+    SELECT  @Ceco AS Ceco ,  
+            ISNULL(bc.cli_nombre, '') AS [Descripción] ,  
+            ar.reg_codigo AS [Régimen],  
+            ISNULL(ar.reg_nombre, '') AS [Descripción] ,  
+            as2.ser_codigo AS [Servicio],  
+            ISNULL(as2.ser_nombre, '') AS [Descripción] ,  
+            ISNULL(CONVERT(VARCHAR(10), ti.min_fecmin, 103), '') AS [Fecha Minuta] ,  
+            ti.ing_codigo AS [Código Ingrediente] ,  
+            ti.ing_nombre AS [Descripción],     
+            SUM(ti.ing_canbru) AS [Consumo Ingrediente],   
+            au.unm_nomcor AS [Unidad],  
+			Numrac AS [Raciones],  
+			ROUND(ISNULL(( ( SUM(ti.ing_canbru) * numrac ) / bp2.pro_facing ), 0), 4) AS [Cantidad Consumir] ,
+			ISNULL(au2.uni_nomcor, '') AS [Unidad SGP],
+            ISNULL(ti.proveedor, '') AS Proveedor ,  
+            ISNULL(bp.prv_nombre, '') AS [Nombre Proveedor] ,  
+            ISNULL(ti.CodMaterial, '') AS [Código Material] ,  
+            ISNULL(ti.DesMaterial, '') AS [Descripción] ,  
+            ISNULL(ti.PrecioUnit, 0) AS [Ult. Precio Neg.] ,  
+            ISNULL(CONVERT(VARCHAR(10), ti.Valido_Hasta, 103), '') AS [Fecha Vig.] ,  
+            CASE ti.TipoFormato  
+              WHEN 1 THEN 'GR'  
+              WHEN 2 THEN 'CH'  
+              WHEN 3 THEN 'ST'  
+              ELSE 'S/F'  
+            END AS [Formato Compra]             
+    FROM    #tmp_ing AS ti  
+            INNER JOIN dbo.a_regimen AS ar WITH ( NOLOCK ) ON ar.reg_codigo = ti.min_codreg  
+            INNER JOIN dbo.a_servicio AS as2 WITH ( NOLOCK ) ON as2.ser_codigo = ti.min_codser  
+            INNER JOIN dbo.a_unidadmed AS au WITH ( NOLOCK ) ON au.unm_codigo = ti.ing_unimed  
+            INNER JOIN dbo.b_clientes AS bc WITH ( NOLOCK ) ON bc.cli_codigo = @ceco  
+            LEFT JOIN dbo.b_proveedor AS bp WITH ( NOLOCK ) ON bp.prv_codigo = ti.proveedor  
+            LEFT JOIN dbo.b_productos AS bp2 WITH ( NOLOCK ) ON bp2.pro_codigo = ti.codproducto  
+            LEFT JOIN dbo.a_unidad AS au2 WITH ( NOLOCK ) ON bp2.pro_coduni = au2.uni_codigo  
+    WHERE   ti.ing_canbru > 0  
+	   AND	(ti.proveedor IS NULL OR ltrim(rtrim(ti.proveedor)) = '')
+	   OR NOT (CONVERT(INT, CONVERT(VARCHAR(8), ti.min_fecmin, 112)) >= CONVERT(INT, CONVERT(VARCHAR(8), ti.Valido_Desde, 112))  
+       AND CONVERT(INT, CONVERT(VARCHAR(8), ti.min_fecmin, 112)) <= CONVERT(INT, CONVERT(VARCHAR(8), ti.Valido_Hasta, 112))  
+           )
+
+    GROUP BY bc.cli_nombre ,  
+            ar.reg_codigo ,  
+            ar.reg_nombre ,  
+            as2.ser_codigo ,  
+            as2.ser_nombre ,  
+            ti.min_fecmin ,  
+            ti.ing_codigo ,  
+            ti.ing_nombre ,  
+            ti.proveedor ,  
+            ti.CodMaterial ,  
+            ti.DesMaterial ,  
+            ti.PrecioUnit ,  
+            ti.TipoFormato ,  
+            ti.Valido_Desde ,  
+            ti.Valido_Hasta ,  
+            au.unm_nomcor ,  
+            Numrac ,  
+            bp.prv_nombre ,  
+            au2.uni_nomcor ,  
+            bp2.pro_facing     
+	order by [Fecha Vig.]
+
+END
+
+    DROP TABLE #tmp_ing             
+    DROP TABLE #Tmp_PrecioIng 
+	drop table #DetReceta
+	drop table #TmpRegimenServicio
+

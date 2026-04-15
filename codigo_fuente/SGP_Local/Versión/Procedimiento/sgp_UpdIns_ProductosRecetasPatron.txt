@@ -1,0 +1,1228 @@
+/*
+==========================================================================
+Sistema           : Sgp Local (Consumo Web Service)
+Modulo            : Tabla de productos anexas y receta patron
+ 
+SP o Function     : sgp_UpdIns_ProductosRecetasPatron
+Descripcion       : Descarga tabla de productos - receta patron - anexas a los dos maestros
+Observaciones     :
+ 
+F. creacion       : 06/08/2019
+Creador           : Jorge Andrés Paz Núñez
+==========================================================================
+Modificaciones:
+ID    Fecha       Programador             Motivo y/o Modificacion
+01    30/09/2020  Jorge Andrés Paz Nuñez  Incluir cuatro nuevas tablas 
+02    09/11/2021  Jorge Andrés Paz Nuñez  Incluir dos tabla relacionada b_receta
+                                          """"""""a_sellosreceta"""""""" - """"""""""""""""a_etiquetadoselloreceta""""""""""""""""
+                                          y dos campos a la tabla a_nutriente
+03    31/03/2022  Jorge Andrés Paz Nuñez  Incluir nuevo item """"""""pro_UniFactorIng"""""""" a la tabla
+                                          b_productos
+04    24/01/2023  Jorge Andrés Paz Nuñez  Incluir nueva tabla a_tipoajuste
+05    05/07/2023  Jorge Andrés Paz Nuñez  Incluir nueva tabla b_MermaCostos
+06    23/01/2025  Jorge Andrés Paz Nuñez  incluir datos a la tabla b_minutasraciones
+==========================================================================
+Test:
+declare @xml xml
+declare @Ceco as varchar(10)
+
+
+set @xml = '<NewDataSet>
+  <b_minutaraciones>
+    <IdCeco>59920</IdCeco>
+    <IdRegimen>10978</IdRegimen>
+    <IdServicio>10001</IdServicio>
+    <Fecha>20250801</Fecha>
+    <IdCliente>CL123</IdCliente>
+    <DescripcionCli>Cliente Ejemplo</DescripcionCli>
+    <Raciones>150.5</Raciones>
+  </b_minutaraciones>
+  <b_minutaraciones>
+    <IdCeco>59920</IdCeco>
+    <IdRegimen>10978</IdRegimen>
+    <IdServicio>10001</IdServicio>
+    <Fecha>20250801</Fecha>
+    <IdCliente>CL456</IdCliente>
+    <DescripcionCli>Otro Cliente</DescripcionCli>
+    <Raciones>200.0</Raciones>
+  </b_minutaraciones>
+  <b_preciovta>
+    <IdCeco>59920</IdCeco>
+    <IdRegimen>10978</IdRegimen>
+    <IdServicio>10001</IdServicio>
+    <Fecha>20250801</Fecha>
+    <IdCliente>CL123</IdCliente>
+    <DescripcionCli>Cliente Ejemplo</DescripcionCli>
+    <Precio>1200.75</Precio>
+  </b_preciovta>
+  <b_preciovta>
+    <IdCeco>59920</IdCeco>
+    <IdRegimen>10978</IdRegimen>
+    <IdServicio>10001</IdServicio>
+    <Fecha>20250801</Fecha>
+    <IdCliente>CL456</IdCliente>
+    <DescripcionCli>Otro Cliente</DescripcionCli>
+    <Precio>1350.00</Precio>
+  </b_preciovta>
+</NewDataSet>'
+
+set @Ceco = '59920'
+exec sgp_UpdIns_ProductosRecetasPatron  @xml , @ceco
+*/                                
+create PROCEDURE [dbo].[sgp_UpdIns_ProductosRecetasPatron]
+@xml XML,
+@ceco VARCHAR(10)
+AS
+
+SET NOCOUNT ON;
+SET  XACT_ABORT ON;
+                              
+DECLARE @docHandle INT;
+DECLARE @oRows INT;
+DECLARE @ErrorMessage NVARCHAR(4000);
+DECLARE @paso VARCHAR(100);
+                              
+BEGIN TRY
+    
+    EXEC sp_xml_preparedocument @docHandle OUTPUT, @xml;
+    
+END TRY
+ 
+BEGIN CATCH
+    SET @ErrorMessage = ERROR_MESSAGE();
+    SELECT  @oRows = -1;
+    GOTO Salida;
+END CATCH;
+                              
+BEGIN TRY
+ 
+    BEGIN TRAN;
+
+	
+/* b_minutaraciones - insertar cliente - precio venta si no existe */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_minutaraciones')
+begin
+
+	INSERT INTO dbo.b_minutaraciones (mir_cencos, mir_codreg, mir_codser, mir_fecmin, mir_rutcli, mir_nrorac, mir_SPRS)
+	SELECT 
+		x.value('(IdCeco)[1]', 'VARCHAR(10)'),
+		x.value('(IdRegimen)[1]', 'INT'),
+		x.value('(IdServicio)[1]', 'INT'),
+		x.value('(Fecha)[1]', 'INT'),
+		x.value('(IdCliente)[1]', 'VARCHAR(10)'),
+		x.value('(Raciones)[1]', 'FLOAT'),
+		'1'
+	FROM @xml.nodes('/NewDataSet/b_minutaraciones') AS T(x)
+	WHERE NOT EXISTS (
+		SELECT 1
+		FROM dbo.b_minutaraciones AS c WITH (NOLOCK)
+		WHERE c.mir_cencos = x.value('(IdCeco)[1]', 'VARCHAR(10)')
+		AND c.mir_codreg = x.value('(IdRegimen)[1]', 'INT')
+		AND c.mir_codser = x.value('(IdServicio)[1]', 'INT')
+		AND c.mir_fecmin = x.value('(Fecha)[1]', 'INT')
+		AND c.mir_rutcli = x.value('(IdCliente)[1]', 'VARCHAR(10)')
+		);
+
+	-- Actualizar registros existentes en b_minutaraciones
+	UPDATE dbo.b_minutaraciones
+	SET mir_nrorac = x.value('(Raciones)[1]', 'FLOAT'),
+	    mir_SPRS = '1'
+	FROM dbo.b_minutaraciones AS c WITH (NOLOCK)
+	INNER JOIN @xml.nodes('/NewDataSet/b_minutaraciones') AS T(x)
+		ON c.mir_cencos = x.value('(IdCeco)[1]', 'VARCHAR(10)')
+	AND c.mir_codreg = x.value('(IdRegimen)[1]', 'INT')
+	AND c.mir_codser = x.value('(IdServicio)[1]', 'INT')
+	AND c.mir_fecmin = x.value('(Fecha)[1]', 'INT')
+	AND c.mir_rutcli = x.value('(IdCliente)[1]', 'VARCHAR(10)');
+
+	-- Insertar nuevos clientes en b_clientes
+	INSERT INTO dbo.b_clientes (cli_codigo, cli_nombre, cli_tipo, cli_codbod, cli_codcli, cli_clisap, cli_cievta, cli_ciedia, cli_activo)
+	SELECT DISTINCT
+		x.value('(IdCliente)[1]', 'VARCHAR(10)'),
+		x.value('(DescripcionCli)[1]', 'VARCHAR(50)'),
+		1, 0, '', 0, 1, 0, 1
+	FROM @xml.nodes('/NewDataSet/b_minutaraciones') AS T(x)
+	WHERE NOT EXISTS (
+		SELECT 1
+		FROM dbo.b_clientes AS c WITH (NOLOCK)
+		WHERE c.cli_codigo = x.value('(IdCliente)[1]', 'VARCHAR(10)')
+		);
+
+	-- Actualizar clientes existentes
+	UPDATE dbo.b_clientes
+	SET cli_nombre = x.value('(DescripcionCli)[1]', 'VARCHAR(50)')
+	FROM dbo.b_clientes AS c WITH (NOLOCK)
+	INNER JOIN @xml.nodes('/NewDataSet/b_minutaraciones') AS T(x)
+		ON c.cli_codigo = x.value('(IdCliente)[1]', 'VARCHAR(10)');
+
+end
+
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_preciovta')
+begin
+
+	INSERT INTO dbo.b_preciovta (prv_cencos, prv_codreg, prv_codser, prv_fecvig, prv_rutcli, prv_preven, prv_SPRS)
+	SELECT 
+		x.value('(IdCeco)[1]', 'VARCHAR(10)'),
+		x.value('(IdRegimen)[1]', 'INT'),
+		x.value('(IdServicio)[1]', 'INT'),
+		x.value('(Fecha)[1]', 'INT'),
+		x.value('(IdCliente)[1]', 'VARCHAR(10)'),
+		x.value('(Precio)[1]', 'FLOAT'),
+		'1'
+	FROM @xml.nodes('/NewDataSet/b_preciovta') AS T(x)
+	WHERE NOT EXISTS (
+		SELECT 1
+		FROM dbo.b_preciovta AS c WITH (NOLOCK)
+		WHERE c.prv_cencos = x.value('(IdCeco)[1]', 'VARCHAR(10)')
+		AND c.prv_codreg = x.value('(IdRegimen)[1]', 'INT')
+		AND c.prv_codser = x.value('(IdServicio)[1]', 'INT')
+		AND c.prv_fecvig = x.value('(Fecha)[1]', 'INT')
+		AND c.prv_rutcli = x.value('(IdCliente)[1]', 'VARCHAR(10)')
+		);
+
+	-- Actualizar registros existentes en b_minutaraciones
+	UPDATE dbo.b_preciovta
+	SET prv_preven = x.value('(Precio)[1]', 'FLOAT'),
+	    prv_SPRS = '1'
+	FROM dbo.b_preciovta AS c WITH (NOLOCK)
+	INNER JOIN @xml.nodes('/NewDataSet/b_preciovta') AS T(x)
+		ON c.prv_cencos = x.value('(IdCeco)[1]', 'VARCHAR(10)')
+		AND c.prv_codreg = x.value('(IdRegimen)[1]', 'INT')
+		AND c.prv_codser = x.value('(IdServicio)[1]', 'INT')
+		AND c.prv_fecvig = x.value('(Fecha)[1]', 'INT')
+		AND c.prv_rutcli = x.value('(IdCliente)[1]', 'VARCHAR(10)');
+
+	-- Insertar nuevos clientes en b_clientes
+	INSERT INTO dbo.b_clientes (cli_codigo, cli_nombre, cli_tipo, cli_codbod, cli_codcli, cli_clisap, cli_cievta, cli_ciedia, cli_activo)
+	SELECT DISTINCT
+		x.value('(IdCliente)[1]', 'VARCHAR(10)'),
+		x.value('(DescripcionCli)[1]', 'VARCHAR(50)'),
+		1, 0, '', 0, 1, 0, 1
+	FROM @xml.nodes('/NewDataSet/b_preciovta') AS T(x)
+	WHERE NOT EXISTS (
+		SELECT 1
+		FROM dbo.b_clientes AS c WITH (NOLOCK)
+		WHERE c.cli_codigo = x.value('(IdCliente)[1]', 'VARCHAR(10)')
+		);
+
+	-- Actualizar clientes existentes
+	UPDATE dbo.b_clientes
+	SET cli_nombre = x.value('(DescripcionCli)[1]', 'VARCHAR(50)')
+	FROM dbo.b_clientes AS c WITH (NOLOCK)
+	INNER JOIN @xml.nodes('/NewDataSet/b_minutaraciones') AS T(x)
+		ON c.cli_codigo = x.value('(IdCliente)[1]', 'VARCHAR(10)');
+
+end
+ 
+/* a_tipoajuste */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_CostoMermas')
+begin
+	SELECT IdCeco,IdSegmento,IdServicio,Fecha_Desde,Fecha_Hasta,Costo_Desconche,Costo_Pan,Costo_Produccion,Fecha_Creacion,Fecha_Modificacion,Activo,Usuario into #t_b_costomermas from openxml(@docHandle, N'/NewDataSet/b_CostoMermas', 1)
+	with  (IdCeco varchar(10),IdSegmento int,IdServicio int,Fecha_Desde datetime,Fecha_Hasta datetime,Costo_Desconche float,Costo_Pan float,Costo_Produccion float,Fecha_Creacion datetime,Fecha_Modificacion datetime,Activo varchar(1),Usuario varchar(20))
+ 
+	insert into dbo.b_CostoMermas (IdCeco,IdSegmento,IdServicio,Fecha_Desde,Fecha_Hasta,Costo_Desconche,Costo_Pan,Costo_Produccion,Fecha_Creacion,Fecha_Modificacion,Activo,Usuario) SELECT t.IdCeco,t.IdSegmento,t.IdServicio,t.Fecha_Desde,t.Fecha_Hasta,t.Costo_Desconche,t.Costo_Pan,t.Costo_Produccion,t.Fecha_Creacion,t.Fecha_Modificacion,t.Activo,t.Usuario from #t_b_costomermas as t with (nolock)
+	where not exists (select 1 from dbo.b_CostoMermas as c with (nolock) where c.IdCeco=t.IdCeco and c.IdSegmento=t.IdSegmento and c.IdServicio=t.IdServicio and c.Fecha_Desde=t.Fecha_Desde and c.Fecha_Hasta=t.Fecha_Hasta)
+  
+	update dbo.b_costomermas set Costo_Desconche=t.Costo_Desconche,Costo_Pan=t.Costo_Pan,Costo_Produccion=t.Costo_Produccion,Fecha_Modificacion=t.Fecha_Modificacion,Activo=t.Activo,Usuario=t.Usuario from dbo.b_costomermas as c with (nolock)
+	inner join #t_b_costomermas as t with (nolock) on c.IdCeco=t.IdCeco and c.IdSegmento=t.IdSegmento and c.IdServicio=t.IdServicio and c.Fecha_Desde=t.Fecha_Desde and c.Fecha_Hasta=t.Fecha_Hasta
+ 
+	drop table #t_b_costomermas
+end
+
+/* b_mermacosto */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_tipoajuste')
+begin
+	SELECT aju_codigo,aju_nombre,aju_tipaju,aju_tipo,aju_activo,aju_fecmod,Fecha_Creacion,Usuario into #t_a_tipoajuste from openxml(@docHandle, N'/NewDataSet/a_tipoajuste', 1)
+	with  (aju_codigo int,aju_nombre varchar(30),aju_tipaju varchar(1),aju_tipo varchar(1),aju_activo varchar(1),aju_fecmod datetime,Fecha_Creacion datetime,Usuario varchar(20))
+ 
+	insert into dbo.a_tipoajuste (aju_codigo,aju_nombre,aju_tipaju,aju_tipo,aju_activo,aju_fecmod,Fecha_Creacion,Usuario) SELECT t.aju_codigo,t.aju_nombre,t.aju_tipaju,t.aju_tipo,t.aju_activo,t.aju_fecmod,t.Fecha_Creacion,t.Usuario from #t_a_tipoajuste as t with (nolock)
+	where not exists (select 1 from dbo.a_tipoajuste as a with (nolock) where a.aju_codigo=t.aju_codigo)
+  
+	update dbo.a_tipoajuste set aju_nombre=t.aju_nombre,aju_activo=t.aju_activo,aju_fecmod=t.aju_fecmod,Usuario=t.Usuario from dbo.a_tipoajuste as a with (nolock)
+	inner join #t_a_tipoajuste as t with (nolock) on a.aju_codigo=t.aju_codigo
+ 
+	drop table #t_a_tipoajuste
+end
+
+/* b_casinopvtaclientecalendarizado */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_casinopvtaclientecalendarizado')
+    begin
+    select IdCeco,Fecha_PvtaCliente,Fecha_Creacion,Fecha_Modificacion,Activo,Usuario into #b_casinopvtaclientecalendarizado
+    from openxml(@docHandle, N'/NewDataSet/b_casinopvtaclientecalendarizado', 1)
+    with (IdCeco varchar(10),Fecha_PvtaCliente datetime,Fecha_Creacion datetime,Fecha_Modificacion datetime,Activo varchar(1),Usuario varchar(20))
+ 
+    insert into dbo.b_casinopvtaclientecalendarizado (IdCeco,Fecha_PvtaCliente,Fecha_Creacion,Fecha_Modificacion,Activo,Usuario)
+    select t.IdCeco,t.Fecha_PvtaCliente,t.Fecha_Creacion,t.Fecha_Modificacion,t.Activo,t.Usuario from #b_casinopvtaclientecalendarizado t 
+    where not exists (select 1 from dbo.b_casinopvtaclientecalendarizado as b with (nolock) where b.IdCeco=t.IdCeco and b.Fecha_PvtaCliente=t.Fecha_PvtaCliente)
+ 
+    update dbo.b_casinopvtaclientecalendarizado
+    set Fecha_Creacion=t.Fecha_Creacion,Fecha_Modificacion=t.Fecha_Modificacion,Activo=t.Activo,Usuario=t.Usuario
+    from dbo.b_casinopvtaclientecalendarizado as b with (nolock)
+    inner join #b_casinopvtaclientecalendarizado as t on t.IdCeco=b.IdCeco and t.Fecha_PvtaCliente=b.Fecha_PvtaCliente
+ 
+    drop table #b_casinopvtaclientecalendarizado
+    end
+ 
+/* b_casinoinventariocalendarizado */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_casinoinventariocalendarizado')
+begin
+    select IdCeco,Fecha_Inventario,Fecha_Creacion,Fecha_Modificacion,Activo,Usuario into #b_casinoinventariocalendarizado
+    from openxml(@docHandle, N'/NewDataSet/b_casinoinventariocalendarizado', 1)
+    with (IdCeco varchar(10),Fecha_Inventario datetime,Fecha_Creacion datetime,Fecha_Modificacion datetime,Activo varchar(1),Usuario varchar(20))
+ 
+    insert into dbo.b_casinoinventariocalendarizado (IdCeco,Fecha_Inventario,Fecha_Creacion,Fecha_Modificacion,Activo,Usuario)
+    select t.IdCeco,t.Fecha_Inventario,t.Fecha_Creacion,t.Fecha_Modificacion,t.Activo,t.Usuario from #b_casinoinventariocalendarizado t 
+    where not exists (select 1 from dbo.b_casinoinventariocalendarizado as b with (nolock) where b.IdCeco=t.IdCeco and b.Fecha_Inventario=t.Fecha_Inventario)
+
+    update dbo.b_casinoinventariocalendarizado
+    set Fecha_Creacion=t.Fecha_Creacion, Fecha_Modificacion=t.Fecha_Modificacion, Activo=t.Activo, Usuario=t.Usuario
+    from dbo.b_casinoinventariocalendarizado as b with (nolock)
+    inner join #b_casinoinventariocalendarizado as t on t.IdCeco = b.IdCeco and t.Fecha_Inventario = b.Fecha_Inventario
+
+    drop table #b_casinoinventariocalendarizado
+end
+ 
+/* b_casinodiasholgurainvcalendarizado */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_casinodiasholgurainvcalendarizado')
+begin
+    select IdCeco,Dia_Holgura_Antes,Dia_Holgura_Despues,Fecha_Creacion,Fecha_Modificacion,Activo,Usuario into #b_casinodiasholgurainvcalendarizado
+	from openxml(@docHandle, N'/NewDataSet/b_casinodiasholgurainvcalendarizado', 1)
+	with (IdCeco varchar(10),Dia_Holgura_Antes int,Dia_Holgura_Despues int,Fecha_Creacion datetime,Fecha_Modificacion datetime,Activo varchar(1),Usuario varchar(20))
+ 
+	insert into dbo.b_casinodiasholgurainvcalendarizado (IdCeco,Dia_Holgura_Antes,Dia_Holgura_Despues,Fecha_Creacion,Fecha_Modificacion,Activo,Usuario)
+	select t.IdCeco,t.Dia_Holgura_Antes,t.Dia_Holgura_Despues,t.Fecha_Creacion,t.Fecha_Modificacion,t.Activo,t.Usuario
+	from #b_casinodiasholgurainvcalendarizado t 
+	where not exists (select 1 from dbo.b_casinodiasholgurainvcalendarizado as b with (nolock) where b.IdCeco=t.IdCeco)
+
+	update dbo.b_casinodiasholgurainvcalendarizado
+	set Dia_Holgura_Antes=t.Dia_Holgura_Antes, Dia_Holgura_Despues=t.Dia_Holgura_Despues, Fecha_Creacion=t.Fecha_Creacion, Fecha_Modificacion=t.Fecha_Modificacion, Activo=t.Activo, Usuario=t.Usuario
+	from dbo.b_casinodiasholgurainvcalendarizado as b with (nolock)
+	inner join #b_casinodiasholgurainvcalendarizado as t on t.IdCeco=b.IdCeco
+ 
+	drop table #b_casinodiasholgurainvcalendarizado
+end
+ 
+/* b_casinoservicioprincipales */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_casinoservicioprincipales')
+begin
+    select IdCeco,IdRegimen,IdServicio,Preferido,Activo,Fecha_Creacion,Fecha_Modificacion,Usuario into #b_casinoservicioprincipales
+	from openxml(@docHandle, N'/NewDataSet/b_casinoservicioprincipales', 1)
+	with (IdCeco varchar(10),IdRegimen int,IdServicio int,Preferido varchar(1),Activo varchar(1),Fecha_Creacion datetime,Fecha_Modificacion datetime,Usuario varchar(20))
+
+	insert into dbo.b_casinoservicioprincipales (IdCeco,IdRegimen,IdServicio,Preferido,Activo,Fecha_Creacion,Fecha_Modificacion,Usuario)
+	select t.IdCeco,t.IdRegimen,t.IdServicio,t.Preferido,t.Activo,t.Fecha_Creacion,t.Fecha_Modificacion,t.Usuario from #b_casinoservicioprincipales t 
+	where not exists (select 1 from dbo.b_casinoservicioprincipales as b with (nolock) where b.IdCeco=t.IdCeco and b.IdRegimen=t.IdRegimen and b.IdServicio=t.IdServicio)
+
+	update dbo.b_casinoservicioprincipales
+	set Preferido=t.Preferido,Activo=t.Activo,Fecha_Creacion=t.Fecha_Creacion,Fecha_Modificacion=t.Fecha_Modificacion,Usuario=t.Usuario
+	from dbo.b_casinoservicioprincipales as b with (nolock)
+	inner join #b_casinoservicioprincipales as t on t.IdCeco=b.IdCeco and t.IdRegimen=b.IdRegimen and t.IdServicio=b.IdServicio
+
+	drop table #b_casinoservicioprincipales
+end
+ 
+/* a_segmento */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_segmento')
+begin
+	select seg_codigo,seg_nombre into #a_segmento from openxml(@docHandle, N'/NewDataSet/a_segmento', 1)
+	with (seg_codigo int,seg_nombre varchar(50))
+ 
+	insert into dbo.a_segmento (seg_codigo,seg_nombre) select t.seg_codigo,t.seg_nombre from #a_segmento t
+		where not exists ( select 1 from dbo.a_segmento as a with (nolock) where a.seg_codigo=t.seg_codigo )
+ 
+	update dbo.a_segmento set seg_nombre=t.seg_nombre from dbo.a_segmento as a with (nolock) 
+	inner join #a_segmento as t on a.seg_codigo=t.seg_codigo
+ 
+	drop table #a_segmento
+end
+ 
+/* b_costopatron */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_costopatron')
+begin
+	select pcp_cencos,pcp_codreg,pcp_codser,pcp_anomes,pcp_descripcion,pcp_valor into #b_paramcostopatron
+	from openxml(@docHandle, N'/NewDataSet/b_paramcostopatron', 1)
+	with (pcp_cencos varchar(10),pcp_codreg int,pcp_codser int,pcp_anomes int,pcp_descripcion varchar(10),pcp_valor float)
+ 
+	insert into dbo.b_costopatron (cpa_cencos,cpa_codreg,cpa_codser,cpa_anomes,cpa_descripcion,cpa_valor)
+	select t.pcp_cencos,t.pcp_codreg,t.pcp_codser,t.pcp_anomes,t.pcp_descripcion,t.pcp_valor from #b_paramcostopatron t
+	where not exists (select 1 from dbo.b_costopatron as a with (nolock)
+						where a.cpa_cencos=t.pcp_cencos and a.cpa_codreg=t.pcp_codreg
+			and   a.cpa_codser=t.pcp_codser and a.cpa_anomes=t.pcp_anomes
+			and   a.cpa_descripcion=t.pcp_descripcion)
+ 
+	update dbo.b_costopatron set cpa_valor=t.pcp_valor from b_costopatron as a with (nolock) 
+	inner join #b_paramcostopatron as t on a.cpa_cencos=t.pcp_cencos and a.cpa_codreg=t.pcp_codreg
+	and   a.cpa_codser=t.pcp_codser and a.cpa_anomes=t.pcp_anomes
+	and   a.cpa_descripcion=t.pcp_descripcion
+ 
+	drop table #b_paramcostopatron
+end
+ 
+/* b_gramofamproducto */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_gramofamproducto')
+begin
+	select gfp_cencos,gfp_codreg,gfp_catdie,gfp_tiprec,gfp_fampro,gfp_graini,gfp_grafin into #b_gramofamproducto
+	from openxml(@docHandle, N'/NewDataSet/b_gramofamproducto', 1)
+	with (gfp_cencos varchar(10),gfp_codreg int,gfp_catdie int,gfp_tiprec int,gfp_fampro int,gfp_graini float,gfp_grafin float)
+ 
+	insert into dbo.b_gramofamproducto (gfp_cencos,gfp_codreg,gfp_catdie,gfp_tiprec,gfp_fampro,gfp_graini,gfp_grafin)
+	select t.gfp_cencos,t.gfp_codreg,t.gfp_catdie,t.gfp_tiprec,t.gfp_fampro,t.gfp_graini,t.gfp_grafin from #b_gramofamproducto t
+	where not exists (select 1 from dbo.b_gramofamproducto as a with (nolock)
+			where a.gfp_cencos=t.gfp_cencos and a.gfp_codreg=t.gfp_codreg
+			and   a.gfp_catdie=t.gfp_catdie and a.gfp_tiprec=t.gfp_tiprec
+			and   a.gfp_fampro=t.gfp_fampro)
+ 
+	update dbo.b_gramofamproducto set gfp_graini=t.gfp_graini, gfp_grafin=t.gfp_grafin from b_gramofamproducto as a with (nolock) 
+	inner join #b_gramofamproducto as t on  a.gfp_cencos=t.gfp_cencos and a.gfp_codreg=t.gfp_codreg
+	and   a.gfp_catdie=t.gfp_catdie and a.gfp_tiprec=t.gfp_tiprec and a.gfp_fampro=t.gfp_fampro
+ 
+	drop table #b_gramofamproducto
+end
+ 
+/* a_tipointerfaz */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_tipointerfaz')
+	begin
+	select tii_codigo,tii_nombre into #t_a_tipointerfaz from openxml(@docHandle, N'/NewDataSet/a_tipointerfaz', 1)
+	with (tii_codigo int,tii_nombre varchar(50))
+ 
+	insert into dbo.a_tipointerfaz (tii_codigo,tii_nombre) select t.tii_codigo,t.tii_nombre from #t_a_tipointerfaz t
+	where not exists (select 1 from dbo.a_tipointerfaz as a with (nolock) where a.tii_codigo=t.tii_codigo)
+ 
+	update dbo.a_tipointerfaz set tii_nombre=t.tii_nombre from a_tipointerfaz as a with (nolock) 
+	inner join #t_a_tipointerfaz as t on a.tii_codigo=t.tii_codigo
+ 
+	drop table #t_a_tipointerfaz
+end
+ 
+/* b_casinointerfaz */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_casinointerfaz')
+begin
+	SELECT cai_cencos,cai_codtii INTO #b_casinointerfaz FROM OPENXML(@docHandle, N'/NewDataSet/b_casinointerfaz', 1)
+	WITH (cai_cencos varchar(10), cai_codtii int);
+         
+	DELETE b_casinointerfaz FROM b_casinointerfaz as a with ( nolock )
+	inner join #b_casinointerfaz as b with (nolock) on a.cai_cencos=b.cai_cencos
+ 
+	INSERT INTO dbo.b_casinointerfaz (cai_cencos,cai_codtii)
+	select a.cai_cencos,a.cai_codtii from #b_casinointerfaz as a with (nolock)
+	where not exists (select 1 from b_casinointerfaz as b with (nolock) where a.cai_cencos=b.cai_cencos and a.cai_codtii=b.cai_codtii)
+  
+	DROP TABLE #b_casinointerfaz;
+end
+ 
+/* a_par_codigo_barra */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_par_codigo_barra_cas')
+begin
+	SELECT a_par_id_codigo,atr_codigo_barra,cli_codigo,cbar_posinicial,cbar_largo INTO #a_par_codigo_barra
+	FROM OPENXML(@docHandle, N'/NewDataSet/a_par_codigo_barra', 1)                              
+	WITH (a_par_id_codigo INT,atr_codigo_barra int,cli_codigo VARCHAR(10),cbar_posinicial int,cbar_largo int);                            
+         
+	INSERT INTO dbo.a_par_codigo_barra_cas (a_par_id_codigo,atr_codigo_barra,cli_codigo,cbar_posinicial,cbar_largo)
+	select a.a_par_id_codigo,a.atr_codigo_barra,a.cli_codigo,a.cbar_posinicial,a.cbar_largo from #a_par_codigo_barra as a with (nolock)
+	where not exists (select 1 from a_par_codigo_barra_cas as b with (nolock)
+			where a.a_par_id_codigo=b.a_par_id_codigo and a.atr_codigo_barra=b.atr_codigo_barra
+			and   a.cli_codigo=b.cli_codigo)
+  
+	UPDATE dbo.a_par_codigo_barra_cas SET cbar_posinicial=a.cbar_posinicial, cbar_largo=a.cbar_largo
+	FROM dbo.a_par_codigo_barra_cas AS a
+	INNER JOIN #a_par_codigo_barra AS b ON a.a_par_id_codigo=b.a_par_id_codigo and a.atr_codigo_barra=b.atr_codigo_barra
+	and a.cli_codigo=b.cli_codigo;
+ 
+	DROP TABLE #a_par_codigo_barra;
+end
+                      
+/* a_unidadmed */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_unidadmed')
+begin
+	SELECT unm_codigo,unm_nombre,unm_nomcor INTO #t_a_unidadmed FROM OPENXML(@docHandle, N'/NewDataSet/a_unidadmed', 1)                              
+	WITH (unm_codigo INT,unm_nombre VARCHAR(50),unm_nomcor VARCHAR(5));                            
+                          
+	INSERT INTO dbo.a_unidadmed (unm_codigo,unm_nombre,unm_nomcor ) SELECT t.unm_codigo,t.unm_nombre,t.unm_nomcor FROM #t_a_unidadmed t
+	WHERE NOT EXISTS (SELECT 1 FROM dbo.a_unidadmed AS au WHERE au.unm_codigo=t.unm_codigo)
+                          
+	UPDATE  dbo.a_unidadmed SET unm_nombre=tau.unm_nombre, unm_nomcor=tau.unm_nomcor FROM dbo.a_unidadmed AS au
+	INNER JOIN #t_a_unidadmed AS tau ON au.unm_codigo=tau.unm_codigo;
+ 
+	DROP TABLE #t_a_unidadmed;
+end
+ 
+/* a_unidad */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_unidad')
+begin
+	SELECT uni_codigo,uni_nombre,uni_nomcor INTO #t_a_unidad FROM OPENXML(@docHandle, N'/NewDataSet/a_unidad', 1)                              
+	WITH (uni_codigo INT,uni_nombre VARCHAR(10),uni_nomcor VARCHAR(5));                              
+                              
+	INSERT INTO dbo.a_unidad (uni_codigo,uni_nombre,uni_nomcor) SELECT t.uni_codigo,t.uni_nombre,t.uni_nomcor FROM #t_a_unidad t
+	WHERE NOT EXISTS (SELECT 1 FROM dbo.a_unidad AS au WHERE au.uni_codigo = t.uni_codigo);                              
+                              
+	UPDATE dbo.a_unidad SET uni_nombre=t.uni_nombre,uni_nomcor=t.uni_nomcor FROM dbo.a_unidad AS au
+	INNER JOIN #t_a_unidad t ON au.uni_codigo=t.uni_codigo;
+                                                 
+	DROP TABLE #t_a_unidad;
+end
+ 
+/* a_ctacontable */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_ctacontable')
+begin
+	SELECT cta_codigo,cta_nombre INTO #t_a_ctacontable FROM OPENXML(@docHandle, N'/NewDataSet/a_ctacontable', 1)                              
+	WITH (cta_codigo VARCHAR(10),cta_nombre VARCHAR(40));
+
+	INSERT  INTO dbo.a_ctacontable (cta_codigo,cta_nombre) SELECT t.cta_codigo,t.cta_nombre FROM #t_a_ctacontable t
+	WHERE   NOT EXISTS (SELECT 1 FROM dbo.a_ctacontable AS a WHERE a.cta_codigo=t.cta_codigo)
+ 
+	UPDATE  dbo.a_ctacontable SET cta_nombre=t.cta_nombre FROM dbo.a_ctacontable AS a
+	INNER JOIN #t_a_ctacontable t ON a.cta_codigo=t.cta_codigo;
+
+	DROP TABLE #t_a_ctacontable;
+end
+ 
+/* a_tipopro */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_tipopro')
+begin
+	SELECT  tip_codigo,tip_nombre,tip_previo,tip_activo INTO #t_a_tipopro FROM OPENXML(@docHandle, N'/NewDataSet/a_tipopro', 1)                              
+	WITH (tip_codigo INT,tip_nombre VARCHAR(35),tip_previo INT,tip_activo VARCHAR(1));         
+
+	INSERT INTO dbo.a_tipopro (tip_codigo,tip_nombre,tip_previo,tip_activo) SELECT t.tip_codigo,t.tip_nombre,t.tip_previo,t.tip_activo FROM #t_a_tipopro t
+	WHERE NOT EXISTS (SELECT 1 FROM dbo.a_tipopro AS a WHERE a.tip_codigo=t.tip_codigo)
+
+	UPDATE dbo.a_tipopro SET tip_nombre=t.tip_nombre,tip_previo=t.tip_previo,tip_activo=t.tip_activo FROM dbo.a_tipopro AS a
+	INNER JOIN #t_a_tipopro t ON a.tip_codigo=t.tip_codigo;
+
+	DROP TABLE #t_a_tipopro;
+end
+ 
+/* a_embalaje */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_embalaje')
+begin
+	SELECT  emb_codigo,emb_nombre,emb_nomcor INTO #t_a_embalaje FROM OPENXML(@docHandle, N'/NewDataSet/a_embalaje', 1)
+	WITH (emb_codigo INT,emb_nombre VARCHAR(20),emb_nomcor VARCHAR(5));
+
+	INSERT INTO dbo.a_embalaje (emb_codigo,emb_nombre,emb_nomcor) SELECT t.emb_codigo,t.emb_nombre,t.emb_nomcor FROM #t_a_embalaje t
+	WHERE NOT EXISTS (SELECT 1 FROM dbo.a_embalaje AS a WHERE a.emb_codigo=t.emb_codigo)
+
+	UPDATE dbo.a_embalaje SET emb_nombre=t.emb_nombre,emb_nomcor=t.emb_nomcor FROM dbo.a_embalaje AS a
+	INNER JOIN #t_a_embalaje t ON a.emb_codigo=t.emb_codigo;
+
+	DROP TABLE #t_a_embalaje;
+end
+ 
+/* a_tipodocumento */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_tipodocumento')
+begin
+	select tdo_codigo,tdo_nombre,tdo_cladoc,tdo_orden into #t_a_tipodocumento
+	from  openxml(@docHandle, N'/NewDataSet/a_tipodocumento', 1)
+	with  (tdo_codigo varchar(2),tdo_nombre varchar(50),tdo_cladoc varchar(2),tdo_orden int)
+      
+	insert into dbo.a_tipodocumento (tdo_codigo,tdo_nombre,tdo_cladoc,tdo_orden)
+	select t.tdo_codigo,t.tdo_nombre,t.tdo_cladoc,t.tdo_orden from #t_a_tipodocumento as t
+	where not exists (select 1 from dbo.a_tipodocumento as a with (nolock) where a.tdo_codigo=t.tdo_codigo)
+ 
+	update dbo.a_tipodocumento set tdo_nombre=t.tdo_nombre,tdo_cladoc=t.tdo_cladoc,tdo_orden=t.tdo_orden
+	from dbo.a_tipodocumento as a with (nolock) 
+	inner join #t_a_tipodocumento as t with (nolock) on a.tdo_codigo=t.tdo_codigo
+ 
+	drop table #t_a_tipodocumento
+end
+ 
+/* a_impuesto */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_impuesto')
+begin
+	SELECT imp_codigo,imp_nombre,imp_pctimp,imp_inccos,imp_codsap,imp_indmod,imp_adicional,imp_cimsap1,imp_cimsap2,imp_cimsap3,imp_cimsap4
+	into  #t_a_impuesto
+	from  openxml(@docHandle, N'/NewDataSet/a_impuesto', 1)
+	with  (imp_codigo int,imp_nombre varchar(15),imp_pctimp float,imp_inccos int,imp_codsap varchar(20),imp_indmod varchar(1),imp_adicional int,imp_cimsap1 varchar(2),imp_cimsap2 varchar(2),imp_cimsap3 varchar(2),imp_cimsap4 varchar(2))
+               
+	insert into dbo.a_impuesto (imp_codigo,imp_nombre,imp_pctimp,imp_inccos,imp_codsap,imp_indmod,imp_adicional,imp_cimsap1,imp_cimsap2,imp_cimsap3,imp_cimsap4)
+	SELECT  t.imp_codigo,t.imp_nombre,t.imp_pctimp,t.imp_inccos,t.imp_codsap,t.imp_indmod,t.imp_adicional,t.imp_cimsap1,t.imp_cimsap2,t.imp_cimsap3,t.imp_cimsap4
+	from #t_a_impuesto as t with (nolock)
+	where not exists ( select 1 from dbo.a_impuesto as a with (nolock) where a.imp_codigo=t.imp_codigo )
+ 
+	update a_impuesto
+	set imp_nombre=t.imp_nombre,imp_pctimp=t.imp_pctimp,imp_inccos=t.imp_inccos,imp_codsap=t.imp_codsap
+	   ,imp_indmod=t.imp_indmod,imp_adicional=t.imp_adicional,imp_cimsap1=t.imp_cimsap1,imp_cimsap2=t.imp_cimsap2
+	   ,imp_cimsap3=t.imp_cimsap3,imp_cimsap4=t.imp_cimsap4
+	from dbo.a_impuesto as a with (nolock)
+	inner join #t_a_impuesto as t with (nolock) on a.imp_codigo=t.imp_codigo
+ 
+	drop table #t_a_impuesto
+end
+ 
+/* a_pais */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_pais')
+begin
+	SELECT pai_codigo,pai_nombre into #t_a_pais from openxml(@docHandle, N'/NewDataSet/a_pais', 1)
+	with  (pai_codigo varchar(10),pai_nombre varchar(100))
+ 
+	insert into dbo.a_pais (pai_codigo,pai_nombre) SELECT t.pai_codigo,t.pai_nombre from #t_a_pais as t with (nolock)
+	where not exists (select 1 from dbo.a_pais as ap with (nolock) where ap.pai_codigo=t.pai_codigo)
+  
+	update dbo.a_pais set pai_nombre=t.pai_nombre from dbo.a_pais as a with (nolock)
+	inner join #t_a_pais as t with (nolock) on a.pai_codigo=t.pai_codigo
+ 
+	drop table #t_a_pais
+end
+ 
+/* a_tipoactividad */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_tipoactividad')
+begin
+	SELECT tia_codigo,tia_nombre into #t_a_tipoactividad from openxml(@docHandle, N'/NewDataSet/a_tipoactividad', 1)
+	with  (tia_codigo int,tia_nombre varchar(50))
+ 
+	insert into dbo.a_tipoactividad (tia_codigo,tia_nombre) select t.tia_codigo,t.tia_nombre from #t_a_tipoactividad as t with (nolock)
+	where not exists ( select 1 from dbo.a_tipoactividad as a with (nolock) where a.tia_codigo=t.tia_codigo )
+ 
+	update dbo.a_tipoactividad set tia_nombre=t.tia_nombre from dbo.a_tipoactividad as a with (nolock)
+	inner join #t_a_tipoactividad as t with (nolock) on a.tia_codigo=t.tia_codigo
+ 
+	drop table #t_a_tipoactividad
+end
+ 
+/* a_municipio */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_municipio')
+begin
+	SELECT mun_codigo,mun_nombre,mun_retobl into #t_a_municipio from openxml(@docHandle, N'/NewDataSet/a_municipio', 1)
+	with  (mun_codigo int,mun_nombre varchar(100),mun_retobl varchar(1))
+ 
+	insert into dbo.a_municipio (mun_codigo,mun_nombre,mun_retobl)
+	select t.mun_codigo,t.mun_nombre,t.mun_retobl from #t_a_municipio as t with (nolock)
+	where not exists ( select 1 from dbo.a_municipio as a with (nolock) where a.mun_codigo=t.mun_codigo )
+ 
+	update dbo.a_municipio set mun_nombre=t.mun_nombre, mun_retobl=t.mun_retobl from dbo.a_municipio as a with (nolock)
+	inner join #t_a_municipio as t with (nolock) on a.mun_codigo=t.mun_codigo
+ 
+	drop table #t_a_municipio
+end
+ 
+/* a_region */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_region')
+begin
+	SELECT reg_codigo,reg_nombre into #t_a_region from openxml(@docHandle, N'/NewDataSet/a_region', 1)
+	with  (reg_codigo int,reg_nombre varchar(50))
+ 
+	insert into dbo.a_region (reg_codigo,reg_nombre) select t.reg_codigo,t.reg_nombre from #t_a_region as t with (nolock)
+	where not exists (select 1 from dbo.a_region as a with (nolock) where a.reg_codigo=t.reg_codigo)
+ 
+	update dbo.a_region set reg_nombre=t.reg_nombre from dbo.a_region as a with (nolock)
+	inner join #t_a_region as t with (nolock) on a.reg_codigo=t.reg_codigo
+ 
+	drop table #t_a_region
+end
+ 
+/* a_clasedocsap */ 
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_clasedocsap')
+begin
+	SELECT cds_coddoc,cds_codreg,cds_cdosap into #t_a_clasedocsap from openxml(@docHandle, N'/NewDataSet/a_clasedocsap', 1)
+	with  (cds_coddoc varchar(2),cds_codreg int,cds_cdosap varchar(2))
+ 
+	insert into dbo.a_clasedocsap (cds_coddoc,cds_codreg,cds_cdosap)
+	SELECT t.cds_coddoc,t.cds_codreg,t.cds_cdosap from #t_a_clasedocsap as t with (nolock)
+	where not exists (select 1 from dbo.a_clasedocsap as a with (nolock) where a.cds_coddoc=t.cds_coddoc)
+ 
+	update dbo.a_clasedocsap set cds_codreg=t.cds_codreg,cds_cdosap=t.cds_cdosap from dbo.a_clasedocsap as a with (nolock)
+	inner join #t_a_clasedocsap as t with (nolock) on a.cds_coddoc=t.cds_coddoc
+ 
+	drop table #t_a_clasedocsap
+end
+ 
+/* a_tiposervicio */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_tiposervicio')
+begin
+	SELECT tis_codigo,tis_nombre into #t_a_tiposervicio from openxml(@docHandle, N'/NewDataSet/a_tiposervicio', 1)
+	with  (tis_codigo int,tis_nombre varchar(50))
+ 
+	insert into dbo.a_tiposervicio (tis_codigo,tis_nombre) select t.tis_codigo,t.tis_nombre from #t_a_tiposervicio as t with (nolock)
+	where not exists (select 1 from dbo.a_tiposervicio as a with (nolock) where a.tis_codigo=t.tis_codigo)
+ 
+	update dbo.a_tiposervicio set tis_nombre=t.tis_nombre from dbo.a_tiposervicio as a with (nolock)
+	inner join #t_a_tiposervicio as t with (nolock) on a.tis_codigo=t.tis_codigo
+ 
+	drop table #t_a_tiposervicio
+end
+ 
+/* Cuentas_Sap_AX */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'Cuentas_Sap_AX')
+begin
+	SELECT Cuentas_Sap,Cuentas_AX into #t_Cuentas_Sap_AX from openxml(@docHandle, N'/NewDataSet/Cuentas_Sap_AX', 1)
+	with (Cuentas_Sap varchar(50),Cuentas_AX varchar(50))
+ 
+	insert into dbo.Cuentas_Sap_AX (Cuentas_Sap,Cuentas_AX) SELECT t.Cuentas_Sap,t.Cuentas_AX from #t_Cuentas_Sap_AX as t with (nolock)
+	where not exists (select 1 from dbo.Cuentas_Sap_AX as csa with (nolock) where csa.cuentas_sap=t.cuentas_sap)
+ 
+	update dbo.Cuentas_Sap_AX set Cuentas_AX=t.Cuentas_AX from dbo.Cuentas_Sap_AX as csa with (nolock)
+	inner join #t_Cuentas_Sap_AX as t with (nolock) on csa.Cuentas_AX=t.cuentas_ax
+ 
+	drop table #t_Cuentas_Sap_AX
+end
+ 
+/* Sociedad_Sap_AX */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'Sociedad_Sap_AX')
+begin
+	SELECT Sociedad_Sap,Sociedad_AX into #t_Sociedad_Sap_AX from openxml(@docHandle, N'/NewDataSet/Sociedad_Sap_AX', 1)
+	with (Sociedad_Sap varchar(50),Sociedad_AX varchar(50))
+ 
+	insert into dbo.Sociedad_Sap_Ax (Sociedad_Sap,Sociedad_AX) select t.Sociedad_Sap,t.Sociedad_AX from #t_Sociedad_Sap_AX as t with (nolock)
+	where not exists (select 1 from dbo.Sociedad_Sap_AX as s with (nolock) where s.Sociedad_Sap=t.sociedad_sap)
+ 
+	update dbo.Sociedad_Sap_AX set Sociedad_AX=t.Sociedad_AX from dbo.Sociedad_Sap_AX as s with (nolock)
+	inner join #t_Sociedad_Sap_AX as t with (nolock) on s.Sociedad_Sap=t.sociedad_sap
+ 
+	drop table #t_Sociedad_Sap_AX
+end
+ 
+/* Cecos_Sap_AX */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'Cecos_Sap_AX')
+begin
+	SELECT Cecos_Sap,Cecos_AX,Sociedad_Sap into #t_Cecos_Sap_AX from openxml(@docHandle, N'/NewDataSet/Cecos_Sap_AX', 1)
+	with  (Cecos_Sap varchar(10),Cecos_AX varchar(10),Sociedad_Sap varchar(10))
+ 
+	delete dbo.Cecos_Sap_AX
+ 
+	insert into dbo.Cecos_Sap_AX (Cecos_Sap,Cecos_AX,Sociedad_Sap)
+	select t.Cecos_Sap,t.Cecos_AX,t.Sociedad_Sap from #t_Cecos_Sap_AX as t with (nolock)
+	where not exists (select 1 from dbo.Cecos_Sap_AX as c with (nolock) where c.Cecos_Sap=t.Cecos_Sap and c.Cecos_AX=t.Cecos_AX)
+ 
+	update dbo.Cecos_Sap_AX set Sociedad_Sap=t.Sociedad_Sap from dbo.Cecos_Sap_AX as c with (nolock)
+	inner join #t_Cecos_Sap_AX as t with (nolock) on c.Cecos_Sap=t.Cecos_Sap and c.Cecos_AX=t.Cecos_AX
+ 
+	drop table #t_Cecos_Sap_AX
+end
+ 
+/* a_nutriente */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_nutriente')
+begin
+	SELECT nut_codigo,nut_nombre,nut_nomuni,nut_indpri,nut_secnro,nut_IndicePrincipalSello,nut_OrdenPrincipalSello INTO #t_a_nutriente
+	FROM   OPENXML(@docHandle, N'/NewDataSet/a_nutriente', 1)
+	WITH   (nut_codigo INT,nut_nombre VARCHAR(30),nut_nomuni VARCHAR(5),nut_indpri INT,nut_secnro INT,nut_IndicePrincipalSello bit,nut_OrdenPrincipalSello smallint);                 
+                   
+	INSERT  INTO dbo.a_nutriente (nut_codigo,nut_nombre,nut_nomuni,nut_indpri,nut_secnro,nut_IndicePrincipalSello,nut_OrdenPrincipalSello)
+	SELECT  nut_codigo,nut_nombre,nut_nomuni,nut_indpri,nut_secnro,nut_IndicePrincipalSello,nut_OrdenPrincipalSello FROM #t_a_nutriente t
+	WHERE   NOT EXISTS (SELECT 1 FROM dbo.a_nutriente AS a WHERE a.nut_codigo=t.nut_codigo)
+                              
+	UPDATE  dbo.a_nutriente SET nut_nombre=t.nut_nombre,nut_nomuni=t.nut_nomuni,
+		nut_indpri=t.nut_indpri,nut_secnro=t.nut_secnro,nut_IndicePrincipalSello=t.nut_IndicePrincipalSello,nut_OrdenPrincipalSello=t.nut_OrdenPrincipalSello FROM dbo.a_nutriente AS a
+	INNER JOIN #t_a_nutriente t ON a.nut_codigo=t.nut_codigo;
+                                                 
+	DROP TABLE #t_a_nutriente
+end                            
+                   
+/* a_param */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_param')
+begin
+	SELECT par_codigo,par_nombre,par_tipo,par_valor INTO #t_a_param FROM OPENXML(@docHandle, N'/NewDataSet/a_param', 1)        
+	WITH (par_codigo VARCHAR(10),par_nombre VARCHAR(40),par_tipo VARCHAR(1),par_valor VARCHAR(255));   
+ 
+	insert into dbo.a_param (par_codigo,par_nombre,par_tipo,par_valor,par_cencos)
+	select t.par_codigo,t.par_nombre,t.par_tipo,t.par_valor,bc.cli_codigo from #t_a_param as t with (nolock)
+	inner join dbo.b_clientes as bc with (nolock) on bc.cli_activo='1' and bc.cli_tipo=0 and bc.cli_codbod>0
+	where not exists (select 1 from dbo.a_param as ap with (nolock) where ap.par_cencos=bc.cli_codigo and ap.par_codigo=t.par_codigo)
+	and bc.cli_codigo=@ceco
+ 
+	update dbo.a_param set par_nombre=t.par_nombre,par_tipo=t.par_tipo,par_valor=t.par_valor from dbo.a_param as ap with (nolock)
+	inner join dbo.b_clientes as bc with (nolock) on ap.par_cencos=bc.cli_codigo and bc.cli_activo='1'
+				and bc.cli_tipo=0 and bc.cli_codbod>0
+	inner join #t_a_param as t with (nolock) on ap.par_codigo=t.par_codigo
+ 
+	DROP TABLE #t_a_param
+end
+ 
+/* b_retencionica */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_retencionica')
+begin
+	SELECT rei_codigo,rei_nombre INTO #t_b_retencionica FROM OPENXML(@docHandle, N'/NewDataSet/b_retencionica', 1)                              
+	WITH (rei_codigo int,rei_nombre VARCHAR(100));
+ 
+	insert into dbo.b_retencionica (rei_codigo,rei_nombre)
+	select t.rei_codigo,t.rei_nombre from #t_b_retencionica as t with (nolock)
+	where not exists (select 1 from dbo.b_retencionica as b with (nolock) where b.rei_codigo=t.rei_codigo)
+ 
+	update dbo.b_retencionica set rei_nombre=t.rei_nombre from dbo.b_retencionica as b with (nolock)
+	inner join #t_b_retencionica as t with (nolock) on b.rei_codigo=t.rei_codigo
+ 
+	DROP TABLE #t_b_retencionica
+end
+ 
+/* b_detretencionica */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_detretencionica')
+begin
+	SELECT dri_codigo,dri_codmun,dri_portar,dri_codcta,dri_tipret,dri_indret INTO  #t_b_detretencionica
+	FROM  OPENXML(@docHandle, N'/NewDataSet/b_detretencionica', 1)
+	WITH (dri_codigo int,dri_codmun int,dri_portar float,dri_codcta VARCHAR(10),dri_tipret varchar(10),dri_indret varchar(10));   
+ 
+	insert into dbo.b_detretencionica (dri_codigo,dri_codmun,dri_portar,dri_codcta,dri_tipret,dri_indret)
+	select t.dri_codigo,t.dri_codmun,t.dri_portar,t.dri_codcta,t.dri_tipret,t.dri_indret from #t_b_detretencionica as t with (nolock)
+	where not exists (select 1 from dbo.b_detretencionica as b with (nolock) where b.dri_codigo=t.dri_codigo and b.dri_codmun=t.dri_codmun )
+ 
+	update dbo.b_detretencionica set dri_portar=t.dri_portar,dri_codcta=t.dri_codcta,dri_tipret=t.dri_tipret,dri_indret=t.dri_indret
+	from dbo.b_detretencionica as b with (nolock)
+	inner join #t_b_detretencionica as t with (nolock) on b.dri_codigo=t.dri_codigo and b.dri_codmun=t.dri_codmun
+ 
+	DROP TABLE #t_b_detretencionica
+end
+ 
+/* b_retencionfuente */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_retencionfuente')
+begin
+	SELECT ref_codigo,ref_nombre,ref_portar,ref_codcta,ref_tipret,ref_indret INTO #t_b_retencionfuente
+	FROM  OPENXML(@docHandle, N'/NewDataSet/b_retencionfuente', 1)                              
+	WITH (ref_codigo int,ref_nombre VARCHAR(100),ref_portar float,ref_codcta VARCHAR(10),ref_tipret varchar(10),ref_indret varchar(10));   
+ 
+	insert into dbo.b_retencionfuente (ref_codigo,ref_nombre,ref_portar,ref_codcta,ref_tipret,ref_indret)
+	select t.ref_codigo,t.ref_nombre,t.ref_portar,t.ref_codcta,t.ref_tipret,t.ref_indret from #t_b_retencionfuente as t with (nolock)
+	where not exists (select 1 from dbo.b_retencionfuente as b with (nolock) where b.ref_codigo=t.ref_codigo)
+ 
+	update dbo.b_retencionfuente set ref_nombre=t.ref_nombre,ref_portar=t.ref_portar,ref_codcta=t.ref_codcta,ref_tipret=t.ref_tipret
+			,ref_indret=t.ref_indret from dbo.b_retencionfuente as b with (nolock)
+	inner join #t_b_retencionfuente as t with (nolock) on b.ref_codigo=t.ref_codigo
+ 
+	DROP TABLE #t_b_retencionfuente
+end
+ 
+/* b_productos */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_productos')
+begin
+	SELECT pro_codigo,pro_codbar,pro_codcom,pro_codtip,pro_nombre,pro_coduni,pro_facing,pro_facsto,pro_codemb,pro_uniemb,pro_upreco,pro_fecuco,pro_propon,pro_ctacon,pro_fecven,pro_ctrsto,pro_maepro,pro_codref,pro_codrei,pro_cuohor,pro_tipord,pro_tippro,pro_UniFactorIng
+	INTO #t_b_productos
+	FROM OPENXML(@docHandle, N'/NewDataSet/b_productos', 1)
+	WITH (pro_codigo VARCHAR(20),pro_codbar VARCHAR(20),pro_codcom VARCHAR(20),pro_codtip INT,pro_nombre VARCHAR(50),pro_coduni INT,
+		pro_facing FLOAT,pro_facsto FLOAT,pro_codemb INT,pro_uniemb FLOAT,pro_upreco FLOAT,pro_fecuco DATETIME,pro_propon FLOAT,
+		pro_ctacon VARCHAR(10),pro_fecven INT,pro_ctrsto INT,pro_maepro INT,pro_codref INT,pro_codrei INT,pro_cuohor VARCHAR(1),
+		pro_tipord VARCHAR(1),pro_tippro VARCHAR(1),pro_UniFactorIng INT);
+                              
+	INSERT INTO dbo.b_productos (pro_codigo,pro_codbar,pro_codcom,pro_codtip,pro_nombre,pro_coduni,pro_facing,pro_facsto,pro_codemb,pro_uniemb,pro_upreco,pro_fecuco,pro_propon,pro_ctacon,pro_fecven,pro_ctrsto,pro_maepro,pro_codref,pro_codrei,pro_cuohor,pro_tipord,pro_tippro,pro_UniFactorIng)
+	SELECT t.pro_codigo,t.pro_codbar,t.pro_codcom,t.pro_codtip,t.pro_nombre,t.pro_coduni,t.pro_facing,t.pro_facsto,t.pro_codemb,t.pro_uniemb,t.pro_upreco,t.pro_fecuco,t.pro_propon,t.pro_ctacon,t.pro_fecven,t.pro_ctrsto,t.pro_maepro,t.pro_codref,t.pro_codrei,t.pro_cuohor,t.pro_tipord,t.pro_tippro,t.pro_UniFactorIng
+	FROM #t_b_productos t with (nolock)
+	WHERE NOT EXISTS (SELECT 1 FROM dbo.b_productos AS p with (nolock) WHERE p.pro_codigo=t.pro_codigo);
+                              
+	UPDATE dbo.b_productos
+	SET pro_codbar=t.pro_codbar,pro_codcom=t.pro_codcom,pro_codtip=t.pro_codtip,pro_nombre=t.pro_nombre,
+		pro_coduni=t.pro_coduni,pro_facing=t.pro_facing,pro_facsto=t.pro_facsto,pro_codemb=t.pro_codemb,
+		pro_uniemb=t.pro_uniemb,pro_upreco=t.pro_upreco,pro_fecuco=t.pro_fecuco,pro_propon=t.pro_propon,
+		pro_ctacon=t.pro_ctacon,pro_fecven=t.pro_fecven,pro_ctrsto=t.pro_ctrsto,pro_maepro=t.pro_maepro,
+		pro_codref=t.pro_codref,pro_codrei=t.pro_codrei,pro_cuohor=t.pro_cuohor,pro_tipord=t.pro_tipord,
+		pro_tippro=t.pro_tippro,pro_UniFactorIng=t.pro_UniFactorIng
+	FROM dbo.b_productos as b with (nolock)
+	INNER JOIN #t_b_productos as t with (nolock) ON b.pro_codigo=t.pro_codigo;
+
+    DROP TABLE #t_b_productos;
+end
+ 
+/* b_productosimp */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_productosimp')
+begin
+	SELECT ipr_codpro,ipr_codimp INTO #t_b_productosimp FROM OPENXML(@docHandle, N'/NewDataSet/b_productosimp', 1)
+	WITH (ipr_codpro VARCHAR(20),ipr_codimp INT);
+ 
+	insert into dbo.b_productosimp (ipr_codpro,ipr_codimp) select ipr_codpro,ipr_codimp from #t_b_productosimp as t with (nolock)
+	where not exists (select 1 from dbo.b_productosimp as b with (nolock) where b.ipr_codpro=t.ipr_codpro and b.ipr_codimp=t.ipr_codimp)
+ 
+	update dbo.b_productosimp set ipr_codimp=t.ipr_codimp from dbo.b_productosimp as b with (nolock)
+	inner join #t_b_productosimp as t with (nolock) on b.ipr_codpro=t.ipr_codpro
+	where not exists (select 1 from dbo.b_productosimp as b with (nolock) where b.ipr_codpro=t.ipr_codpro and b.ipr_codimp=t.ipr_codimp)
+  
+	DROP TABLE #t_b_productosimp
+end
+ 
+/* b_ingrediente */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_ingrediente')
+begin
+	SELECT ing_codigo,ing_nombre,ing_nomfan,ing_unimed,ing_pctapr,ing_pctcoc,ing_pctnut,ing_facnut,ing_indpav,ing_indgrv,ing_precos,ing_feccos,ing_codcom,ing_codped
+	INTO #t_b_ingrediente
+	FROM OPENXML(@docHandle, N'/NewDataSet/b_ingrediente', 1)
+	WITH (ing_codigo VARCHAR(20),ing_nombre VARCHAR(50),ing_nomfan VARCHAR(50),ing_unimed INT,ing_pctapr FLOAT,ing_pctcoc FLOAT,
+	ing_pctnut FLOAT,ing_facnut FLOAT,ing_indpav INT,ing_indgrv INT,ing_precos FLOAT,ing_feccos INT,ing_codcom VARCHAR(20),
+	ing_codped VARCHAR(20));
+                              
+	INSERT INTO dbo.b_ingrediente (ing_codigo,ing_nombre,ing_nomfan,ing_unimed,ing_pctapr,ing_pctcoc,ing_pctnut,ing_facnut,ing_indpav,ing_indgrv,ing_precos,ing_feccos,ing_codcom,ing_codped)
+	SELECT t.ing_codigo,t.ing_nombre,t.ing_nomfan,t.ing_unimed,t.ing_pctapr,t.ing_pctcoc,t.ing_pctnut,t.ing_facnut,t.ing_indpav,t.ing_indgrv,t.ing_precos,t.ing_feccos,t.ing_codcom,t.ing_codped
+	FROM  #t_b_ingrediente t with (nolock)
+	WHERE NOT EXISTS ( SELECT 1 FROM dbo.b_ingrediente AS bi with (nolock) WHERE  bi.ing_codigo=t.ing_codigo );
+                              
+	UPDATE b_ingrediente
+	SET ing_nombre=t.ing_nombre,ing_nomfan=t.ing_nomfan,ing_unimed=t.ing_unimed,ing_pctapr=t.ing_pctapr,
+		ing_pctcoc=t.ing_pctcoc,ing_pctnut=t.ing_pctnut,ing_facnut=t.ing_facnut,ing_indpav=t.ing_indpav,
+		ing_indgrv=t.ing_indgrv,ing_precos=t.ing_precos,ing_feccos=t.ing_feccos,ing_codcom=t.ing_codcom,
+		ing_codped=t.ing_codped
+	FROM dbo.b_ingrediente AS bi with (nolock)
+	INNER JOIN #t_b_ingrediente t with (nolock) ON bi.ing_codigo=t.ing_codigo;
+                                                 
+	DROP TABLE #t_b_ingrediente
+end                        
+ 
+/* b_productosing */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_productosing')
+begin
+	SELECT pri_codpro,pri_coding INTO #t_b_productosing FROM OPENXML(@docHandle, N'/NewDataSet/b_productosing', 1)
+	WITH (pri_codpro VARCHAR(20),pri_coding VARCHAR(20));
+                              
+	DELETE FROM dbo.b_productosing WHERE pri_codpro IN (SELECT pri_codpro FROM #t_b_productosing)
+ 
+	INSERT INTO dbo.b_productosing (pri_codpro,pri_coding) SELECT pri_codpro,pri_coding FROM #t_b_productosing as t with (nolock)
+	WHERE NOT EXISTS (SELECT 1 FROM b_productosing as b with (nolock) WHERE b.pri_coding=t.pri_coding AND b.pri_codpro = t.pri_codpro);
+                                     
+	DROP TABLE #t_b_productosing
+end
+                            
+/* b_productonut */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_productonut')
+begin
+	SELECT pnu_codpro,pnu_codapo,pnu_canapo INTO #t_b_productonut FROM OPENXML(@docHandle, N'/NewDataSet/b_productonut', 1)
+	WITH (pnu_codpro VARCHAR(20),pnu_codapo INT,pnu_canapo FLOAT);
+                              
+	INSERT  INTO dbo.b_productonut (pnu_codpro,pnu_codapo,pnu_canapo) SELECT  pnu_codpro,pnu_codapo,pnu_canapo FROM #t_b_productonut as t with (nolock)
+	WHERE   NOT EXISTS (SELECT 1 FROM dbo.b_productonut as b  with (nolock) WHERE b.pnu_codapo=t.pnu_codapo AND b.pnu_codpro=t.pnu_codpro);
+                              
+	UPDATE  dbo.b_productonut SET pnu_canapo=t.pnu_canapo FROM b_productonut as b with (nolock)
+	INNER JOIN #t_b_productonut as t with (nolock) ON b.pnu_codpro=t.pnu_codpro AND b.pnu_codapo=t.pnu_codapo;
+          
+	DROP TABLE #t_b_productonut
+end                         
+ 
+/* b_paramdesp */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_paramdesp')
+begin
+	select pad_cencos,pad_codtip, pad_tipo,pad_diaseg,pad_diario into #b_parametrodespachos
+	from openxml(@docHandle, N'/NewDataSet/b_parametrodespachos', 1)
+	with (pad_cencos varchar(10),pad_codtip int,pad_tipo varchar(3),pad_diaseg int,pad_diario varchar(7))
+ 
+	if exists (select 1 from a_param as a with (nolock) where a.par_codigo='parpais' and a.par_cencos=@Ceco and a.par_valor='CO')
+		begin
+		DELETE dbo.b_paramdesp
+		end
+ 
+	insert into dbo.b_paramdesp (pad_codigo,pad_tipo,pad_cencos,pad_diario,pad_diaseg)
+	select t.pad_codtip,t.pad_tipo,t.pad_cencos,t.pad_diario,t.pad_diaseg from #b_parametrodespachos t
+	where not exists (select 1 from dbo.b_paramdesp as a with (nolock) where a.pad_codigo=t.pad_codtip and a.pad_cencos=t.pad_cencos)
+ 
+	update dbo.b_paramdesp set pad_tipo=t.pad_tipo,pad_diario=t.pad_diario,pad_diaseg=t.pad_diaseg from b_paramdesp as a with (nolock)
+	inner join #b_parametrodespachos as t on a.pad_codigo=t.pad_codtip and a.pad_cencos=t.pad_cencos
+ 
+	drop table #b_parametrodespachos
+end
+ 
+/* b_Fecha_Inhabiles */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_Fecha_Inhabiles')
+begin
+	select CFI_CeCo,CFI_Fecha,CFI_Glosa into #Cas_b_Fecha_Inhabiles from openxml(@docHandle, N'/NewDataSet/Cas_b_Fecha_Inhabiles', 1)
+	with (CFI_CeCo varchar(10),CFI_Fecha datetime,CFI_Glosa varchar(100))
+ 
+	insert into dbo.b_Fecha_Inhabiles (CFI_CeCo,CFI_Fecha,CFI_Glosa)
+	select t.CFI_CeCo,t.CFI_Fecha,t.CFI_Glosa from #Cas_b_Fecha_Inhabiles t
+	where not exists (select 1 from dbo.b_Fecha_Inhabiles as a with (nolock) where a.CFI_CeCo=t.CFI_CeCo and a.CFI_Fecha=t.CFI_Fecha)
+ 
+	update dbo.b_Fecha_Inhabiles set CFI_Glosa=t.CFI_Glosa from b_Fecha_Inhabiles as a with (nolock) 
+	inner join #Cas_b_Fecha_Inhabiles as t on a.CFI_CeCo=t.CFI_CeCo and a.CFI_Fecha=t.CFI_Fecha
+ 
+	drop table #Cas_b_Fecha_Inhabiles
+end
+ 
+/* a_recetacatdie */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_recetacatdie')
+begin
+	SELECT car_codigo,car_nombre,car_previo INTO #t_a_recetacatdie FROM OPENXML(@docHandle, N'/NewDataSet/a_recetacatdie', 1)                              
+	WITH (car_codigo INT,car_nombre VARCHAR(50),car_previo INT);                              
+                              
+	INSERT INTO dbo.a_recetacatdie (car_codigo,car_nombre,car_previo)
+	SELECT car_codigo,car_nombre,car_previo FROM #t_a_recetacatdie t with (nolock)
+	WHERE NOT EXISTS (SELECT 1 FROM dbo.a_recetacatdie AS ar with (nolock) WHERE ar.car_codigo=t.car_codigo);                              
+                              
+	UPDATE a_recetacatdie SET car_nombre=t.car_nombre,car_previo=t.car_previo FROM dbo.a_recetacatdie AS ar with (nolock)
+	INNER JOIN #t_a_recetacatdie t with (nolock) ON ar.car_codigo=t.car_codigo;                              
+                              
+	DROP TABLE #t_a_recetacatdie
+end
+                      
+/* a_recetatippla */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_recetatippla')
+begin
+	SELECT tip_codigo,tip_nombre,tip_previo INTO #t_a_recetatippla FROM OPENXML(@docHandle, N'/NewDataSet/a_recetatippla', 1)                              
+	WITH (tip_codigo INT,tip_nombre VARCHAR(50),tip_previo INT);                              
+                              
+	INSERT INTO dbo.a_recetatippla (tip_codigo,tip_nombre,tip_previo)
+	SELECT tip_codigo,tip_nombre,tip_previo FROM #t_a_recetatippla t with (nolock)
+	WHERE NOT EXISTS (SELECT 1 FROM dbo.a_recetatippla AS ar with (nolock) WHERE ar.tip_codigo=t.tip_codigo);
+                              
+	UPDATE dbo.a_recetatippla SET tip_nombre=t.tip_nombre,tip_previo=t.tip_previo FROM dbo.a_recetatippla AS ar with (nolock)
+	INNER JOIN #t_a_recetatippla t with (nolock) ON ar.tip_codigo=t.tip_codigo;                               
+                              
+	DROP TABLE  #t_a_recetatippla
+end                            
+        
+/* a_etiquetadoreceta */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_etiquetadoselloreceta')
+begin
+	SELECT IdEtiquetadoSello,NombreEtiquetadoSello,Fecha_Creacion,Fecha_Modificacion,Activo,Usuario INTO #t_a_etiquetadoselloreceta FROM OPENXML(@docHandle, N'/NewDataSet/a_etiquetadoselloreceta', 1)
+	WITH (IdEtiquetadoSello INT,NombreEtiquetadoSello VARCHAR(100),Fecha_Creacion datetime,Fecha_Modificacion datetime,Activo varchar(1),Usuario varchar(20));
+                              
+	INSERT INTO dbo.a_etiquetadoselloreceta (IdEtiquetadoSello,NombreEtiquetadoSello,Fecha_Creacion,Fecha_Modificacion,Activo,Usuario)
+	SELECT IdEtiquetadoSello,NombreEtiquetadoSello,Fecha_Creacion,Fecha_Modificacion,Activo,Usuario FROM #t_a_etiquetadoselloreceta t with (nolock)
+	WHERE NOT EXISTS (SELECT 1 FROM dbo.a_etiquetadoselloreceta AS ar with (nolock) WHERE ar.IdEtiquetadoSello=t.IdEtiquetadoSello);
+                              
+	UPDATE dbo.a_etiquetadoselloreceta SET NombreEtiquetadoSello=t.NombreEtiquetadoSello,Fecha_Creacion=t.Fecha_Creacion,Fecha_Modificacion=t.Fecha_Modificacion,Activo=t.Activo, Usuario=t.Usuario FROM dbo.a_etiquetadoselloreceta AS ar with (nolock)
+	INNER JOIN #t_a_etiquetadoselloreceta t with (nolock) ON ar.IdEtiquetadoSello=t.IdEtiquetadoSello;
+ 
+	DROP TABLE  #t_a_etiquetadoselloreceta
+end                            
+ 
+/* a_sellosreceta */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'a_sellosreceta')
+begin
+	SELECT IdSellos,NombreSellos,Fecha_Creacion,Fecha_Modificacion,Activo,Usuario INTO #t_a_sellosreceta FROM OPENXML(@docHandle, N'/NewDataSet/a_sellosreceta', 1)
+	WITH (IdSellos INT,NombreSellos VARCHAR(100),Fecha_Creacion datetime,Fecha_Modificacion datetime,Activo varchar(1),Usuario varchar(20));
+                              
+	INSERT INTO dbo.a_sellosreceta (IdSellos, NombreSellos, Fecha_Creacion, Fecha_Modificacion, Activo, Usuario)
+	SELECT IdSellos, NombreSellos, Fecha_Creacion, Fecha_Modificacion, Activo, Usuario FROM #t_a_sellosreceta t with (nolock)
+	WHERE NOT EXISTS (SELECT 1 FROM dbo.a_sellosreceta AS ar with (nolock) WHERE ar.IdSellos=t.IdSellos);
+                              
+	UPDATE dbo.a_sellosreceta SET NombreSellos=t.NombreSellos, Fecha_Creacion=t.Fecha_Creacion, Fecha_Modificacion=t.Fecha_Modificacion, Activo=t.Activo, Usuario=t.Usuario FROM dbo.a_sellosreceta AS ar with (nolock)
+	INNER JOIN #t_a_sellosreceta t with (nolock) ON ar.IdSellos=t.IdSellos;
+                              
+	DROP TABLE  #t_a_sellosreceta
+end
+ 
+/* b_receta */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_receta')
+begin
+	SELECT rec_codigo,rec_catdie,rec_tippla,rec_nombre,rec_nomfan,rec_metpre,rec_conche,rec_sugere,rec_basrac,rec_tiprec,rec_fecvig,rec_gruvul,IdEtiquetadoSello,IdSellos
+	INTO #t_b_receta FROM OPENXML(@docHandle, N'/NewDataSet/b_receta', 1)
+	WITH (rec_codigo INT,rec_catdie INT,rec_tippla INT,rec_nombre VARCHAR(80),rec_nomfan VARCHAR(80),rec_metpre NTEXT,rec_conche NTEXT,
+	rec_sugere NTEXT,rec_basrac INT,rec_tiprec INT,rec_fecvig INT,rec_gruvul NTEXT,IdEtiquetadoSello int,IdSellos int);
+                              
+	INSERT INTO dbo.b_receta (rec_codigo,rec_catdie,rec_tippla,rec_nombre,rec_nomfan,rec_metpre,rec_conche,rec_sugere,rec_basrac,rec_tiprec,rec_fecvig,rec_gruvul,IdEtiquetadoSello,IdSellos)
+	SELECT rec_codigo,rec_catdie,rec_tippla,rec_nombre,rec_nomfan,rec_metpre,rec_conche,rec_sugere,rec_basrac,rec_tiprec,rec_fecvig,rec_gruvul,IdEtiquetadoSello,IdSellos
+	FROM #t_b_receta t with (nolock)
+	WHERE NOT EXISTS (SELECT 1 FROM dbo.b_receta AS br with (nolock) WHERE br.rec_codigo=t.rec_codigo);
+                              
+	UPDATE dbo.b_receta SET rec_catdie=t.rec_catdie,rec_tippla=t.rec_tippla,rec_nombre=t.rec_nombre,rec_nomfan=t.rec_nomfan,
+		rec_metpre=t.rec_metpre,rec_conche=t.rec_conche,rec_sugere=t.rec_sugere,rec_basrac=t.rec_basrac,
+		rec_tiprec=t.rec_tiprec,rec_fecvig=t.rec_fecvig,rec_gruvul=t.rec_gruvul,IdEtiquetadoSello=t.IdEtiquetadoSello,IdSellos=t.IdSellos
+	FROM dbo.b_receta AS br with (nolock) INNER JOIN #t_b_receta t with (nolock) ON br.rec_codigo=t.rec_codigo;
+                  
+	DROP TABLE #t_b_receta
+end
+                              
+/* b_recetadet patron */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_recetadet')
+begin
+	SELECT red_codigo,red_nroite,red_codpro,red_canpro,red_cospro,red_pctapr,red_pctcoc,red_pctnut,red_tiprec,red_cencos
+	INTO #t_b_recetadet FROM OPENXML(@docHandle, N'/NewDataSet/b_recetadet', 1)
+	WITH (red_codigo INT,red_nroite INT,red_codpro VARCHAR(20),red_canpro FLOAT,red_cospro FLOAT,red_pctapr FLOAT,red_pctcoc FLOAT,
+	red_pctnut FLOAT,red_tiprec INT,red_cencos VARCHAR(10));
+                           
+	/*  Borrar detalle receta patron */
+	DELETE FROM dbo.b_recetadet from dbo.b_recetadet as brd with (nolock)
+	where exists (select 1 from #t_b_recetadet as t with (nolock) where t.red_codigo=brd.red_codigo) and red_tiprec=0 AND red_cencos='0'
+ 
+	INSERT INTO dbo.b_recetadet (red_codigo,red_nroite,red_codpro,red_canpro,red_cospro,red_pctapr,red_pctcoc,red_pctnut,red_tiprec,red_cencos)
+	SELECT red_codigo,red_nroite,red_codpro,red_canpro,red_cospro,red_pctapr,red_pctcoc,red_pctnut,red_tiprec,red_cencos
+	FROM #t_b_recetadet t with (nolock)
+	WHERE NOT EXISTS (SELECT 1 FROM dbo.b_recetadet AS br with (nolock)
+			WHERE  br.red_cencos=t.red_cencos AND br.red_codigo=t.red_codigo
+			AND br.red_nroite=t.red_nroite AND br.red_tiprec=t.red_tiprec);                          
+                          
+	UPDATE dbo.b_recetadet SET red_canpro=t.red_canpro,red_codpro=t.red_codpro,red_cospro=t.red_cospro,red_pctapr=t.red_pctapr,
+		red_pctcoc=t.red_pctcoc,red_pctnut=t.red_pctnut FROM dbo.b_recetadet AS br with (nolock)
+	INNER JOIN #t_b_recetadet t with (nolock) ON br.red_cencos=t.red_cencos AND br.red_codigo=t.red_codigo
+	AND br.red_nroite=t.red_nroite AND br.red_tiprec=t.red_tiprec;
+                         
+	DROP TABLE #t_b_recetadet
+end
+ 
+/* b_recetadet x regimen */
+SELECT tgc_ceco,tgc_codreg,tgc_codrec,tgc_coding,tgc_codins,tgc_cantgr INTO #t_b_tablagramajececo
+FROM    OPENXML(@docHandle, N'/NewDataSet/b_tablagramajececo', 1)                              
+WITH (tgc_ceco VARCHAR(10),tgc_codreg INT,tgc_codrec INT,tgc_coding VARCHAR(20),tgc_codins VARCHAR(20),tgc_cantgr FLOAT);                              
+                           
+/*  Borrar detalle receta x regimen */
+DELETE FROM dbo.b_recetadet from dbo.b_recetadet as brd with (nolock)
+where exists (select 1 from #t_b_tablagramajececo as t with (nolock) where brd.red_codigo=t.tgc_codrec and brd.red_cencos=t.tgc_ceco
+        and brd.red_tiprec= t.tgc_codreg)
+INSERT INTO dbo.b_recetadet (red_codigo,red_nroite,red_codpro,red_canpro,red_cospro,red_pctapr,red_pctcoc,red_pctnut,red_tiprec,red_cencos)
+SELECT distinct br.red_codigo,br.red_nroite,br.red_codpro,br.red_canpro,br.red_cospro,br.red_pctapr,br.red_pctcoc,br.red_pctnut,t.tgc_codreg,t.tgc_ceco
+FROM b_recetadet as br with (nolock) 
+inner join #t_b_tablagramajececo as t with (nolock) on br.red_codigo=t.tgc_codrec
+WHERE   NOT EXISTS ( SELECT 1 FROM b_recetadet AS br1 with (nolock) WHERE  br.red_codigo=br1.red_codigo AND br.red_nroite=br1.red_nroite
+        and t.tgc_codreg=br1.red_tiprec and t.tgc_ceco=br1.red_cencos)
+and br.red_tiprec = 0 and isnull(br.red_cencos,'0') = '0'
+ 
+/* actualizar % detalle receta cuando cód. ingrediente de tabla gramaje sea <> detalle de la receta */
+UPDATE  dbo.b_recetadet
+SET     red_pctapr=bi.ing_pctapr,red_pctcoc=bi.ing_pctcoc,red_pctnut=bi.ing_pctnut
+FROM    dbo.b_recetadet AS br with (nolock)
+INNER JOIN #t_b_tablagramajececo t with (nolock) ON br.red_cencos=t.tgc_ceco AND br.red_codigo=t.tgc_codrec
+        AND br.red_codpro=t.tgc_coding AND br.red_tiprec=t.tgc_codreg
+        and br.red_codpro<>t.tgc_codins
+inner join b_ingrediente as bi with (nolock) on bi.ing_codigo=t.tgc_codins;
+ 
+/* actualizar datos de la tabla gramaje */                          
+UPDATE  dbo.b_recetadet SET red_canpro=t.tgc_cantgr, red_codpro=t.tgc_codins
+FROM    dbo.b_recetadet AS br with (nolock)
+        INNER JOIN #t_b_tablagramajececo t with (nolock) ON br.red_cencos=t.tgc_ceco AND br.red_codigo=t.tgc_codrec
+        AND br.red_codpro=t.tgc_coding AND br.red_tiprec=t.tgc_codreg;
+ 
+DROP TABLE #t_b_tablagramajececo;
+ 
+/* b_casinotipoactividades */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_casinotipoactividades')
+begin
+	select cta_cencos,cta_tipact,cta_fecmod,cta_activo into #b_casinotipoactividades from openxml(@docHandle, N'/NewDataSet/b_casinotipoactividades', 1)
+	with (cta_cencos varchar(10),cta_tipact int,cta_fecmod datetime,cta_activo varchar(1))
+ 
+	DELETE dbo.b_casinotipoactividades FROM dbo.b_casinotipoactividades as a with (nolock)
+	inner join #b_casinotipoactividades as b with (nolock) on a.cta_cencos=b.cta_cencos
+ 
+	insert into dbo.b_casinotipoactividades (cta_cencos,cta_tipact)
+	select t.cta_cencos,t.cta_tipact from #b_casinotipoactividades t with (nolock)
+	where not exists (select 1 from dbo.b_casinotipoactividades as a with (nolock) where a.cta_cencos=t.cta_cencos and a.cta_tipact=t.cta_tipact)
+ 
+	drop table #b_casinotipoactividades
+end
+ 
+/* b_casinoparametrostock */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_casinoparametrostock')
+begin
+	select cps_cencos,cps_invsto,cps_reqmen,cps_porinv,cps_liscri,cps_diario,cps_ajuimp into #b_casinoparametrostock
+	from openxml(@docHandle, N'/NewDataSet/Cas_b_Fecha_Inhabiles', 1)
+	with (cps_cencos varchar(10),cps_invsto varchar(1),cps_reqmen varchar(1),cps_porinv float,cps_liscri varchar(1),cps_diario varchar(1),cps_ajuimp varchar(1))
+ 
+	insert into dbo.b_casinoparametrostock (cps_cencos,cps_invsto,cps_reqmen,cps_porinv,cps_liscri,cps_diario,cps_ajuimp)
+	select t.cps_cencos,t.cps_invsto,t.cps_reqmen,t.cps_porinv,t.cps_liscri,t.cps_diario,t.cps_ajuimp from #b_casinoparametrostock t
+	where not exists (select 1 from dbo.b_casinoparametrostock as a with (nolock) where a.cps_cencos = t.cps_cencos)
+ 
+	update dbo.b_casinoparametrostock
+	set   cps_invsto=a.cps_invsto,cps_reqmen=a.cps_reqmen,cps_porinv=a.cps_porinv,cps_liscri=a.cps_liscri
+		,cps_diario=a.cps_diario,cps_ajuimp=a.cps_ajuimp from b_casinoparametrostock as a with (nolock)
+	inner join #b_casinoparametrostock as t on a.cps_cencos=t.cps_cencos
+ 
+	drop table #b_casinoparametrostock
+end
+ 
+/* Mover zero al stock si es negativo */
+UPDATE dbo.b_bodegas set bod_canmer=0 from dbo.b_bodegas as bb with (nolock)
+inner join a_bodega as ab with (nolock) on ab.bod_codigo=bb.bod_codbod
+inner join b_clientes as bc with (nolock) on bc.cli_codbod=bb.bod_codbod and bc.cli_activo='1' and bc.cli_tipo=0
+where bb.bod_canmer < 0 and bc.cli_codigo=@ceco
+ 
+/* b_productospmpdia */ 
+INSERT INTO b_productospmpdia (ppd_cencos,ppd_codpro,ppd_fecdia,ppd_propon,ppd_saldo,ppd_upreco,ppd_fecuco) 
+SELECT DISTINCT c.cli_codigo,a.pro_codigo,
+    ((select convert(varchar(8),convert(datetime,substring(dbo.sgp_p_desencripta(par_valor),7,4) + substring(dbo.sgp_p_desencripta(par_valor),4,2) + substring(dbo.sgp_p_desencripta(par_valor),1,2)),112) from a_param with (nolock) where par_codigo = 'ciediario' and par_cencos = c.cli_codigo)) ,
+    0, 0, 0, ''
+FROM b_productos as a with (nolock)
+inner join a_tiposervicio as b with (nolock) on (b.tis_codigo=a.pro_maepro OR a.pro_maepro<1)
+inner join b_clientes as c with (nolock) on (b.tis_codigo=c.cli_codtis OR a.pro_maepro<1)
+where c.cli_activo='1' and c.cli_tipo=0 and c.cli_codbod>0 and c.cli_codigo=@ceco
+AND   not exists (SELECT 1 FROM b_productospmpdia as b with (nolock) WHERE a.pro_codigo=b.ppd_codpro and b.ppd_cencos=c.cli_codigo)
+ 
+/* insert b_contlistpreing */
+INSERT INTO b_contlistpreing (cpi_cencos,cpi_coding,cpi_precos,cpi_feccos,cpi_codcom,cpi_codped)
+SELECT bc.cli_codigo,bi.ing_codigo,0,0,bi.ing_codcom,bi.ing_codped
+FROM b_ingrediente as bi with (nolock)
+cross join b_clientes as bc with (nolock)
+WHERE NOT exists (SELECT 1 FROM b_contlistpreing as bclpi with (nolock) WHERE bclpi.cpi_cencos=bc.cli_codigo and bclpi.cpi_coding=bi.ing_codigo)
+and bc.cli_activo='1' and bc.cli_tipo=0 and bc.cli_codbod>0 and bc.cli_codigo=@ceco
+ 
+/* Actualizar productos vigente */
+select distinct bc.cli_codigo, bc.cli_codbod
+into #Tsitio from b_clientes as bc with (nolock)
+where bc.cli_activo='1' and bc.cli_tipo=0 and bc.cli_codbod>0 and bc.cli_codigo=@ceco
+ 
+UPDATE b_contlistpreing SET cpi_codped=b.pro_codigo FROM b_contlistpreing as a with (nolock)
+inner join b_productos as b with (nolock) on a.cpi_codcom = b.pro_codigo
+inner join #Tsitio as t with (nolock) on t.cli_codigo = a.cpi_cencos
+where (b.pro_fecven>convert(varchar(8),getdate(),112) Or b.pro_fecven<=0 OR b.pro_codigo In (SELECT bod.bod_codpro FROM b_bodegas bod with (nolock)
+WHERE bod.bod_codbod=t.cli_codbod AND bod.bod_canmer>0))
+AND b.pro_ctrsto=1 AND NOT (a.cpi_codcom) IS NULL and a.cpi_cencos=@ceco
+ 
+/* Actualizar codigo de compras a codigo pedido */
+UPDATE b_contlistpreing SET cpi_codped=b.pro_codigo FROM b_contlistpreing a with (nolock)
+inner join b_productos b with (nolock) on a.cpi_codcom=b.pro_codigo
+WHERE (b.pro_fecven>convert(varchar(8),getdate(),112) Or b.pro_fecven<=0 OR b.pro_codigo In
+(SELECT bod.bod_codpro FROM b_bodegas bod with (nolock)
+inner join b_clientes as bc with (nolock) on bc.cli_codigo=@Ceco and bc.cli_codbod=bod.bod_codbod AND bod.bod_canmer>0))
+AND b.pro_ctrsto=1 AND a.cpi_codcom is not null AND a.cpi_cencos=@Ceco
+ 
+/* Creo tabla temporal y chequeo si existe antes */
+SELECT DISTINCT a.cpi_codped, a.cpi_coding, (SELECT TOP 1 x.pri_codpro FROM b_productosing x with (nolock)
+inner join b_productos z with (nolock) on a.cpi_coding=x.pri_coding AND x.pri_codpro=z.pro_codigo
+            AND (z.pro_fecven>convert(varchar(8),getdate(),112) OR z.pro_fecven<=0)) AS pri_codpro
+INTO #tmp_contlistpreingped
+FROM  b_contlistpreing as a with (nolock)
+WHERE a.cpi_codped NOT IN (SELECT DISTINCT pri_codpro FROM b_productosing as b with (nolock) WHERE a.cpi_coding=b.pri_coding)
+AND   a.cpi_cencos=@Ceco
+ 
+UPDATE b_contlistpreing SET cpi_codped = b.pri_codpro FROM b_contlistpreing as a
+inner join #tmp_contlistpreingped as b on a.cpi_coding=b.cpi_coding 
+WHERE a.cpi_cencos=@Ceco AND b.pri_codpro IS NOT NULL
+ 
+drop table #tmp_contlistpreingped
+ 
+/* Actualizar codigo de compras y crea tabla temporal y chequeo si existe antes */
+SELECT DISTINCT a.cpi_codcom, a.cpi_coding,
+(SELECT TOP 1 x.pri_codpro FROM b_productosing x with (nolock)
+inner join b_productos z with (nolock) on a.cpi_coding = x.pri_coding AND x.pri_codpro=z.pro_codigo
+        AND (z.pro_fecven>convert(varchar(8),getdate(),112) OR z.pro_fecven<=0)) AS pri_codpro
+INTO #tmp_contlistpreingcom
+FROM  b_contlistpreing a
+WHERE a.cpi_codcom NOT IN (SELECT DISTINCT b.pri_codpro FROM b_productosing as b with (nolock) WHERE a.cpi_coding=b.pri_coding)
+AND   a.cpi_cencos=@Ceco
+ 
+UPDATE b_contlistpreing SET cpi_codcom=b.pri_codpro FROM b_contlistpreing as a with (nolock)
+inner join #tmp_contlistpreingcom as b with (nolock) on a.cpi_coding=b.cpi_coding
+AND   a.cpi_cencos=@Ceco AND b.pri_codpro IS NOT NULL
+ 
+drop table #tmp_contlistpreingcom
+ 
+/* Consulta productos que esten vencidos y actualizar pedido */
+SELECT DISTINCT a.cpi_coding,a.cpi_codcom,a.cpi_codped,b.pro_codigo,e.pri_codpro,e.pri_coding
+into #tmp_proing
+FROM b_contlistpreing a with (nolock)
+inner join b_productos b with (nolock) on a.cpi_codped=b.pro_codigo
+inner join b_clientes d with (nolock) on d.cli_codigo=a.cpi_cencos
+inner join b_productosing e with (nolock) on e.pri_codpro=b.pro_codigo and e.pri_coding=a.cpi_coding
+where d.cli_codigo=@Ceco AND b.pro_fecven<convert(varchar(8),getdate(),112) AND b.pro_fecven<>0
+AND  (b.pro_codigo IN (SELECT bod.bod_codpro FROM b_bodegas bod with (nolock) WHERE bod.bod_codbod=d.cli_codbod AND bod.bod_canmer<=0))
+ 
+UPDATE b_contlistpreing SET cpi_codcom=a.pri_codpro from #tmp_proing as a with (nolock)
+inner join b_contlistpreing as b with (nolock) on b.cpi_coding=a.cpi_coding AND b.cpi_cencos=@Ceco
+ 
+drop table #tmp_proing
+drop table #Tsitio
+ 
+/* b_clientes */
+IF EXISTS (SELECT * FROM sysobjects WHERE type = 'U' AND name = 'b_clientes')
+begin
+	select cli_codigo,cli_codtis,cli_codseg,cli_ccisac,cli_cecsac,cli_socsap,cli_sobrec,cli_codmun,cli_codreg
+	into #b_clientes from openxml(@docHandle, N'/NewDataSet/b_clientes', 1)
+	with (cli_codigo varchar(10),cli_codtis int,cli_codseg int,cli_ccisac int,cli_cecsac varchar(4),cli_socsap varchar(4),cli_sobrec varchar(1),cli_codmun int,cli_codreg int)
+ 
+	update dbo.b_clientes
+	set cli_codtis=t.cli_codtis,cli_codseg=t.cli_codseg,cli_ccisac=t.cli_ccisac,cli_cecsac=t.cli_cecsac
+		,cli_socsap=t.cli_socsap,cli_sobrec=t.cli_sobrec,cli_codmun=t.cli_codmun,cli_codreg=t.cli_codreg
+	from b_clientes as a with (nolock)
+	inner join #b_clientes as t on  a.cli_codigo=t.cli_codigo
+ 
+	drop table #b_clientes
+end
+ 
+/* actualizar log actualización */
+INSERT INTO log_actualizacion (archivo, fecha)
+values ('SGP-' + @Ceco + '-' + convert(varchar(8),getdate(),112) + '-' + convert(varchar(8),getdate(),108), getdate())
+ 
+SET @ErrorMessage = 'Ingreso Satifactorio';
+    SET @oRows = 1;
+--------------------------------------------------------------------FIN------
+    COMMIT TRAN;
+END TRY
+BEGIN CATCH
+    ROLLBACK TRAN;
+    SET @ErrorMessage = ERROR_MESSAGE();
+    SELECT  @oRows = -1;
+    GOTO Salida;
+END CATCH;
+Salida:
+
+IF ( @docHandle IS NOT NULL )
+    EXEC sp_xml_removedocument @docHandle;
+--------------------------------mostramos el resultado----
+SELECT  @ErrorMessage,
+        @oRows;

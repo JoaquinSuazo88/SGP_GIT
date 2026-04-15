@@ -1,0 +1,58 @@
+/*      
+==========================================================================      
+Sistema : Sgp Local      
+Modulo :   Informe - Planificion Minutas      
+      
+SP o Function : sgpadm_Sel_ServicioEstructuraMinutaBloqueI
+Descripcion  : Consulta datos tabla cas_b_minuta - cas_b_minutadet - a_estservicio - a_servicio      
+Observaciones :       
+      
+F. creacion:      27/02/2018
+Creador:          Jorge Paz      
+      
+==========================================================================      
+Modificaciones:      
+Fecha             Programador             Motivo y/o Modificacion      
+      
+==========================================================================      
+Test:      
+sgpadm_Sel_ServicioEstructuraMinutaBloqueI 50,10391, 20140601, 20140630      
+      
+==========================================================================      
+*/      
+      
+CREATE PROC [sgpadm_Sel_ServicioEstructuraMinutaBloqueI_V02]
+    (
+      @Ceco AS VARCHAR(10) ,
+      @CodigoRegimen AS INT ,
+      @FechaIncial AS INT ,
+      @FechaFinal AS INT       
+    )
+AS 
+    SET NOCOUNT ON  
+ 
+    SELECT DISTINCT
+            as2.ser_codigo ,
+            as2.ser_nombre ,
+            ae.ess_codigo ,
+            CASE WHEN LTRIM(bm2.mid_desest) = ''
+                      OR bm2.mid_desest IS NULL THEN ae.ess_nombre
+                 ELSE bm2.mid_desest
+            END AS ess_nombre ,
+            ae.ess_orden ,
+            as2.ser_orden
+    FROM    dbo.cas_b_minuta AS bm
+            INNER JOIN dbo.cas_b_minutadet AS bm2 ON bm.min_codigo = bm2.mid_codigo
+                                                     AND bm.min_cecori = bm2.mid_cecori
+            INNER JOIN dbo.a_estservicio AS ae ON bm2.mid_estser = ae.ess_codigo
+            INNER JOIN dbo.a_servicio AS as2 ON as2.ser_codigo = ae.ess_codser
+			                               and as2.ser_codigo = bm.min_codser
+    WHERE   bm.min_cecori = @Ceco
+            AND bm.min_codreg = @CodigoRegimen
+            AND bm.min_fecmin >= @FechaIncial
+            AND bm.min_fecmin <= @FechaFinal
+            AND bm2.mid_tipmin = '1'
+    ORDER BY as2.ser_orden ,
+            as2.ser_nombre ,
+            as2.ser_codigo ,
+            ae.ess_orden 

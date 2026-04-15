@@ -1,0 +1,43 @@
+/*
+==========================================================================          
+Sistema : Sgp Administrador          
+Modulo :   Minutas - Diwo - Parametro Estructura Pan Led (B_HistorialEstructuraPanLed.frm)
+                  
+SP o Function : sgpadm_Sel_HistorialEstructuraPanLed
+Descripcion   : Permite traer Historico Estructura Servicio
+Observaciones :          
+                  
+F. creacion:      09/10/2025
+Creador:          Jorge Andres Paz Núñez
+                  
+==========================================================================          
+Modificaciones:          
+Fecha             Programador             Motivo y/o Modificacion          
+                  
+==========================================================================          
+Test:                  
+sgpadm_Sel_HistorialEstructuraPanLed '20850'
+                  
+==========================================================================          
+*/          
+                  
+CREATE PROCEDURE [dbo].[sgpadm_Sel_HistorialEstructuraPanLed] ( @Ceco VARCHAR(10) )
+AS 
+    SET NOCOUNT ON          
+    SET XACT_ABORT ON  
+    
+
+    SELECT DISTINCT
+            bc.cli_codigo AS Ceco ,
+            bc.cli_nombre AS CecoDesc ,
+            ar.reg_codigo AS Regimen ,
+            ar.reg_nombre AS RegimenDesc ,
+            as2.ser_codigo AS Servicio ,
+            as2.ser_nombre AS ServicioDesc
+    FROM    dbo.homologacionPantalla_Led AS hd WITH ( NOLOCK )
+            INNER JOIN dbo.b_clientes AS bc WITH ( NOLOCK ) ON bc.cli_codigo = hd.IdCeco
+            INNER JOIN dbo.a_regimen AS ar WITH ( NOLOCK ) ON ar.reg_codigo = hd.IdRegimen
+            INNER JOIN dbo.a_servicio AS as2 WITH ( NOLOCK ) ON as2.ser_codigo = hd.IdServicio
+    WHERE   hd.IdCeco = @Ceco
+    ORDER BY ar.reg_codigo ,
+            as2.ser_codigo 

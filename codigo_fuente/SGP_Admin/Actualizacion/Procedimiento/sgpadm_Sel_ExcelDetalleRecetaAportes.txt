@@ -1,0 +1,202 @@
+/*                                                                                                                            
+==========================================================================                                                                                                                            
+Sistema : Sgp Administrador                                                                                                                            
+Modulo :   Informes - recetas aportes (I_Receta.frm)        
+                                                                                                                            
+SP o Function : sgpadm_Sel_ExcelDetalleRecetaAportes        
+Descripcion   : Permite generar recetas aportes        
+Observaciones :         
+                                                                                                                            
+F. creacion:      10/08/2025
+Creador:          Jorge Paz Núñez                                      
+                                                                                                                            
+==========================================================================                                                                                                                            
+Modificaciones:                                                                                                                            
+Fecha             Programador             Motivo y/o Modificacion                                                                                                                            
+==========================================================================                                                                                                                            
+Test:                                                   
+                                                                                        
+sgpadm_Sel_ExcelDetalleRecetaAportes '<?xml version="1.0" encoding="iso-8859-1" ?><Recetas> <Rec R = "27615"/> <Rec R = "27613"/></Recetas>', '<?xml version="1.0" encoding="iso-8859-1" ?><Nutrientes> <Nut Nutriente = "2"/> <Nut Nutriente = "3"/> <Nut Nutriente = "6"/> <Nut Nutriente = "4"/> <Nut Nutriente = "5"/> <Nut Nutriente = "11"/> <Nut Nutriente = "33"/> <Nut Nutriente = "35"/> <Nut Nutriente = "36"/></Nutrientes>'        
+                                    
+==========================================================================                                                                                                                            
+*/                                                                                                              
+
+ALTER PROCEDURE [dbo].[sgpadm_Sel_ExcelDetalleRecetaAportes]
+(
+   @XmlReceta AS TEXT,
+   @XmlAporte AS TEXT
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @hdoc AS INTEGER;
+
+    -- Procesar XML de recetas
+    EXEC sp_xml_preparedocument @hdoc OUTPUT, @XmlReceta;
+
+    -- Limpiar temporales
+    IF OBJECT_ID('tempdb..#TmpNutriente') IS NOT NULL DROP TABLE #TmpNutriente;
+    IF OBJECT_ID('tempdb..#TmpReceta') IS NOT NULL DROP TABLE #TmpReceta;
+    IF OBJECT_ID('tempdb..#ArbolReceta') IS NOT NULL DROP TABLE #ArbolReceta;
+
+    SELECT R INTO #TmpReceta
+    FROM OPENXML (@hdoc, '/Recetas/Rec', 1)
+    WITH (R INT);
+
+    IF NOT EXISTS (SELECT 1 FROM #TmpReceta)
+    BEGIN
+        PRINT 'No se recibieron recetas en el XML de entrada.';
+        RETURN;
+    END
+
+    -- Procesar XML de nutrientes
+    EXEC sp_xml_preparedocument @hdoc OUTPUT, @XmlAporte;
+
+    SELECT Nutriente INTO #TmpNutriente
+    FROM OPENXML (@hdoc, '/Nutrientes/Nut', 1)
+    WITH (Nutriente INT);
+
+    -- Arbol de receta
+    SELECT 
+        a.rec_codigo,
+        SUBSTRING(dbo.sgpadm_p_buscararbolcatdietetica(a.rec_catdie), 1, LEN(dbo.sgpadm_p_buscararbolcatdietetica(a.rec_catdie)) - 1) AS [Categoria Diatetica],
+        SUBSTRING(dbo.sgpadm_p_buscararboltipplato1(a.rec_tippla), 1, LEN(dbo.sgpadm_p_buscararboltipplato1(a.rec_tippla)) - 1) AS [Tipo Plato]
+    INTO #ArbolReceta
+    FROM b_receta AS a WITH (NOLOCK)
+    INNER JOIN #TmpReceta AS b ON b.R = a.rec_codigo;
+
+    -- Columnas dinámicas para PIVOT
+    DECLARE @ColumnasPivot NVARCHAR(MAX);
+    SELECT @ColumnasPivot = STRING_AGG(QUOTENAME(a.nut_nombre), ', ')
+    FROM a_nutriente a
+    INNER JOIN #TmpNutriente ns ON a.nut_codigo = ns.Nutriente;
+
+    -- Columnas para SUM de nutrientes
+    DECLARE @ColumnasSuma NVARCHAR(MAX);
+    SELECT @ColumnasSuma = STRING_AGG(
+        'SUM(' + QUOTENAME(a.nut_nombre) + ') AS ' + QUOTENAME(REPLACE(REPLACE(a.nut_nombre, ' ', '_'), '-', '_')),
+        ', '
+    )
+    FROM a_nutriente a
+    INNER JOIN #TmpNutriente ns ON a.nut_codigo = ns.Nutriente;
+
+    -- Consulta dinámica
+    DECLARE @SQL NVARCHAR(MAX);
+    SET @SQL = '
+    WITH AportesNutricionales AS (
+        SELECT 
+            br.rec_codigo,
+	        bp.pnu_codpro,
+            an.nut_nombre,
+            SUM((((brd.red_pctnut / 100) * (bp.pnu_canapo * (brd.red_canpro / br.rec_basrac))) / bi.ing_facnut)
+            ) AS pnu_canapo
+        FROM b_productonut bp
+        INNER JOIN a_nutriente an ON bp.pnu_codapo = an.nut_codigo
+        INNER JOIN #TmpNutriente tn ON an.nut_codigo = tn.Nutriente
+        INNER JOIN b_recetadet brd ON bp.pnu_codpro = brd.red_codpro
+        INNER JOIN b_receta br ON br.rec_codigo = brd.red_codigo
+        INNER JOIN #TmpReceta tm ON tm.R = br.rec_codigo
+        INNER JOIN b_ingrediente bi ON brd.red_codpro = bi.ing_codigo
+        WHERE bp.pnu_canapo > 0
+          AND bi.ing_activo = ''1''
+          AND bi.ing_indppr = 1
+        GROUP BY br.rec_codigo, bp.pnu_codpro, an.nut_nombre
+    ),
+    PivotNutricional AS (
+        SELECT *
+        FROM (
+            SELECT rec_codigo, pnu_codpro, nut_nombre, pnu_canapo
+            FROM AportesNutricionales
+        ) AS Fuente
+        PIVOT (
+            SUM(pnu_canapo)
+            FOR nut_nombre IN (' + @ColumnasPivot + ')
+        ) AS ap
+    ),
+    Detalle AS (
+        SELECT  
+            br.rec_codigo AS [Código Receta],
+            br.rec_nombre AS [Nombre Receta],
+            ar.[Categoria Diatetica],
+            ar.[Tipo Plato],
+            CONVERT(VARCHAR(8), br.rec_basrac) AS [Raciones],
+            CASE WHEN ISNULL(br.rec_fecvig, 0) = 0 THEN '''' ELSE CONVERT(VARCHAR(8), br.rec_fecvig) END AS [Fecha Vigencia],
+            CASE WHEN br.rec_indppr = 1 THEN ''Real'' ELSE ''Propuesta'' END AS [Tipo Receta],
+            br2.red_codpro AS [Código Ingrediente],
+            bi.ing_nombre AS [Nombre Ingrediente],
+            br2.red_canpro AS [Cantidad Bruta],
+            ((br2.red_pctapr / 100.0) * br2.red_canpro) AS [C.Neta],
+            ((br2.red_pctapr / 100.0) * br2.red_canpro) * (br2.red_pctcoc / 100.0) AS [C.Servir],
+            (br2.red_pctnut / 100.0) * br2.red_canpro AS [Neta Nutriente],
+            ISNULL(br2.red_canpro * bi.huella_carbono, 0) AS [Huella Carbono],
+            ap.*
+        FROM dbo.b_receta AS br WITH (NOLOCK)
+        INNER JOIN dbo.b_recetadet AS br2 WITH (NOLOCK)
+            ON br.rec_codigo = br2.red_codigo
+        INNER JOIN dbo.b_ingrediente AS bi WITH (NOLOCK)
+            ON br2.red_codpro = bi.ing_codigo
+            AND bi.ing_activo = ''1''
+            AND bi.ing_indppr = 1
+        INNER JOIN #TmpReceta AS tm ON tm.R = br.rec_codigo
+        INNER JOIN #ArbolReceta AS ar ON ar.rec_codigo = tm.R
+        LEFT JOIN PivotNutricional AS ap ON bi.ing_codigo = ap.pnu_codpro and br.rec_codigo = ap.rec_codigo
+        WHERE 
+            (br.rec_fecvig > CONVERT(VARCHAR(8), GETDATE(), 112) OR br.rec_fecvig <= 0)
+            AND br.rec_indppr = 1
+            AND br.rec_activo = ''1''
+    )
+    SELECT *
+    FROM (
+        SELECT 
+            [Código Receta],
+            [Nombre Receta],
+            [Categoria Diatetica],
+            [Tipo Plato],
+            [Raciones],
+            [Fecha Vigencia],
+            [Tipo Receta],
+            [Código Ingrediente],
+            [Nombre Ingrediente],
+            [Cantidad Bruta],
+            [C.Neta],
+            [C.Servir],
+            [Neta Nutriente],
+            [Huella Carbono],
+            ' + @ColumnasPivot + ',
+            ''Detalle'' AS TipoFila
+        FROM Detalle
+
+        UNION ALL
+
+        SELECT 
+            [Código Receta],
+            ''TOTAL RECETA'' AS [Nombre Receta],
+            '''' AS [Categoria Diatetica],
+            '''' AS [Tipo Plato],
+            '''' AS [Raciones],
+            '''' AS [Fecha Vigencia],
+            '''' AS [Tipo Receta],
+            '''' AS [Código Ingrediente],
+            '''' AS [Nombre Ingrediente],
+            SUM([Cantidad Bruta]) AS [Cantidad Bruta],
+            SUM([C.Neta]) AS [C.Neta],
+            SUM([C.Servir]) AS [C.Servir],
+            SUM([Neta Nutriente]) AS [Neta Nutriente],
+            SUM([Huella Carbono]) AS [Huella Carbono],
+            ' + @ColumnasSuma + ',
+            ''TotalReceta'' AS TipoFila
+        FROM Detalle
+        GROUP BY [Código Receta]
+    ) AS ResultadoFinal
+    ORDER BY [Código Receta], 
+             CASE TipoFila WHEN ''Detalle'' THEN 1 ELSE 2 END;
+    ';
+
+    EXEC sp_executesql @SQL;
+
+    DROP TABLE IF EXISTS #TmpNutriente;
+    DROP TABLE IF EXISTS #TmpReceta;
+    DROP TABLE IF EXISTS #ArbolReceta;
+END

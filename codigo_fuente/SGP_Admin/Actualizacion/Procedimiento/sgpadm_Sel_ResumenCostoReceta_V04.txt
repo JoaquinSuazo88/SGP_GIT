@@ -1,0 +1,412 @@
+/*                                          
+==========================================================================                                          
+Sistema : Sgp Administrador                                          
+Modulo :   Ayuda - Busqueda Receta (M_MinSR2.frm)                                          
+                                          
+SP o Function : sgpadm_Sel_ResumenCostoReceta_V02  
+Descripcion  :  Mostrar resumen de receta asociado tipo plato, costo y gramaje                                        
+       de acuerdo a un ceco, regimen y servicio                                        
+                                          
+Observaciones :                                           
+                                          
+F. creacion:      17/10/2013                                          
+Creador:          Jorge Paz                                          
+                                          
+==========================================================================                                          
+Modificaciones:                                          
+Fecha             Programador             Motivo y/o Modificacion                                          
+22/01/2014        Jorge Paz Núñez    Cambiar procedimiento que sea mas rapido                                          
+07/10/2016        Jorge Paz Núñez         Incluir Columna Categoria Dietetica      
+14/11/2017        Jorge Paz Núñez         Incluir Columna Estacionalidad  
+18/01/2022        Jorge Paz Núñez         Cambiar nombre sub procedimiento 
+                                          PA_sgpadm_CostoRecetaProducto x
+										  PA_sgpadm_CostoRecetaProducto_V02
+										  esto incluye dos nuevo cambio a la
+										  tabla excepción formato compras que son
+										  fecha inicio y fin.   
+										  Cambio nom de procedimiento sgpadm_Sel_ResumenCostoReceta_V02
+										  x sgpadm_Sel_ResumenCostoReceta_V03       
+14/02/2024        Jorge Paz Núñez         Incluir los filtro activo en las tabla b_receta_oferta y
+                                          b_cliente_oferta                      
+18/08/2025        Jorge Paz Núñez         Incluir tablagramage_nivel
+==========================================================================                                
+Test:                                          
+sgpadm_Sel_ResumenCostoReceta_V02 '22700', 10320, 10001, 0, 0, 20140401, 1, '0'                    
+sgpadm_Sel_ResumenCostoReceta_V02 '22700', 10018, 10001, 0, 0, 20160601, 1, '1'                    
+sgpadm_Sel_ResumenCostoReceta_V03 '22700', 10018, 10001, 0, 0, 20240601, 1, '1'                    
+sgpadm_Sel_ResumenCostoReceta_V04 '22700', 10320, 10001, 0, 0, 20250203, 1, '1'                    
+                                          
+==========================================================================                                
+*/                                          
+                                                           
+ALTER PROC [dbo].[sgpadm_Sel_ResumenCostoReceta_V04]  
+    (  
+      @Ceco VARCHAR(20) ,  
+      @CodRegimen INT ,  
+      @CodServicio INT ,  
+      @CodCatDiet INT ,  
+      @TipPlato INT ,  
+      @Fecha INT ,  
+      @OpPrecio INT ,  
+      @OpMuestraPre VARCHAR(1)  
+    )  
+AS --> Declarar variable limpieza desechable y mover estado              
+    
+	declare @FechaVigencia as int
+	set @FechaVigencia = CONVERT(INT, CONVERT(VARCHAR(8), GETDATE(), 112))
+
+    DECLARE @LyD AS BIT               
+    SET @LyD = 0              
+              
+    SELECT  @LyD = ISNULL(ser_lyd, 0)  
+    FROM    dbo.a_servicio AS as2 WITH ( NOLOCK )  
+    WHERE   as2.ser_codigo = @CodServicio              
+              
+  --> Rutina buscar más una familia categoria dietetica                                          
+    DECLARE @eof VARCHAR(1)                
+    SET @eof = '1'                
+                    
+    SELECT  0 AS catdie  
+    INTO    #TmpCatDie  
+    FROM    a_recetacatdie WITH ( NOLOCK )                                
+                    
+    CREATE INDEX ix_catdie_01 ON #TmpCatDie (catdie)                                                      
+                    
+    DELETE  #TmpCatDie                                           
+                    
+    IF @CodCatDiet > 0   
+        BEGIN                                          
+            INSERT  INTO #TmpCatDie  
+                    SELECT  @CodCatDiet AS catdie                                           
+            BEGIN                                          
+                WHILE @eof = '1'   
+                    IF EXISTS ( SELECT DISTINCT  
+                                        car_codigo  
+                                FROM    a_recetacatdie WITH ( NOLOCK )  
+                                WHERE   car_previo = @CodCatDiet )   
+                        BEGIN                                          
+                 INSERT  INTO #TmpCatDie  
+                                    SELECT DISTINCT  
+                                            car_codigo  
+                                    FROM    a_recetacatdie WITH ( NOLOCK )  
+                                    WHERE   car_previo = @CodCatDiet                                        
+                            SELECT  @CodCatDiet = car_codigo  
+                            FROM    a_recetacatdie WITH ( NOLOCK )  
+                            WHERE   car_previo = @CodCatDiet                                        
+                        END                                          
+                    ELSE   
+                        BEGIN                                          
+                            SET @eof = '0'                                          
+                        END                                          
+            END            
+        END                                          
+    ELSE   
+        BEGIN                                          
+            INSERT  INTO #TmpCatDie  
+                    SELECT  car_codigo  
+                    FROM    a_recetacatdie WITH ( NOLOCK )                                
+        END                                          
+                    
+--> Rutina buscar más una familia tipo plato                                
+    SELECT  0 AS tippla  
+    INTO    #TmpTipPla  
+    FROM    a_recetatippla WITH ( NOLOCK )                                        
+                    
+    CREATE INDEX ix_tippla_01 ON #TmpTipPla (tippla)                                                      
+                                      
+    DELETE  #TmpTipPla                                           
+                                    
+    IF @TipPlato > 0   
+        BEGIN                                          
+            SET @eof = '1'                                        
+            INSERT  INTO #TmpTipPla  
+                    SELECT  @TipPlato AS tippla                      
+            BEGIN                                          
+                WHILE @eof = '1'   
+                    IF EXISTS ( SELECT  1  
+                                FROM    a_recetatippla WITH ( NOLOCK )  
+                                WHERE   tip_previo = @TipPlato )   
+                        BEGIN                                          
+                            INSERT  INTO #TmpTipPla  
+                                    SELECT DISTINCT  
+                                            tip_codigo  
+                                    FROM    a_recetatippla WITH ( NOLOCK )  
+                                    WHERE   tip_previo = @TipPlato                         
+                                   
+                            SELECT  @TipPlato = tip_codigo  
+                            FROM    a_recetatippla WITH ( NOLOCK )  
+                            WHERE   tip_previo = @TipPlato                                        
+                        END                                          
+                    ELSE   
+                        BEGIN                                          
+                            SET @eof = '0'                                          
+                        END                                          
+            END                                          
+        END                                          
+    ELSE   
+        BEGIN    
+            INSERT  INTO #TmpTipPla  
+                    SELECT  tip_codigo AS tippla  
+                    FROM    a_recetatippla WITH ( NOLOCK )                                          
+        END                                          
+                                
+    -- 1️⃣ Eliminar la tabla si ya existe
+	IF OBJECT_ID('tempdb..#DetReceta') IS NOT NULL
+		DROP TABLE #DetReceta;
+		                
+	SELECT  br3.rec_codigo ,  
+			br3.rec_nombre ,  
+			br3.rec_catdie ,  
+			br3.rec_tippla ,  
+			br3.rec_fecvig ,  
+			br4.red_codpro ,
+			br4.red_canpro , 
+			br4.red_pctnut ,
+			br4.red_pctapr,
+			br4.red_pctcoc,
+			br3.rec_indppr ,  
+			br3.cod_uniReceta,
+			br3.rec_basrac
+	into #DetReceta
+	FROM    dbo.b_receta AS br3 WITH ( NOLOCK )  
+			INNER JOIN dbo.b_recetadet AS br4 WITH ( NOLOCK ) ON br3.rec_codigo = br4.red_codigo  
+	INNER  JOIN dbo.b_receta_Oferta AS bro WITH ( NOLOCK ) ON br3.rec_codigo = bro.rec_codigo
+													and bro.Activo = '1'  
+	INNER  JOIN dbo.b_Cliente_Oferta AS bco WITH ( NOLOCK ) ON bro.codigo_oferta = bco.codigo_oferta 
+													and bco.Activo = '1' 
+	inner join dbo.b_recetatiponegocio as brtn WITH ( NOLOCK ) ON brtn.idreceta = br3.rec_codigo
+	inner join dbo.b_ClientesTipoNegocio as bctp with (nolock) on bctp.idtiponegocio = brtn.idtiponegocio
+	inner join dbo.b_recetazona as brz with (nolock) on brz.Idreceta = br3.rec_codigo
+	inner join dbo.I_ORG_CECO as ioc with (nolock) on ioc.ID_ORGCOMPRA = IdOrganizacionCompras
+	                                             and  ioc.borrado <> 'X'
+	inner join dbo.b_clientes as bc with (nolock) on bc.cli_codigo = bco.cli_codigo
+												and	 bc.cli_codigo = bctp.idcliente
+												and  bc.cli_codigo = ioc.id_ceco
+    INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON br4.red_codpro = bi.ing_codigo  				
+	WHERE bc.cli_codigo = @Ceco  
+	and br3.rec_catdie IN ( SELECT  catdie  
+								FROM    #TmpCatDie WITH ( NOLOCK ) )  
+			AND br3.rec_tippla IN ( SELECT  tippla  
+									FROM    #TmpTipPla WITH ( NOLOCK ) )  
+			AND br3.rec_indppr = 1  
+			AND ( br3.rec_fecvig > @FechaVigencia  
+					OR br3.rec_fecvig <= 0  
+				)  
+			AND ISNULL(br3.rec_LYD, 0) = @LyD  
+	GROUP BY br3.rec_codigo ,  
+			 br3.rec_nombre ,  
+			 br3.rec_catdie ,  
+			 br3.rec_tippla ,  
+			 br3.rec_fecvig ,  
+			 br3.rec_indppr ,  
+			 br4.red_codpro ,  
+			 br3.cod_uniReceta,
+			 br4.red_canpro,
+			 br4.red_pctnut,
+			 br3.rec_basrac,
+			 br4.red_pctapr,
+			 br4.red_pctcoc
+
+   CREATE INDEX ix_rec_codigo_01 ON #DetReceta (rec_codigo, red_codpro)
+
+    UPDATE  #DetReceta  
+    SET     #DetReceta.red_codpro = ISNULL(reemplazo.IdIngredienteCambio, b.red_codpro) ,  
+            #DetReceta.red_canpro = isnull(reemplazo.CantIngredienteCambio, b.red_canpro),
+            #DetReceta.red_pctnut = CASE WHEN reemplazo.IdIngredienteCambio is not null and reemplazo.IdIngredienteOrigen <> reemplazo.IdIngredienteCambio THEN c.ing_pctnut  
+                                            ELSE b.red_pctnut  
+                                       END ,  
+            #DetReceta.red_pctapr = CASE WHEN reemplazo.IdIngredienteCambio is not null and reemplazo.IdIngredienteOrigen <> reemplazo.IdIngredienteCambio THEN c.ing_pctapr  
+                                            ELSE b.red_pctapr  
+                                       END ,  
+            #DetReceta.red_pctcoc = CASE WHEN reemplazo.IdIngredienteCambio is not null and reemplazo.IdIngredienteOrigen <> reemplazo.IdIngredienteCambio THEN c.ing_pctcoc  
+                                            ELSE b.red_pctcoc  
+                                       END  
+    FROM    #DetReceta b WITH ( NOLOCK )
+			OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    @Ceco,
+				    @CodRegimen,
+				    b.rec_codigo,
+				    b.red_codpro,
+				    b.rec_tippla
+			) AS reemplazo
+            INNER JOIN b_ingrediente c WITH ( NOLOCK ) ON ISNULL(reemplazo.IdIngredienteCambio, b.red_codpro) = c.ing_codigo  
+
+    BEGIN                                          
+                                    
+        SELECT  CONVERT(INT, 0) AS rec_codigo ,  
+        CONVERT(VARCHAR(80), '') AS rec_nombre ,  
+                CONVERT(INT, 0) AS rec_catdie ,  
+                CONVERT(INT, 0) AS rec_tippla ,  
+                CONVERT(INT, 0) AS rec_fecvig ,  
+                CONVERT(VARCHAR(20), '') AS ing_codigo ,  
+				--CONVERT(FLOAT, 0) AS AporteNut ,
+                CONVERT(FLOAT, 0) AS promedioreceta ,  
+                CONVERT(int, 0) AS rec_indppr ,  
+                CONVERT(INT, 0) AS cod_uniReceta  
+        INTO    #Paso_Final                                    
+                    
+        CREATE INDEX ix_rec_codigo_01 ON #Paso_Final (rec_codigo)                                                      
+                                    
+        DELETE  #Paso_Final                                    
+                          
+        IF @OpMuestraPre = '1'   
+            BEGIN                                    
+                            
+                CREATE TABLE #sgpadm_Fun_CostoRecetaProducto  
+                    (  
+                      ing_codigo VARCHAR(20) COLLATE DATABASE_DEFAULT ,  
+                      pro_codigo VARCHAR(20) COLLATE DATABASE_DEFAULT ,  
+                      pro_nombre VARCHAR(100) COLLATE DATABASE_DEFAULT ,  
+                      pro_facing FLOAT ,  
+                      fi INT ,  
+                      ft INT ,  
+                      PMP FLOAT ,  
+                      PMPIng FLOAT ,  
+                      Convenio FLOAT ,  
+                      ConvenioIng FLOAT ,  
+                      Lista FLOAT ,  
+                      ListaIng FLOAT  
+                    )                            
+                                    
+                INSERT  #sgpadm_Fun_CostoRecetaProducto  
+                        ( ing_codigo ,  
+                          pro_codigo ,  
+                          pro_nombre ,  
+                          pro_facing ,  
+                          fi ,  
+                          ft ,  
+                          PMP ,  
+                          PMPIng ,  
+                          Convenio ,  
+                          ConvenioIng ,  
+                          Lista ,  
+                          ListaIng                    
+                        )  
+                        EXEC dbo.PA_sgpadm_CostoRecetaProducto_V03 @Ceco, @Fecha, @CodRegimen, @CodServicio, @OpPrecio                  
+                                            
+                       
+                SELECT  ing_codigo ,  
+                        pro_codigo ,  
+                        pro_nombre ,  
+                        pro_facing ,  
+                        fi ,  
+                        ft ,  
+                        PMP ,  
+                        PMPIng ,  
+                        Convenio ,  
+                        ConvenioIng ,  
+                        Lista ,  
+                        ListaIng ,  
+                        ( ISNULL(CASE WHEN @OpPrecio = 1 THEN Convenio  
+                                      WHEN @OpPrecio = 2 THEN PMP  
+                                      ELSE Lista  
+                                 END, 0) / ISNULL(pro_facing, 0) ) AS pmp1  
+                INTO    #sgpadm_Fun_CostoRecetaProducto2  
+                FROM    #sgpadm_Fun_CostoRecetaProducto  
+                WHERE   ( ISNULL(CASE WHEN @OpPrecio = 1 THEN Convenio  
+                                      WHEN @OpPrecio = 2 THEN PMP  
+                                   ELSE Lista  
+                                 END, 0) ) > 0                           
+            
+                CREATE INDEX ix_ing_codigo_01 ON #sgpadm_Fun_CostoRecetaProducto2 (ing_codigo)                
+                    
+                INSERT  INTO #Paso_Final  
+                        SELECT  aa.rec_codigo ,  
+                                aa.rec_nombre ,  
+                                aa.rec_catdie ,  
+                                aa.rec_tippla ,  
+                                aa.rec_fecvig ,  
+                                bi.ing_codigo , 
+--	  			                sum(dbo.fn_sgpadm_Pro_TraerAporteCalorias_V02(bi.ing_codigo, aa.red_canpro, aa.red_pctnut, aa.rec_basrac)) AS AporteNut ,  
+                                ROUND(ISNULL(AVG(fun.PMP1) * MAX(aa.red_canpro),0), 2) AS promedioreceta ,  
+								aa.rec_indppr ,  
+                                aa.cod_uniReceta  
+                        FROM    #DetReceta as aa
+                           INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON aa.red_codpro = bi.ing_codigo  
+                           LEFT JOIN #sgpadm_Fun_CostoRecetaProducto2 AS fun ON fun.ing_codigo = bi.ing_codigo  
+                                                                            AND fun.fi = @Fecha  
+                        GROUP BY aa.rec_codigo ,  
+                                 aa.rec_nombre ,  
+                                 aa.rec_catdie ,  
+                                 aa.rec_tippla ,  
+                                 aa.rec_fecvig ,  
+                                 aa.rec_indppr ,  
+                                 bi.ing_codigo ,  
+                                 aa.cod_uniReceta  
+      print '2'                          
+      DROP TABLE #sgpadm_Fun_CostoRecetaProducto                
+      DROP TABLE #sgpadm_Fun_CostoRecetaProducto2                
+                    
+            END                
+                                    
+                                    
+        ELSE   
+            BEGIN                
+                INSERT  INTO #Paso_Final  
+                        SELECT  aa.rec_codigo ,  
+								aa.rec_nombre ,  
+                                aa.rec_catdie ,  
+                                aa.rec_tippla ,  
+                                aa.rec_fecvig ,  
+                                bi.ing_codigo ,  
+--	  			                sum(dbo.fn_sgpadm_Pro_TraerAporteCalorias_V02(bi.ing_codigo, aa.red_canpro, aa.red_pctnut, aa.rec_basrac)) AS AporteNut ,  
+                                CONVERT(FLOAT, 0) AS promedioreceta ,  
+                                aa.rec_indppr ,  
+                                aa.cod_uniReceta  
+                        FROM #DetReceta as aa
+                       INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON aa.red_codpro = bi.ing_codigo  
+					   GROUP BY aa.rec_codigo ,  
+                                aa.rec_nombre ,  
+                                aa.rec_catdie ,  
+                                aa.rec_tippla ,  
+                                aa.rec_fecvig ,  
+                                aa.rec_indppr ,  
+                                bi.ing_codigo ,  
+                                aa.cod_uniReceta  
+                        --ORDER BY br3.rec_nombre                
+                                    
+            END                
+                               
+   -- Selecciona las Ofertas que tiene el Casino                
+                        
+        SELECT  pf.rec_codigo ,  
+                pf.rec_nombre ,  
+                pf.rec_tippla ,  
+                pf.rec_fecvig ,  
+               SUM(promedioreceta) AS promedioreceta ,  
+               dbo.fn_sgpadm_Pro_TraerAporteCalorias_V02(pf.rec_codigo, @Ceco, @CodRegimen) AS AporteNut ,  
+			   --	sum(dbo.fn_sgpadm_Pro_TraerAporteCalorias_V02(pf.ing_codigo, pf.red_canpro, pf.red_pctnut, pf.rec_basrac)) AS AporteNut ,  
+               --sum(pf.AporteNut) as AporteNut,
+                pf.rec_indppr ,  
+                SUBSTRING(dbo.sgpadm_p_buscararboltipplato1(pf.rec_tippla), 1,  
+                          LEN(dbo.sgpadm_p_buscararboltipplato1(pf.rec_tippla)) - 1) AS nom_tippla ,  
+                SUBSTRING(dbo.sgpadm_p_buscararbolcatdietetica(pf.rec_catdie), 1,  
+                          LEN(dbo.sgpadm_p_buscararbolcatdietetica(pf.rec_catdie)) - 1) AS nom_catdie ,  
+                ISNULL(bur.DescripcionCorta, '') AS DescripcionCorta ,  
+                ISNULL(REPLACE(REPLACE(CONVERT(VARCHAR(MAX), ( SELECT   ae.NomCorto  
+                                                               FROM     dbo.b_receta_estacionalidad AS bre  
+                                                                        INNER JOIN dbo.a_estacionalidad AS ae ON bre.IdCodigo = ae.IdCodigo  
+                                                               WHERE    bre.rec_codigo = pf.rec_codigo  
+                                                                        AND ae.Activo = 1  
+                                                             FOR  
+                                                               XML AUTO  
+                                                             )), '<ae NomCorto="', '-'), '"/>', ''), '') AS Estacionalidad_asoc  
+        FROM    #Paso_Final AS pf  
+        INNER JOIN dbo.b_UnidadReceta AS bur WITH ( NOLOCK ) ON bur.Codigo_unidad = pf.cod_uniReceta  
+        GROUP BY pf.rec_codigo ,  
+                 pf.rec_nombre ,  
+                 pf.rec_catdie ,  
+                 pf.rec_tippla ,  
+                 pf.rec_fecvig ,  
+                 pf.rec_indppr ,  
+                 bur.DescripcionCorta
+        ORDER BY pf.rec_nombre                
+                                    
+        DROP TABLE #Paso_Final                
+                            
+                                        
+    END                
+                    
+    DROP TABLE #TmpCatDie                
+    DROP TABLE #TmpTipPla 
+	drop table #DetReceta

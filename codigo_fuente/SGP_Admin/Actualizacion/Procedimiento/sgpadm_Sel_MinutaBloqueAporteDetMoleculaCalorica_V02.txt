@@ -1,0 +1,164 @@
+/*                                        
+==========================================================================
+Sistema : Sgp Administrador
+Modulo :  Informe - ExportaExcelPlanDetalladoMoleculaCalorica (i_PlanifBloque.frm)
+                                        
+SP o Function : sgpadm_Sel_MinutaBloqueAporteDetMoleculaCalorica
+Descripcion   : Permite generar minuta con su aporte para el calculo molecula calorica
+Observaciones :
+                                        
+F. creacion:      04/06/2018
+Creador:          Jorge Paz Núñez
+                                        
+==========================================================================
+Modificaciones:
+Fecha             Programador             Motivo y/o Modificacion
+21-08-2025        JPAZN                   Incluir tabla gramaje x nivel
+==========================================================================
+Test:
+
+sgpadm_Sel_MinutaBloqueAporteDetMoleculaCalorica
+
+==========================================================================
+*/
+
+CREATE PROCEDURE [sgpadm_Sel_MinutaBloqueAporteDetMoleculaCalorica_V02]
+    (
+      @XmlEstServicio AS TEXT ,
+      @Ceco AS VARCHAR(10) ,
+      @CodigoRegimen AS INT ,
+      @FechaIni AS INT ,
+      @FechaFin AS INT ,
+      @TipoMinuta AS CHAR(1)
+    )
+AS 
+    SET NOCOUNT ON    
+  
+    DECLARE @nreg AS INT    
+    SELECT  @nreg = 0    
+              
+    DECLARE @hdoc AS INT     
+    
+    EXEC sp_xml_preparedocument @hdoc OUTPUT, @XmlEstServicio    
+    DECLARE @CodigoEstServicio INT     
+    
+    SELECT  *
+    INTO    #TempEstServicio
+    FROM    OPENXML(@hdoc, N'/EstServicio/EstServicioDet', 1)     
+WITH ([CodSer] INT , [CodEst] INT )      
+    
+    SELECT DISTINCT
+            d.mid_codrec
+    INTO    #tmpReceta
+    FROM    cas_b_minuta c WITH ( NOLOCK )
+            INNER JOIN cas_b_minutadet d WITH ( NOLOCK ) ON c.min_codigo = d.mid_codigo
+                                                            AND c.min_cecori = d.mid_cecori
+            INNER JOIN #TempEstServicio e WITH ( NOLOCK ) ON d.mid_estser = e.CodEst
+                                                             AND c.min_codser = e.CodSer
+    WHERE   c.min_cecori = @Ceco
+            AND c.min_codreg = @CodigoRegimen
+            AND c.min_fecmin >= @FechaIni
+            AND c.min_fecmin <= @FechaFin
+            AND d.mid_tipmin = @TipoMinuta
+    
+    SELECT DISTINCT
+            b.red_codigo ,
+            b.red_codpro ,
+            b.red_codpro AS ori_codpro ,
+            b.red_pctapr ,
+            b.red_canpro ,
+            b.red_pctcoc ,
+            b.red_pctnut ,
+            a.rec_basrac ,
+            b.red_nroite ,
+            a.rec_nombre ,
+            a.rec_nomfan ,
+            a.rec_indppr ,
+            a.rec_canser ,
+			a.rec_tippla
+    INTO    #tmpDetReceta
+    FROM    b_receta a WITH ( NOLOCK )
+            INNER JOIN b_recetadet b WITH ( NOLOCK ) ON b.red_codigo = a.rec_codigo
+            INNER JOIN #tmpReceta c WITH ( NOLOCK ) ON c.mid_codrec = b.red_codigo
+              
+    UPDATE  #tmpDetReceta
+    SET     #tmpDetReceta.red_codpro = ISNULL(reemplazo.IdIngredienteCambio, b.red_codpro) ,
+            #tmpDetReceta.red_canpro = isnull(reemplazo.CantIngredienteCambio, b.red_canpro) ,
+            #tmpDetReceta.red_pctnut = c.ing_pctnut
+    FROM    #tmpDetReceta b WITH ( NOLOCK )
+			OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    @Ceco,
+				    @CodigoRegimen,
+				    b.red_codigo,
+				    b.red_codpro,
+				    b.rec_tippla
+			) AS reemplazo
+
+            INNER JOIN b_ingrediente c WITH ( NOLOCK ) ON ISNULL(reemplazo.IdIngredienteCambio, b.red_codpro) = c.ing_codigo
+              
+    SELECT  @nreg = COUNT(*)
+    FROM    cas_b_minuta c WITH ( NOLOCK )
+            INNER JOIN cas_b_minutadet d WITH ( NOLOCK ) ON c.min_codigo = d.mid_codigo
+                                                            AND c.min_cecori = d.mid_cecori
+            INNER JOIN #tmpDetReceta a WITH ( NOLOCK ) ON d.mid_codrec = a.red_codigo
+            INNER JOIN b_ingrediente b WITH ( NOLOCK ) ON a.red_codpro = b.ing_codigo
+            INNER JOIN #TempEstServicio e WITH ( NOLOCK ) ON d.mid_estser = e.CodEst
+                                                             AND c.min_codser = e.CodSer
+    WHERE   c.min_cecori = @Ceco
+            AND c.min_codreg = @CodigoRegimen
+            AND c.min_fecmin >= @FechaIni
+            AND c.min_fecmin <= @FechaFin
+            AND d.mid_tipmin = @TipoMinuta    
+              
+    SELECT  c.min_codser ,
+            as2.ser_nombre ,
+            d.mid_tipmin ,
+            d.mid_numlin ,
+            d.mid_codrec ,
+            d.mid_descri ,
+            d.mid_cosrec ,
+            c.min_fecmin ,
+            c.min_indblo ,
+            a.rec_nombre ,
+            a.rec_nomfan ,
+            d.mid_numrac ,
+            a.red_codpro ,
+            a.red_pctapr ,
+            a.red_pctcoc ,
+            a.red_pctnut ,
+            ( a.red_canpro / a.rec_basrac ) AS canpro ,
+            b.ing_nombre ,
+            b.ing_facnut ,
+            b.ing_pctapr ,
+            b.ing_pctcoc ,
+            b.ing_pctnut ,
+            a.ori_codpro ,
+            nreg = @nreg ,
+            a.rec_indppr ,
+            a.rec_canser ,
+            CASE WHEN ISNULL(d.mid_porrac, 0) = 0 THEN ( ISNULL(( d.mid_numrac / c.min_racteo ), 0) * 100 )
+                 ELSE (ISNULL(d.mid_porrac,0)/100) END AS porraciones
+    FROM    cas_b_minuta c WITH ( NOLOCK )
+            INNER JOIN cas_b_minutadet d WITH ( NOLOCK ) ON c.min_codigo = d.mid_codigo
+                                                            AND c.min_cecori = d.mid_cecori
+            INNER JOIN #tmpDetReceta a WITH ( NOLOCK ) ON d.mid_codrec = a.red_codigo
+            INNER JOIN b_ingrediente b WITH ( NOLOCK ) ON a.red_codpro = b.ing_codigo
+            INNER JOIN #TempEstServicio e WITH ( NOLOCK ) ON d.mid_estser = e.CodEst
+                                                             AND c.min_codser = e.CodSer
+            INNER JOIN dbo.a_servicio AS as2 WITH ( NOLOCK ) ON as2.ser_codigo = e.CodSer
+                                                                AND ISNULL(as2.ser_LYD, 0) = 0
+    WHERE   c.min_cecori = @Ceco
+            AND c.min_codreg = @CodigoRegimen
+            AND c.min_fecmin >= @FechaIni
+            AND c.min_fecmin <= @FechaFin
+            AND d.mid_tipmin = @TipoMinuta
+            AND d.mid_numrac > 0
+            AND c.min_racteo > 0
+    ORDER BY c.min_fecmin desc,
+            as2.ser_orden ,
+--            c.min_codser ,
+            d.mid_numlin ,
+            a.red_nroite              
+              
+    DROP TABLE #tmpDetReceta  
+    DROP TABLE #TempEstServicio   

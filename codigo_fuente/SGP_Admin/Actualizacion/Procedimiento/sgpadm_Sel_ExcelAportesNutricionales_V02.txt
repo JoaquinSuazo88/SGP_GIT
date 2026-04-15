@@ -1,0 +1,441 @@
+/*                                                                                                                        
+==========================================================================                                                                                                                        
+Sistema : Sgp Administrador                                                                                                                        
+Modulo :   Informes - Exportación Excel Varios (E_ExcelVarios.frm)    
+                                                                                                                        
+SP o Function : sgpadm_Sel_ExcelAportesNutricionales    
+Descripcion   : Permite generar los aportes nutrcionales con su % del ingredientes    
+Observaciones :     
+                                                                                                                        
+F. creacion:      27/01/2017    
+Creador:          Jorge Paz Núñez                                  
+                                                                                                                        
+==========================================================================                                                                                                                        
+Modificaciones:                                                                                                                        
+Fecha             Programador             Motivo y/o Modificacion
+10/09/2025        jpaz                    iNCLUIR HUELLA cARBONO                                                                                                                        
+==========================================================================                                                                                                                        
+Test:                                                
+                                                                                    
+sgpadm_Sel_ExcelAportesNutricionales    
+                                
+==========================================================================                                                                                                                        
+*/                                                                                                          
+                                                                                                                        
+create  PROC [dbo].[sgpadm_Sel_ExcelAportesNutricionales_V02]
+    (
+      @XmlIngrediente AS TEXT   
+    )
+AS 
+    SET NOCOUNT ON          
+    SET XACT_ABORT ON        
+  
+    DECLARE @hdoc AS INTEGER                                  
+                                  
+    EXEC sp_xml_preparedocument @hdoc OUTPUT, @XmlIngrediente  
+                                  
+    SELECT  Ingr
+    INTO    #TmpIngr
+    FROM    OPENXML (@hdoc, '/Ingredientes/Ing ', 1)                                  
+    WITH                                  
+    (                                  
+    Ingr VARCHAR(20)      
+    )                               
+            
+    SELECT  DISTINCT
+            ing_codigo ,
+            ing_nombre ,
+            ing_pctapr AS [% Aprovechamiento] ,
+            ing_pctcoc AS [% Cocción] ,
+            ing_pctnut AS [% Nutricional] ,
+            ing_facnut AS [Factor Nutricional] ,
+			isnull(Huella_Carbono,0) as [Huella Carbono],
+            CONVERT(INT, 1) AS [Humedad1] ,
+            CONVERT(FLOAT, 0) AS [Humedad] ,
+            CONVERT(INT, 2) AS [Calorias1] ,
+            CONVERT(FLOAT, 0) AS [Calorias] ,
+            CONVERT(INT, 3) AS [Proteinas1] ,
+            CONVERT(FLOAT, 0) AS [Proteinas] ,
+            CONVERT(INT, 4) AS [Hidratos1] ,
+            CONVERT(FLOAT, 0) AS [Hidratos] ,
+            CONVERT(INT, 5) AS [Fibras1] ,
+            CONVERT(FLOAT, 0) AS [Fibras] ,
+            CONVERT(INT, 6) AS [Lipidos1] ,
+            CONVERT(FLOAT, 0) AS [Lipidos] ,
+            CONVERT(INT, 7) AS [Grasa Total1] ,
+            CONVERT(FLOAT, 0) AS [Grasa Total] ,
+            CONVERT(INT, 8) AS [Ac. Grasos Sat.1] ,
+            CONVERT(FLOAT, 0) AS [Ac. Grasos Sat.] ,
+            CONVERT(INT, 9) AS [Ac. Grasos Mon1] ,
+            CONVERT(FLOAT, 0) AS [Ac. Grasos Mon] ,
+            CONVERT(INT, 10) AS [Ac. Grasos Poli1] ,
+            CONVERT(FLOAT, 0) AS [Ac. Grasos Poli] ,
+            CONVERT(INT, 11) AS [Colesterol1] ,
+            CONVERT(FLOAT, 0) AS [Colesterol] ,
+            CONVERT(INT, 12) AS [N61] ,
+            CONVERT(FLOAT, 0) AS [N6] ,
+            CONVERT(INT, 13) AS [N31] ,
+            CONVERT(FLOAT, 0) AS [N3] ,
+            CONVERT(INT, 14) AS [Caroteno1] ,
+            CONVERT(FLOAT, 0) AS [Caroteno] ,
+            CONVERT(INT, 15) AS [Retinol1] ,
+            CONVERT(FLOAT, 0) AS [Retinol] ,
+            CONVERT(INT, 16) AS [Vit. A Tot Re1] ,
+            CONVERT(FLOAT, 0) AS [Vit. A Tot Re] ,
+            CONVERT(INT, 17) AS [Vitamina B11] ,
+            CONVERT(FLOAT, 0) AS [Vitamina B1] ,
+            CONVERT(INT, 18) AS [Vitamina B21] ,
+            CONVERT(FLOAT, 0) AS [Vitamina B2] ,
+            CONVERT(INT, 19) AS [Niacina ( B3)1] ,
+            CONVERT(FLOAT, 0) AS [Niacina ( B3)] ,
+            CONVERT(INT, 20) AS [Vitamina B61] ,
+            CONVERT(FLOAT, 0) AS [Vitamina B6] ,
+            CONVERT(INT, 21) AS [Vitamina B121] ,
+            CONVERT(FLOAT, 0) AS [Vitamina B12] ,
+            CONVERT(INT, 22) AS [Folatos1] ,
+            CONVERT(FLOAT, 0) AS [Folatos] ,
+            CONVERT(INT, 23) AS [Ac. Pantot (B5)1] ,
+            CONVERT(FLOAT, 0) AS [Ac. Pantot (B5)] ,
+            CONVERT(INT, 24) AS [Vitamina C1] ,
+            CONVERT(FLOAT, 0) AS [Vitamina C] ,
+            CONVERT(INT, 25) AS [Vitamina E1] ,
+            CONVERT(FLOAT, 0) AS [Vitamina E] ,
+            CONVERT(INT, 26) AS [Calcio1] ,
+            CONVERT(FLOAT, 0) AS [Calcio] ,
+            CONVERT(INT, 27) AS [Cobre1] ,
+            CONVERT(FLOAT, 0) AS [Cobre] ,
+            CONVERT(INT, 28) AS [Hierro1] ,
+            CONVERT(FLOAT, 0) AS [Hierro] ,
+            CONVERT(INT, 29) AS [Magnesio1] ,
+            CONVERT(FLOAT, 0) AS [Magnesio] ,
+            CONVERT(INT, 30) AS [Fosforo1] ,
+            CONVERT(FLOAT, 0) AS [Fosforo] ,
+            CONVERT(INT, 31) AS [Potasio1] ,
+            CONVERT(FLOAT, 0) AS [Potasio] ,
+            CONVERT(INT, 32) AS [Selenio1] ,
+            CONVERT(FLOAT, 0) AS [Selenio] ,
+            CONVERT(INT, 33) AS [Sodio1] ,
+            CONVERT(FLOAT, 0) AS [Sodio] ,
+            CONVERT(INT, 34) AS [Zinc1] ,
+            CONVERT(FLOAT, 0) AS [Zinc] ,
+            CONVERT(INT, 35) AS [A.c Graso Trans.1] ,
+            CONVERT(FLOAT, 0) AS [A.c Graso Trans.] ,
+            CONVERT(INT, 36) AS [Azucares Totales1] ,
+            CONVERT(FLOAT, 0) AS [Azucares Totales]
+    INTO    #Tmp_IngAporte
+    FROM    dbo.b_ingrediente AS bi
+            LEFT JOIN dbo.b_productosing AS bp1 ON bi.ing_codigo = bp1.pri_coding
+            LEFT JOIN dbo.b_productos AS bp2 ON bp2.pro_codigo = bp1.pri_codpro
+            LEFT JOIN dbo.b_productonut AS bp ON bi.ing_codigo = bp.pnu_codpro    
+        --LEFT JOIN dbo.a_nutriente AS an ON bp.pnu_codapo = an.nut_codigo    
+            INNER JOIN #TmpIngr AS ti WITH ( NOLOCK ) ON ti.Ingr = bi.ing_codigo
+    WHERE   bi.ing_activo = '1'
+            --AND bi.ing_indppr = 1
+            --AND bp2.pro_ctacon = '410001'
+    ORDER BY bi.ing_nombre    
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Humedad] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Humedad1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro    
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Calorias] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Calorias1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro   
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Proteinas] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Proteinas1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro    
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Hidratos] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Hidratos1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro    
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Fibras] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Fibras1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro    
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Lipidos] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Lipidos1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro            
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Grasa Total] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Grasa Total1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro                 
+            
+    UPDATE  #Tmp_IngAporte
+    SET     [Ac. Grasos Sat.] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Ac. Grasos Sat.1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro                         
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Ac. Grasos Mon] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Ac. Grasos Mon1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro        
+            
+    UPDATE  #Tmp_IngAporte
+    SET     [Ac. Grasos Poli] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Ac. Grasos Poli1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro     
+            
+    UPDATE  #Tmp_IngAporte
+    SET     [Colesterol] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Colesterol1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro     
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [N6] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[N61] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro     
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [N3] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[N31] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro     
+                                    
+    UPDATE  #Tmp_IngAporte
+    SET     [Caroteno] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Caroteno1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro     
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Retinol] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Retinol1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro    
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Vit. A Tot Re] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Vit. A Tot Re1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro    
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Vitamina B1] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Vitamina B11] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro    
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Vitamina B2] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Vitamina B21] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro    
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Niacina ( B3)] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Niacina ( B3)1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro    
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Vitamina B6] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Vitamina B61] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro    
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Vitamina B12] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Vitamina B121] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro    
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Folatos] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Folatos1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro    
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Ac. Pantot (B5)] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Ac. Pantot (B5)1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro    
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Vitamina C] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Vitamina C1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro    
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Vitamina E] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Vitamina E1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro    
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Calcio] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Calcio1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro    
+            
+    UPDATE  #Tmp_IngAporte
+    SET     [Cobre] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Cobre1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro    
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Hierro] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Hierro1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro            
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Magnesio] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Magnesio1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro         
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Fosforo] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Fosforo1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro     
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Potasio] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Potasio1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro     
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Selenio] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Selenio1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro     
+            
+    UPDATE  #Tmp_IngAporte
+    SET     [Sodio] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Sodio1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro     
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [Zinc] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Zinc1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro     
+    
+    UPDATE  #Tmp_IngAporte
+    SET     [A.c Graso Trans.] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[A.c Graso Trans.1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro                     
+            
+    UPDATE  #Tmp_IngAporte
+    SET     [Azucares Totales] = bp.pnu_canapo
+    FROM    dbo.b_productonut AS bp
+    WHERE   #Tmp_IngAporte.[Azucares Totales1] = bp.pnu_codapo
+            AND #Tmp_IngAporte.ing_codigo = bp.pnu_codpro                     
+    
+    SELECT  DISTINCT
+            ing_codigo AS [Cód. Ingrediente] ,
+            ing_nombre AS [Nombre Ingrediente] ,
+            [% Aprovechamiento] ,
+            [% Cocción] ,
+            [% Nutricional] ,
+            [Factor Nutricional] ,
+			[Huella Carbono],
+            [Humedad1] AS [Cód. Humedad] ,
+            [Humedad] ,
+            [Calorias1] AS [Cód. Calorias] ,
+            [Calorias] ,
+            [Proteinas1] AS [Cód. Proteinas] ,
+            [Proteinas] ,
+            [Hidratos1] AS [Cód. Hidratos] ,
+            [Hidratos] ,
+            [Fibras1] AS [Cód. Fibras] ,
+            [Fibras] ,
+            [Lipidos1] AS [Cód. Lipidos] ,
+            [Lipidos] ,
+            [Grasa Total1] AS [Cód. Grasa Total] ,
+            [Grasa Total] ,
+            [Ac. Grasos Sat.1] AS [Cód. Ac. Grasos Sat.] ,
+            [Ac. Grasos Sat.] ,
+            [Ac. Grasos Mon1] AS [Cód. Grasos Mon] ,
+            [Ac. Grasos Mon] ,
+            [Ac. Grasos Poli1] AS [Cód. Ac. Grasos Poli] ,
+            [Ac. Grasos Poli] ,
+            [Colesterol1] AS [Cód. Colesterol] ,
+            [Colesterol] ,
+            [N61] AS [Cód. N6] ,
+            [N6] ,
+            [N31] AS [Cód. N3] ,
+            [N3] ,
+            [Caroteno1] AS [Cód. Caroteno] ,
+            [Caroteno] ,
+            [Retinol1] AS [Cód. Retinol] ,
+            [Retinol] ,
+            [Vit. A Tot Re1] AS [Cód. Vit. A Tot Re] ,
+            [Vit. A Tot Re] ,
+            [Vitamina B11] AS [Cód. Vitamina B1] ,
+            [Vitamina B1] ,
+            [Vitamina B21] AS [Cód. Vitamina B2] ,
+            [Vitamina B2] ,
+            [Niacina ( B3)1] AS [Cód. Niacina (B3)] ,
+            [Niacina ( B3)] ,
+            [Vitamina B61] AS [Cód. Vitamina B6] ,
+            [Vitamina B6] ,
+            [Vitamina B121] AS [Cód. Vitamina B12] ,
+            [Vitamina B12] ,
+            [Folatos1] AS [Cód. Folatos] ,
+            [Folatos] ,
+            [Ac. Pantot (B5)1] AS [Cód. Ac. Pantot (B5)] ,
+            [Ac. Pantot (B5)] ,
+            [Vitamina C1] AS [Cód. Vitamina C] ,
+            [Vitamina C] ,
+            [Vitamina E1] AS [Cód. Vitamina E] ,
+            [Vitamina E] ,
+            [Calcio1] AS [Cód. Calcio] ,
+            [Calcio] ,
+            [Cobre1] AS [Cód. Cobre] ,
+            [Cobre] ,
+            [Hierro1] AS [Cód. Hierro] ,
+            [Hierro] ,
+            [Magnesio1] AS [Cód. Magnesio] ,
+            [Magnesio] ,
+            [Fosforo1] AS [Cód. Fosforo] ,
+            [Fosforo] ,
+            [Potasio1] AS [Cód. Potasio] ,
+            [Potasio] ,
+            [Selenio1] AS [Cód. Selenio] ,
+            [Selenio] ,
+            [Sodio1] AS [Cód. Sodio] ,
+            [Sodio] ,
+            [Zinc1] AS [Cód. Zinc] ,
+            [Zinc] ,
+            [A.c Graso Trans.1] AS [Cód. A.c Graso Trans.] ,
+            [A.c Graso Trans.] ,
+            [Azucares Totales1] AS [Cód. Azucares Totales] ,
+            [Azucares Totales]
+    FROM    #Tmp_IngAporte AS tia
+    ORDER BY ing_nombre    
+                         
+    DROP TABLE #Tmp_IngAporte    
+    DROP TABLE #TmpIngr                                   
+                                   
+--SELECT  *    
+--FROM    a_nutriente    
+--ORDER BY dbo.a_nutriente.nut_codigo 

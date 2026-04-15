@@ -1,0 +1,309 @@
+/*                                          
+==========================================================================                                    
+Sistema : Sgp Administrador                                    
+Modulo :  Minuta Bloque - Frecuncia ingrediente minuta bloque (C_FreIngMinBlo.frm)                                    
+                                          
+SP o Function : sgpadm_Sel_FrecuenciaIngMinutaBloque                                    
+Descripcion  :  Mostrar aportes detallado y resumen minuta bloque                                    
+                                          
+Observaciones :                                    
+                                          
+F. creacion:      21/10/2013                                    
+Creador:          Jorge Paz                                    
+                                          
+==========================================================================                                     
+Modificaciones:                                    
+Fecha             Programador             Motivo y/o Modificacion                                    
+05/09/2017        Jorge Paz Nuñez         cambia orden x numero linea
+26/11/2021        Jorge Paz Nuñez         incluye nombre de estructura servicio
+                                          digitado en la planificación.
+18/01/2022        Jorge Paz Núñez         Cambiar nombre sub procedimiento 
+                                          PA_sgpadm_CostoMinutaProducto x
+										  PA_sgpadm_FrecuenciaIngMinutaBloque_V01
+										  esto incluye dos nuevo cambio a la
+										  tabla excepción formato compras que son
+										  fecha inicio y fin.   
+										  Cambio nom de procedimiento sgpadm_Sel_FrecuenciaIngMinutaBloque_V02
+										  x sgpadm_Sel_FrecuenciaIngMinutaBloque_V03                             
+20/08/2025        JPAZN                   Incluir tabla Gramaje nivel
+==========================================================================                                    
+Test:                                    
+sgpadm_Sel_FrecuenciaIngMinutaBloque_V01 93123, '22700', 10320, 10001, 20180701, 20180731, '1', 1                     
+sgpadm_Sel_FrecuenciaIngMinutaBloque_V03_JPAZ 191061, 'ppt1188', 12145, 10001, 20220606, 20220703, '1', 1  
+sgpadm_Sel_FrecuenciaIngMinutaBloque_V03 290236, '69700', 10495, 10001, 20241001, 20241031, '1', 1  
+sgpadm_Sel_FrecuenciaIngMinutaBloque_V04 290236, '69700', 10495, 10001, 20241001, 20241031, '1', 1  
+        
+==========================================================================                                    
+*/                                  
+                                  
+alter PROC [dbo].[sgpadm_Sel_FrecuenciaIngMinutaBloque_V04]  
+    (  
+      @Id_Bloque BIGINT ,  
+      @Ceco VARCHAR(10) ,  
+      @Regimen INT ,  
+      @Servicio INT ,  
+      @FecDesde INT ,  
+      @FecHasta INT ,  
+      @TipoMinuta VARCHAR(1) ,  
+      @OpPrecio INT          
+    )  
+AS   
+
+	/* crear tabla paso por tema de transformar campo fecha datetime */
+
+/* crear tabla paso salida */
+DECLARE @tmpMinuta TABLE
+(
+	[min_cecori] VARCHAR(10),
+	[min_codreg] int,
+	[min_codser] int,
+	[min_fecmin] int,
+	[Fecha] datetime,
+	[ID_Bloque] bigint,
+	[min_codigo] int,
+	[min_racteo] int
+)
+
+INSERT INTO @tmpMinuta
+	select a.min_cecori,
+	       a.min_codreg,
+		   a.min_codser,
+		   a.min_fecmin,
+		   convert(datetime,convert(varchar(8),a.min_fecmin)) as Fecha,
+		   a.ID_Bloque,
+		   a.min_codigo,
+		   a.min_racteo
+	from cas_b_minuta as a with (nolock)
+	inner join cas_b_minutadet as b with (nolock) on b.mid_cecori = a.min_cecori
+                                                 AND b.mid_codigo = a.min_codigo  
+	where a.min_cecori = @Ceco
+	and   a.min_codreg = @Regimen
+	and   a.min_codser = @Servicio
+    AND   a.min_fecmin >= @FecDesde  
+    AND   a.min_fecmin <= @FecHasta  
+	and   b.mid_tipmin = @TipoMinuta  
+	group by a.min_cecori,
+             a.min_codreg,
+		     a.min_codser,
+		     a.min_fecmin,
+		     a.ID_Bloque,
+		     a.min_codigo,
+		     a.min_racteo
+
+	--CREATE INDEX ix_#tmpMinuta_01 ON #tmpMinuta (min_cecori, min_codigo)                  
+	--CREATE INDEX ix_#tmpMinuta_02 ON #tmpMinuta (min_cecori, fecha, ID_Bloque)
+	--CREATE INDEX ix_#tmpMinuta_03 ON #tmpMinuta (min_cecori, min_codreg, min_codser, min_fecmin)                  
+   -- deatlle receta	
+   SELECT  a.rec_codigo,  
+		   b.red_codpro,
+		   b.red_canpro,
+		   a.rec_tippla  
+    INTO    #DetReceta  
+    FROM    dbo.cas_b_MinutaBloque AS cbmb WITH ( NOLOCK ) 
+            INNER JOIN @tmpMinuta h ON h.ID_Bloque = cbmb.ID_Bloque
+                                   AND h.Fecha >= cbmb.FechaDesde
+                                   AND h.Fecha <= cbmb.FechaHasta  
+								   AND h.min_cecori  = cbmb.Ceco 
+            INNER JOIN cas_b_minutadet g WITH ( NOLOCK ) ON g.mid_cecori = h.min_cecori
+                                                        AND g.mid_codigo = h.min_codigo
+            INNER JOIN b_receta a WITH ( NOLOCK ) ON a.rec_codigo = g.mid_codrec
+            INNER JOIN b_recetadet b WITH ( NOLOCK ) ON  b.red_codigo = a.rec_codigo
+            INNER JOIN b_clientes bc WITH ( NOLOCK ) ON bc.cli_codigo = h.min_cecori  
+    WHERE   g.mid_tipmin = @TipoMinuta  
+            AND cbmb.Ceco = @Ceco  
+            AND cbmb.Regimen = @Regimen  
+            AND cbmb.Servicio = @Servicio  
+            AND h.min_fecmin >= @FecDesde  
+            AND h.min_fecmin <= @FecHasta  
+    GROUP BY a.rec_codigo,  
+		     b.red_codpro,
+		     b.red_canpro,
+		     a.rec_tippla     
+
+   -- Índice para acelerar JOIN y APPLY
+    CREATE NONCLUSTERED INDEX IX_DetReceta_R ON #DetReceta (rec_codigo, red_codpro) INCLUDE (rec_tippla);
+
+	update #DetReceta
+	set red_canpro=isnull(reemplazo.CantIngredienteCambio, a.red_canpro)
+	   ,red_codpro=ISNULL(reemplazo.IdIngredienteCambio, a.red_codpro)
+	from #DetReceta as a
+	OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    @Ceco,
+				    @Regimen,
+				    a.rec_codigo,
+				    a.red_codpro,
+				    a.rec_tippla
+				) AS reemplazo
+    INNER JOIN b_ingrediente c WITH ( NOLOCK ) ON ISNULL(reemplazo.IdIngredienteCambio, a.red_codpro) = c.ing_codigo  
+
+
+    SELECT  g.mid_estser AS pas_estser ,  
+			case when isnull(g.mid_desest,'') <> '' then g.mid_desest 
+			     else ae.ess_nombre end AS pas_nomest ,  
+            a.red_codpro as pas_coding ,  
+            c.ing_nombre ,  
+            c.ing_indppr ,  
+            au.unm_nomcor ,  
+            g.mid_numlin ,  
+            a.red_canpro as pas_canpro ,  
+            0 AS pas_freestser ,  
+            COUNT(c.ing_codigo) AS pas_freing ,
+            0 AS raciones ,  
+            0 AS comensales  
+    INTO    #PasoFreIng  
+    FROM    dbo.cas_b_MinutaBloque AS cbmb WITH ( NOLOCK ) 
+            INNER JOIN @tmpMinuta h ON h.ID_Bloque = cbmb.ID_Bloque
+                                   AND h.Fecha >= cbmb.FechaDesde
+                                   AND h.Fecha <= cbmb.FechaHasta  
+								   AND h.min_cecori  = cbmb.Ceco 
+            INNER JOIN cas_b_minutadet g WITH ( NOLOCK ) ON g.mid_cecori = h.min_cecori
+                                                        AND g.mid_codigo = h.min_codigo
+            INNER JOIN #DetReceta a WITH ( NOLOCK ) ON a.rec_codigo = g.mid_codrec
+            INNER JOIN b_clientes bc WITH ( NOLOCK ) ON bc.cli_codigo = h.min_cecori  
+			inner join b_ingrediente as c WITH ( NOLOCK ) ON c.ing_codigo = a.red_codpro
+            INNER JOIN dbo.a_unidadmed AS au WITH ( NOLOCK ) ON au.unm_codigo = c.ing_unimed  
+            INNER JOIN dbo.a_estservicio AS ae WITH ( NOLOCK ) ON ae.ess_codigo = g.mid_estser  
+			                                                  and ae.ess_codser = h.min_codser
+    WHERE   g.mid_tipmin = @TipoMinuta  
+            AND cbmb.Ceco = @Ceco  
+            AND cbmb.Regimen = @Regimen  
+            AND cbmb.Servicio = @Servicio  
+            AND h.min_fecmin >= @FecDesde  
+            AND h.min_fecmin <= @FecHasta  
+    GROUP BY g.mid_estser ,  
+            ae.ess_nombre ,  
+            a.red_codpro ,
+            a.red_canpro,  
+            c.ing_nombre ,  
+            au.unm_nomcor ,  
+            ae.ess_nombre ,  
+            c.ing_indppr ,  
+            g.mid_numlin,
+			g.mid_desest     
+    
+    SELECT  cbm2.mid_estser ,  
+            COUNT(DISTINCT cbm.min_fecmin) AS freestser ,  
+            isnull(SUM(cbm2.mid_numrac),0) AS Raciones ,  
+            isnull(SUM(cbm.min_racteo),0) AS Comensales  
+    INTO    #raciones  
+    FROM    @tmpMinuta AS cbm  
+            INNER JOIN dbo.cas_b_minutadet AS cbm2 WITH ( NOLOCK ) ON cbm2.mid_cecori = cbm.min_cecori
+                                                                  AND cbm2.mid_codigo = cbm.min_codigo
+    WHERE cbm2.mid_tipmin = @TipoMinuta  
+    AND   cbm.min_cecori = @Ceco  
+    AND   cbm.min_codreg = @Regimen  
+    AND   cbm.min_codser = @Servicio  
+    AND   cbm.min_fecmin >= @FecDesde  
+    AND   cbm.min_fecmin <= @FecHasta  
+    GROUP BY cbm2.mid_estser     
+  
+    SELECT  cbm2.mid_estser,
+	    SUM(cbm.min_racteo) AS Comensales  
+    INTO    #Comensales  
+    FROM    @tmpMinuta AS cbm-- WITH ( NOLOCK )  
+    INNER JOIN dbo.cas_b_minutadet AS cbm2 WITH ( NOLOCK ) ON cbm2.mid_cecori = cbm.min_cecori 
+                                                          AND cbm2.mid_codigo = cbm.min_codigo       
+    WHERE cbm.min_cecori = @Ceco  
+    AND   cbm.min_codreg = @Regimen  
+    AND   cbm.min_codser = @Servicio  
+    AND   cbm.min_fecmin >= @FecDesde  
+    AND   cbm.min_fecmin <= @FecHasta  
+    AND   cbm2.mid_tipmin = @TipoMinuta  
+    AND   cbm2.mid_numrac>0
+    GROUP BY cbm2.mid_estser              
+                 
+    CREATE TABLE #sgpadm_Fun_CostoMinutaProducto  
+        (  
+          ing_codigo VARCHAR(20) COLLATE DATABASE_DEFAULT ,  
+          pro_codigo VARCHAR(20) COLLATE DATABASE_DEFAULT ,  
+          pro_nombre VARCHAR(100) COLLATE DATABASE_DEFAULT ,  
+          pro_facing FLOAT ,  
+          fi INT ,  
+          ft INT ,  
+          PMP FLOAT ,  
+          Convenio FLOAT ,  
+          Lista FLOAT  
+        )                            
+                                          
+    INSERT  #sgpadm_Fun_CostoMinutaProducto  
+            ( ing_codigo ,  
+              pro_codigo ,  
+              pro_nombre ,  
+              pro_facing ,  
+              fi ,  
+              ft ,  
+              PMP ,  
+              Convenio ,  
+              Lista                            
+            )        
+--            EXEC dbo.PA_sgpadm_CostoMinutaProducto @Id_Bloque, @Ceco, @OpPrecio                                
+            EXEC PA_sgpadm_FrecuenciaIngMinutaBloque_V02 @Ceco, @Regimen, @Servicio, @FecDesde, @FecHasta, @OpPrecio      
+                                    
+    SELECT  ing_codigo ,  
+            pro_codigo ,  
+            pro_nombre ,  
+            pro_facing ,  
+            fi ,  
+            ft ,  
+            PMP ,  
+            Convenio ,  
+            Lista ,  
+            ( ISNULL(CASE WHEN @OpPrecio = 1 THEN Convenio  
+                          WHEN @OpPrecio = 2 THEN PMP  
+                          ELSE Lista  
+                     END, 0) / ISNULL(pro_facing, 0) ) AS pmp1  
+    INTO    #sgpadm_Fun_CostoMinutaProducto2  
+    FROM    #sgpadm_Fun_CostoMinutaProducto  
+    WHERE   ( ISNULL(CASE WHEN @OpPrecio = 1 THEN Convenio  
+                          WHEN @OpPrecio = 2 THEN PMP  
+                          ELSE Lista  
+                     END, 0) ) > 0            
+        
+    UPDATE  #PasoFreIng  
+    SET     raciones = b.raciones ,  
+            pas_freestser = b.freestser  
+    FROM    #PasoFreIng a  
+            INNER JOIN #raciones b ON b.mid_estser = a.pas_estser          
+                       
+    UPDATE  #PasoFreIng  
+    SET     comensales = a.Comensales  
+    FROM    #Comensales a WITH (NOLOCK)
+    INNER JOIN #PasoFreIng AS pfi WITH (NOLOCK) ON pfi.pas_estser = a.mid_estser
+  
+    SELECT  pfi.pas_estser ,  
+            pfi.pas_nomest ,  
+            pfi.pas_coding ,  
+            pfi.ing_nombre ,  
+            pfi.ing_indppr ,  
+            pfi.unm_nomcor ,  
+            pfi.pas_canpro ,  
+            pfi.pas_freing ,  
+            pfi.pas_freestser ,  
+            pfi.raciones ,  
+            pfi.comensales ,  
+            ISNULL(AVG(fun.PMP1), 0) AS ing_preing  
+    FROM    #PasoFreIng as pfi with (nolock)  
+ LEFT JOIN #sgpadm_Fun_CostoMinutaProducto2 AS fun ON fun.ing_codigo = pfi.pas_coding  
+                                                             AND fun.fi <= @FecHasta  
+    GROUP BY pfi.pas_estser ,  
+             pfi.pas_nomest ,  
+             pfi.pas_coding ,  
+             pfi.ing_nombre ,  
+             pfi.ing_indppr ,  
+             pfi.unm_nomcor ,  
+             pfi.pas_canpro ,  
+             pfi.pas_freing ,  
+             pfi.pas_freestser ,  
+             pfi.mid_numlin ,  
+             pfi.raciones ,  
+             pfi.comensales  
+    ORDER BY pfi.mid_numlin , --pas_estser ,          
+             pfi.pas_coding ,  
+             pfi.ing_nombre          
+                                         
+    DROP TABLE #PasoFreIng          
+    DROP TABLE #sgpadm_Fun_CostoMinutaProducto          
+    DROP TABLE #sgpadm_Fun_CostoMinutaProducto2    
+    DROP TABLE #raciones    
+    DROP TABLE #Comensales
+	drop table #DetReceta

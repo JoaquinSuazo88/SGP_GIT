@@ -1,0 +1,1791 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SGP Local – Documentación Módulo Producción</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --primary: #1e3a5f;
+    --primary-light: #2d5a9b;
+    --accent: #e85d04;
+    --accent2: #0077b6;
+    --success: #2d6a4f;
+    --warning: #b5451b;
+    --bg: #f0f4f8;
+    --card: #ffffff;
+    --border: #d1dce8;
+    --text: #1a202c;
+    --text-muted: #4a5568;
+    --sidebar-w: 270px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; }
+
+  /* SIDEBAR */
+  #sidebar {
+    width: var(--sidebar-w); background: var(--primary); color: #e2e8f0;
+    position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto;
+    display: flex; flex-direction: column; z-index: 100;
+    transition: transform 0.3s;
+  }
+  #sidebar-header { padding: 20px 16px 12px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  #sidebar-header .sys-name { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #90aac4; }
+  #sidebar-header h1 { font-size: 15px; font-weight: 700; color: #fff; margin-top: 4px; line-height: 1.3; }
+  #sidebar nav { flex: 1; padding: 12px 0; }
+  .nav-section { padding: 6px 16px 2px; font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #7090b0; font-weight: 600; }
+  .nav-item { display: block; padding: 8px 16px; font-size: 13px; color: #c8d8ea; cursor: pointer; border-left: 3px solid transparent; transition: all 0.2s; text-decoration: none; }
+  .nav-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+  .nav-item.active { background: rgba(255,255,255,0.12); color: #fff; border-left-color: var(--accent); font-weight: 600; }
+  .nav-sub { padding-left: 28px; font-size: 12px; color: #a0b8d0; }
+  .nav-sub.active { color: #fff; border-left-color: #f97316; }
+
+  /* MAIN */
+  #main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; }
+  #topbar { background: #fff; border-bottom: 1px solid var(--border); padding: 12px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 50; }
+  #topbar h2 { font-size: 17px; font-weight: 700; color: var(--primary); }
+  #topbar .meta { font-size: 12px; color: var(--text-muted); }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+  .badge-blue { background: #dbeafe; color: #1d4ed8; }
+  .badge-orange { background: #ffedd5; color: #c2410c; }
+  .badge-green { background: #d1fae5; color: #065f46; }
+  .badge-yellow { background: #fef9c3; color: #854d0e; }
+  .badge-red { background: #fee2e2; color: #991b1b; }
+  .badge-gray { background: #f1f5f9; color: #475569; }
+
+  #content { padding: 28px; max-width: 1100px; }
+
+  /* SECTIONS */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* CARDS */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+  .card h3 { font-size: 15px; font-weight: 700; color: var(--primary); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
+  .card h4 { font-size: 13px; font-weight: 700; color: var(--primary-light); margin: 14px 0 6px; }
+
+  /* GRID */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+  /* TABLES */
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th { background: var(--primary); color: #fff; padding: 8px 10px; text-align: left; font-weight: 600; }
+  td { padding: 7px 10px; border-bottom: 1px solid #e8edf3; vertical-align: top; }
+  tr:hover td { background: #f7fafd; }
+  .mono { font-family: 'Consolas', 'Courier New', monospace; font-size: 12px; color: #1e40af; }
+
+  /* ALERTS */
+  .alert { border-radius: 8px; padding: 12px 16px; margin-bottom: 14px; font-size: 13px; border-left: 4px solid; }
+  .alert-info { background: #eff6ff; border-color: #3b82f6; }
+  .alert-warning { background: #fff7ed; border-color: #f97316; }
+  .alert-danger { background: #fef2f2; border-color: #ef4444; }
+  .alert-success { background: #f0fdf4; border-color: #22c55e; }
+  .alert strong { font-weight: 700; }
+
+  /* PROCESS FLOW CARDS */
+  .process-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 14px; margin-bottom: 20px; }
+  .process-card { background: #fff; border: 2px solid var(--border); border-radius: 10px; padding: 16px; cursor: pointer; transition: all 0.2s; }
+  .process-card:hover { border-color: var(--accent); box-shadow: 0 4px 14px rgba(0,0,0,0.1); transform: translateY(-2px); }
+  .process-card.selected { border-color: var(--accent); background: #fff7ed; }
+  .process-card .icon { font-size: 28px; margin-bottom: 8px; }
+  .process-card .ptitle { font-size: 13px; font-weight: 700; color: var(--primary); }
+  .process-card .pcode { font-size: 11px; color: var(--text-muted); font-family: monospace; }
+
+  /* FLOW PANEL */
+  #flow-panel { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 24px; min-height: 400px; }
+  #flow-panel h3 { font-size: 16px; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+  #flow-panel .flow-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+  #flow-panel .flow-meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .mermaid { background: #fafbfc; border-radius: 8px; padding: 16px; overflow-x: auto; }
+
+  /* RULES */
+  .rule-item { border-left: 4px solid var(--accent2); background: #f0f7ff; border-radius: 0 8px 8px 0; padding: 12px 16px; margin-bottom: 10px; }
+  .rule-item .rule-id { font-size: 11px; font-weight: 700; color: var(--accent); font-family: monospace; }
+  .rule-item .rule-text { font-size: 13px; margin: 4px 0; }
+  .rule-item .rule-src { font-size: 11px; color: var(--text-muted); font-style: italic; }
+
+  /* DB OBJECTS */
+  .db-tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+  .db-tab { padding: 7px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; cursor: pointer; border: 2px solid var(--border); background: #fff; transition: all 0.2s; }
+  .db-tab.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .db-section { display: none; }
+  .db-section.active { display: block; }
+  .sp-card { border: 1px solid var(--border); border-radius: 8px; margin-bottom: 14px; overflow: hidden; }
+  .sp-header { background: #1e3a5f; color: #fff; padding: 10px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+  .sp-header .sp-name { font-family: monospace; font-size: 13px; font-weight: 700; }
+  .sp-body { padding: 16px; font-size: 12.5px; display: none; }
+  .sp-body.open { display: block; }
+  .sp-row { display: grid; grid-template-columns: 160px 1fr; gap: 6px; margin-bottom: 6px; }
+  .sp-label { font-weight: 600; color: var(--text-muted); font-size: 12px; }
+
+  /* STEP FLOW */
+  .steps { counter-reset: step; }
+  .step { display: flex; gap: 14px; margin-bottom: 12px; align-items: flex-start; }
+  .step-num { counter-increment: step; width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-num::before { content: counter(step); }
+  .step-body { flex: 1; font-size: 13px; padding-top: 4px; }
+  .step-body strong { color: var(--primary); }
+
+  /* QUESTIONS */
+  .question { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 12px 16px; margin-bottom: 10px; }
+  .question .q-id { font-size: 11px; font-weight: 700; color: #92400e; font-family: monospace; }
+  .question .q-text { font-size: 13px; margin-top: 4px; }
+
+  /* GLOSSARY */
+  .glos-item { display: grid; grid-template-columns: 160px 1fr; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .glos-term { font-weight: 700; color: var(--primary); font-family: monospace; font-size: 12px; }
+
+  /* Mermaid override */
+  .mermaid svg { max-width: 100%; }
+
+  /* Scrollbar */
+  #sidebar::-webkit-scrollbar { width: 4px; }
+  #sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+
+  /* Responsive */
+  @media (max-width: 800px) {
+    #sidebar { transform: translateX(-100%); }
+    #sidebar.open { transform: translateX(0); }
+    #main { margin-left: 0; }
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside id="sidebar">
+  <div id="sidebar-header">
+    <div class="sys-name">SGP Local · Visual Basic 6 + SQL Server</div>
+    <h1>Módulo Producción</h1>
+  </div>
+  <nav>
+    <div class="nav-section">Documentación</div>
+    <a class="nav-item active" onclick="showSection('intro')">1. Introducción</a>
+    <a class="nav-item" onclick="showSection('datos')">2. Modelo de Datos</a>
+    <a class="nav-item" onclick="showSection('flujos')">3. Funcionalidades</a>
+    <a class="nav-item" onclick="showSection('reglas')">4. Reglas de Negocio</a>
+    <a class="nav-item" onclick="showSection('validaciones')">5. Validaciones</a>
+    <a class="nav-item" onclick="showSection('bd')">6. Objetos de Base de Datos</a>
+    <a class="nav-item" onclick="showSection('integraciones')">7. Integraciones</a>
+    <a class="nav-item" onclick="showSection('trazabilidad')">8. Trazabilidad</a>
+    <a class="nav-item" onclick="showSection('valorizacion')">9. Valorización y Costos</a>
+    <a class="nav-item" onclick="showSection('reportes')">10. Reportes</a>
+    <a class="nav-item" onclick="showSection('casos')">11. Casos Especiales</a>
+    <a class="nav-item" onclick="showSection('preguntas')">12. Preguntas Abiertas</a>
+    <a class="nav-item" onclick="showSection('glosario')">13. Glosario</a>
+    <div class="nav-section" style="margin-top:8px">Submódulos</div>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('plami1')">M_Plami1 – Selector Planif.</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('minrea')">M_MinRea – Editor Planif. Real</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('conrac')">M_ConRac – Control Raciones</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('merpre')">M_MerPre – Mermas Preparación</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('isalbod')">I_SalBod – Requisición</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('salbod')">M_SalBod – Salida Bodega</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('rcdiar')">M_RCDiar – Cierre Diario</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('vtacon')">M_VtaCon – Venta Contado</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('vencaf')">M_VenCaf – Venta Cafetería</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('vendir')">M_VenDir – Venta Directa</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('produ1')">M_Produ1 – Árbol Ingrediente</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('tabgra')">M_TabGra – Tabla Gramaje</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('lipca')">T_LiPrCa – Lista Precio Cafetería</a>
+    <a class="nav-item nav-sub" onclick="showSection('flujos');selectProcess('pvtacl')">M_PVtaCl – Precio Venta Cliente</a>
+  </nav>
+</aside>
+
+<!-- MAIN -->
+<div id="main">
+  <div id="topbar">
+    <h2 id="section-title">1. Introducción al Módulo</h2>
+    <div class="meta">
+      <span class="badge badge-blue">VB6 + SQL Server</span>&nbsp;
+      <span class="badge badge-orange">SGP Local</span>&nbsp;
+      <span class="badge badge-gray">v2026-02-27</span>
+    </div>
+  </div>
+
+  <div id="content">
+
+    <!-- ===== 1. INTRODUCCIÓN ===== -->
+    <div class="section active" id="sec-intro">
+<div class="card">
+  <h3>Propósito y Alcance</h3>
+  <p style="font-size:13.5px;line-height:1.7;margin-bottom:12px">
+    El <strong>Módulo de Producción</strong> de SGP LOCAL gestiona el ciclo completo de producción de alimentos en los casinos operados por Sodexo Chile. Abarca desde la planificación de minutas hasta el cierre diario contable, pasando por el control de raciones, mermas, salidas de bodega y ventas.
+  </p>
+  <div class="grid-2">
+    <div>
+      <h4>Contexto operacional</h4>
+      <table>
+        <thead><tr><th>Aspecto</th><th>Descripción</th></tr></thead>
+        <tbody>
+          <tr><td>Usuarios principales</td><td>Chef de cocina, bodeguero, administrador de casino, supervisor</td></tr>
+          <tr><td>Frecuencia de uso</td><td>Diaria (planificación, mermas, raciones) y mensual (cierre)</td></tr>
+          <tr><td>Volumen típico</td><td>1 a N regímenes por casino, múltiples servicios por régimen</td></tr>
+          <tr><td>Integración externa</td><td>SAP (FLMS) para movimientos de bodega</td></tr>
+          <tr><td>Restricción hardware</td><td>Cierre diario solo desde PC autorizado (SvrAppCont)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h4>Formularios VB6 del módulo</h4>
+      <table>
+        <thead><tr><th>Archivo</th><th>Funcionalidad</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">M_Plami1.frm</td><td>Selector Planificación</td></tr>
+          <tr><td class="mono">M_MinRea.frm</td><td>Editor Planificación Real</td></tr>
+          <tr><td class="mono">M_ConRac.frm</td><td>Control de Raciones</td></tr>
+          <tr><td class="mono">M_MerPre.frm</td><td>Mermas por Preparación</td></tr>
+          <tr><td class="mono">I_SalBod.frm</td><td>Informe Requisición Salida Bodega</td></tr>
+          <tr><td class="mono">M_SalBod.frm</td><td>Salida Bodega a Producción</td></tr>
+          <tr><td class="mono">M_RCDiar.frm</td><td>Cierre Diario</td></tr>
+          <tr><td class="mono">M_VtaCon.frm</td><td>Venta Servicio Contado</td></tr>
+          <tr><td class="mono">M_VenCaf.frm</td><td>Venta Cafetería</td></tr>
+          <tr><td class="mono">M_VenDir.frm</td><td>Venta Directa</td></tr>
+          <tr><td class="mono">M_Produ1.frm</td><td>Árbol Ingrediente (solo lectura)</td></tr>
+          <tr><td class="mono">M_TabGra.frm</td><td>Tabla Gramaje</td></tr>
+          <tr><td class="mono">T_LiPrCa.frm</td><td>Lista Precio Cafetería</td></tr>
+          <tr><td class="mono">M_PVtaCl.frm</td><td>Precio Venta Cliente</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<div class="card">
+  <h3>Niveles de Raciones</h3>
+  <table>
+    <thead><tr><th>Nivel</th><th>Descripción</th><th>Tabla/Campo</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Planificadas (Teóricas)</strong></td><td>Estimación inicial del menú</td><td class="mono">b_minuta.min_racteo</td></tr>
+      <tr><td><strong>Producidas (Reales)</strong></td><td>Ajuste del chef antes de cocinar</td><td class="mono">b_minuta.min_racrea + b_minutaraciones mir_rutcli='PRODUCIDAS'</td></tr>
+      <tr><td><strong>Vendidas (Facturadas)</strong></td><td>Raciones efectivamente consumidas</td><td class="mono">b_minutaraciones (RUT cliente) + b_minutaracionfacturable</td></tr>
+    </tbody>
+  </table>
+  <div class="alert alert-warning" style="margin-top:12px"><strong>Nota crítica:</strong> Los datos históricos del sistema no capturan con claridad la distinción entre raciones "producidas" y "vendidas". Esto fue identificado como una brecha en las sesiones de levantamiento (diciembre 2025 - enero 2026).</div>
+</div>
+<div class="card">
+  <h3>Flujo General del Proceso</h3>
+  <div class="mermaid">
+flowchart TD
+    A[Inicio de Período] --> B[Planificación Teórica M_MinTeo]
+    B --> C[Ajuste Planificación Real M_MinRea]
+    C --> D[Generación Requisición I_SalBod tipo 2]
+    D --> E[Salida Bodega a Producción M_SalBod]
+    E --> F[Registro Mermas M_MerPre]
+    F --> G[Control de Raciones M_ConRac]
+    G --> H[Registro Ventas M_VtaCon / M_VenCaf / M_VenDir]
+    H --> I[Cierre Diario M_RCDiar]
+    I --> J{Último día del período?}
+    J -- No --> C
+    J -- Sí --> K[Cierre de Período]
+  </div>
+</div>
+<div class="card">
+  <h3>Arquitectura del Sistema <span style="font-size:11px;color:#94a3b8;font-weight:400;margin-left:6px">🔍 click para ampliar</span></h3>
+  <div class="mermaid zoomable-mermaid" style="cursor:zoom-in;">
+graph TB
+    subgraph Presentación
+        VB6[Visual Basic 6 Formularios .frm]
+    end
+    subgraph Datos
+        SP2[Stored Procedures SQL Server]
+        VW[Vistas SQL]
+        FN[Funciones UDF]
+        TB[Tablas]
+    end
+    subgraph Integración
+        SAP[SAP / FLMS]
+        CR[Crystal Reports]
+        XLS[Excel Export]
+    end
+    VB6 -->|SQL inline / SP calls| SP2
+    VB6 -->|SELECT| VW
+    SP2 --> TB
+    FN --> TB
+    VW --> TB
+    SAP -->|b_totventas_SGP_FLMS| TB
+    VB6 --> CR
+    VB6 --> XLS
+  </div>
+</div>
+    </div>
+
+    <!-- ===== 2. MODELO DE DATOS ===== -->
+    <div class="section" id="sec-datos">
+<div class="card">
+  <h3>Tablas del Módulo de Producción</h3>
+  <div class="grid-2">
+    <div>
+      <h4>Tablas operacionales</h4>
+      <table>
+        <thead><tr><th>Tabla</th><th>Propósito</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">b_minuta</td><td>Encabezado de minuta por día/régimen/servicio</td></tr>
+          <tr><td class="mono">b_minutadet</td><td>Detalle recetas por minuta (teórica y real)</td></tr>
+          <tr><td class="mono">b_minutaraciones</td><td>Raciones por cliente, día y servicio</td></tr>
+          <tr><td class="mono">b_minutaracionfacturable</td><td>Histórico de facturación de raciones</td></tr>
+          <tr><td class="mono">b_mermadesconche</td><td>Mermas globales de desconche, pan y producción</td></tr>
+          <tr><td class="mono">b_productospmpdia</td><td>Precio Medio Ponderado por producto y día</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h4>Tablas de soporte y configuración</h4>
+      <table>
+        <thead><tr><th>Tabla</th><th>Propósito</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">b_formatorequesicionestdetallado</td><td>Requisición guardada para envío a SAP</td></tr>
+          <tr><td class="mono">b_ventacontado</td><td>Ventas de servicio al contado</td></tr>
+          <tr><td class="mono">b_ventacontadodet</td><td>Detalle venta contado por centro de costo</td></tr>
+          <tr><td class="mono">b_cierreperiodo</td><td>Estado del período mensual por casino</td></tr>
+          <tr><td class="mono">a_param</td><td>Parámetros de configuración por casino</td></tr>
+          <tr><td class="mono">b_casinotipoactividades</td><td>Control de actividades requeridas para cierre</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h3>b_minuta — Encabezado de Minuta</h3>
+  <table>
+    <thead><tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">min_codigo</td><td>INT PK</td><td>Identificador único de minuta</td></tr>
+      <tr><td class="mono">min_cencos</td><td>VARCHAR(10)</td><td>Centro de costo (casino)</td></tr>
+      <tr><td class="mono">min_codreg</td><td>INT</td><td>Código de régimen alimentario</td></tr>
+      <tr><td class="mono">min_codser</td><td>INT</td><td>Código de servicio (desayuno, almuerzo, etc.)</td></tr>
+      <tr><td class="mono">min_fecmin</td><td>INT</td><td>Fecha en formato YYYYMMDD</td></tr>
+      <tr><td class="mono">min_indblo</td><td>INT</td><td>Estado: 0=abierto, 2=cerrado bloqueado, 11=cerrado no bloqueado</td></tr>
+      <tr><td class="mono">min_racteo</td><td>INT</td><td>Raciones planificadas (teóricas)</td></tr>
+      <tr><td class="mono">min_racrea</td><td>INT</td><td>Raciones producidas (reales)</td></tr>
+      <tr><td class="mono">min_tipmin</td><td>VARCHAR(1)</td><td>'1'=teórica, '2'=real</td></tr>
+      <tr><td class="mono">ID_Bloque</td><td>INT</td><td>Identificador de bloque de bloqueo</td></tr>
+      <tr><td class="mono">min_fechacreacion</td><td>DATETIME</td><td>Fecha y hora de creación del registro</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3>b_minutadet — Detalle de Minuta (Recetas por Día)</h3>
+  <table>
+    <thead><tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">mid_codigo</td><td>INT FK</td><td>FK a b_minuta.min_codigo</td></tr>
+      <tr><td class="mono">mid_tipmin</td><td>VARCHAR(1)</td><td>'1'=teórica, '2'=real (clave compuesta)</td></tr>
+      <tr><td class="mono">mid_numlin</td><td>INT</td><td>Número de línea (clave compuesta)</td></tr>
+      <tr><td class="mono">mid_estser</td><td>INT</td><td>Estado del servicio</td></tr>
+      <tr><td class="mono">mid_codrec</td><td>INT</td><td>Código de receta</td></tr>
+      <tr><td class="mono">mid_numrac</td><td>FLOAT</td><td>Número de raciones planificadas</td></tr>
+      <tr><td class="mono">mid_cosrec</td><td>FLOAT</td><td>Costo alimento de la receta</td></tr>
+      <tr><td class="mono">mid_cosdes</td><td>FLOAT</td><td>Costo desechable de la receta</td></tr>
+      <tr><td class="mono">mid_tiprec</td><td>INT</td><td>Tipo receta: 0=patrón, &gt;0=régimen específico</td></tr>
+      <tr><td class="mono">mid_nummer</td><td>FLOAT</td><td>Merma por raciones (cantidad)</td></tr>
+      <tr><td class="mono">mid_mermaxkilo</td><td>FLOAT</td><td>Merma en kilogramos bruto</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3>b_minutaraciones — Raciones por Cliente por Día</h3>
+  <table>
+    <thead><tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">mir_cencos</td><td>VARCHAR(10)</td><td>Centro de costo (PK compuesta)</td></tr>
+      <tr><td class="mono">mir_codreg</td><td>INT</td><td>Régimen (PK compuesta)</td></tr>
+      <tr><td class="mono">mir_codser</td><td>INT</td><td>Servicio (PK compuesta)</td></tr>
+      <tr><td class="mono">mir_fecmin</td><td>INT</td><td>Fecha YYYYMMDD (PK compuesta)</td></tr>
+      <tr><td class="mono">mir_rutcli</td><td>VARCHAR(10)</td><td>RUT cliente, 'PRODUCIDAS', 'PERSONAL', o 'MERMAS' (PK compuesta)</td></tr>
+      <tr><td class="mono">mir_nrorac</td><td>INT</td><td>Número de raciones</td></tr>
+      <tr><td class="mono">mir_nroguia</td><td>INT</td><td>Número de guía asociada</td></tr>
+    </tbody>
+  </table>
+  <div class="alert alert-warning" style="margin-top:12px"><strong>Uso especial de mir_rutcli:</strong> Los valores 'PRODUCIDAS', 'PERSONAL' y 'MERMAS' son registros de control del sistema, no RUTs reales de clientes. Son preservados en operaciones de borrado de raciones facturables.</div>
+</div>
+
+<div class="card">
+  <h3>b_mermadesconche — Mermas Globales por Día</h3>
+  <table>
+    <thead><tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">IdCeco</td><td>VARCHAR(10)</td><td>Centro de costo (PK compuesta)</td></tr>
+      <tr><td class="mono">IdRegimen</td><td>INT</td><td>Régimen (PK compuesta)</td></tr>
+      <tr><td class="mono">IdServicio</td><td>INT</td><td>Servicio (PK compuesta)</td></tr>
+      <tr><td class="mono">Fecha_Merma</td><td>INT</td><td>Fecha YYYYMMDD (PK compuesta)</td></tr>
+      <tr><td class="mono">Considera_Merma</td><td>VARCHAR(1)</td><td>'S'=considera merma, 'N'=no considera</td></tr>
+      <tr><td class="mono">Merma_Desconche</td><td>FLOAT</td><td>Kg de desconche</td></tr>
+      <tr><td class="mono">Merma_Pan</td><td>FLOAT</td><td>Kg de merma de pan</td></tr>
+      <tr><td class="mono">Merma_Produccion</td><td>FLOAT</td><td>Kg de merma de producción general</td></tr>
+      <tr><td class="mono">Usuario</td><td>VARCHAR(20)</td><td>Usuario responsable del registro</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3>b_productospmpdia — Precio Promedio Ponderado por Día</h3>
+  <table>
+    <thead><tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">ppd_cencos</td><td>VARCHAR(10)</td><td>Centro de costo (PK compuesta)</td></tr>
+      <tr><td class="mono">ppd_codpro</td><td>INT</td><td>Código de producto (PK compuesta)</td></tr>
+      <tr><td class="mono">ppd_fecdia</td><td>INT</td><td>Fecha YYYYMMDD (PK compuesta)</td></tr>
+      <tr><td class="mono">ppd_propon</td><td>FLOAT</td><td>Precio Medio Ponderado del día</td></tr>
+      <tr><td class="mono">ppd_saldo</td><td>FLOAT</td><td>Saldo en stock al cierre</td></tr>
+      <tr><td class="mono">ppd_upreco</td><td>FLOAT</td><td>Último precio de reposición</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3>a_param — Parámetros de Configuración por Casino</h3>
+  <table>
+    <thead><tr><th>par_codigo</th><th>Descripción</th><th>Encriptado</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">ciediario</td><td>Fecha del último cierre diario</td><td><span class="badge badge-orange">Sí</span></td></tr>
+      <tr><td class="mono">parcomdia</td><td>Password para celda PRODUCIDAS en Control de Raciones</td><td><span class="badge badge-orange">Sí</span></td></tr>
+      <tr><td class="mono">ctainsumo</td><td>Cuenta contable para insumos alimentarios</td><td><span class="badge badge-gray">No</span></td></tr>
+      <tr><td class="mono">ctalimdes</td><td>Cuenta contable para desechables</td><td><span class="badge badge-gray">No</span></td></tr>
+      <tr><td class="mono">addreceta</td><td>Máximo de recetas adicionales por día en planificación (típico=5)</td><td><span class="badge badge-gray">No</span></td></tr>
+      <tr><td class="mono">5etapas</td><td>Indicador de casino con régimen centralizado 5 etapas</td><td><span class="badge badge-gray">No</span></td></tr>
+      <tr><td class="mono">pargrarnve</td><td>Gramos por ración no vendida (cálculo merma RNV)</td><td><span class="badge badge-gray">No</span></td></tr>
+      <tr><td class="mono">SvrAppCont</td><td>Nombre del PC autorizado para ejecutar cierre diario</td><td><span class="badge badge-gray">No</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3>b_casinotipoactividades — Tipos de Actividad para Cierre Diario</h3>
+  <table>
+    <thead><tr><th>cta_tipact</th><th>Actividad</th><th>Descripción</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">1</td><td>Proveedores</td><td>Registro de compras y proveedores</td></tr>
+      <tr><td class="mono">2</td><td>SalidaProd</td><td>Salidas de bodega a producción</td></tr>
+      <tr><td class="mono">3</td><td>Devoluciones</td><td>Devoluciones a bodega</td></tr>
+      <tr><td class="mono">4</td><td>Mermas</td><td>Registro de mermas por preparación</td></tr>
+      <tr><td class="mono">5</td><td>RNV</td><td>Raciones No Vendidas</td></tr>
+      <tr><td class="mono">6</td><td>CtrlRaciones</td><td>Control de raciones por cliente</td></tr>
+      <tr><td class="mono">7</td><td>Cafetería</td><td>Ventas de cafetería</td></tr>
+      <tr><td class="mono">8</td><td>VentaServ</td><td>Venta servicio contado</td></tr>
+      <tr><td class="mono">9</td><td>VentaDir</td><td>Venta directa</td></tr>
+      <tr><td class="mono">10</td><td>Inventario</td><td>Inventario físico</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="card">
+  <h3>Diagrama Entidad-Relación <span style="font-size:11px;color:#94a3b8;font-weight:400;margin-left:6px">🔍 click para ampliar</span></h3>
+  <div style="overflow-x: auto;">
+  <div class="mermaid zoomable-mermaid" style="zoom: 1.4; min-width: 500px; cursor:zoom-in;">
+erDiagram
+    b_minuta ||--o{ b_minutadet : "tiene"
+    b_minuta ||--o{ b_minutaraciones : "genera"
+    b_minuta ||--o{ b_minutaracionfacturable : "factura"
+    b_minuta ||--o{ b_mermadesconche : "registra mermas"
+    b_productospmpdia }o--|| b_formatorequesicionestdetallado : "valoriza"
+    b_totventas ||--o{ b_detventas : "detalla"
+    b_productos ||--o{ b_recetadet : "compone receta"
+  </div>
+  </div>
+</div>
+    </div>
+
+    <!-- ===== 3. FUNCIONALIDADES ===== -->
+    <div class="section" id="sec-flujos">
+      <div class="card" style="margin-bottom:16px">
+        <h3>Submódulos del Módulo de Producción</h3>
+        <p style="font-size:13px;color:#4a5568;margin-bottom:8px">Selecciona un submódulo para ver su flujo de proceso detallado.</p>
+        <div class="alert alert-info"><strong>14 formularios VB6</strong> componen el módulo de Producción. Haz click en cualquier tarjeta para visualizar el flujo Mermaid interactivo.</div>
+      </div>
+      <div class="process-grid" id="process-grid">
+        <div class="process-card selected" id="pc-plami1" onclick="selectProcess('plami1')">
+          <div class="icon">📅</div>
+          <div class="ptitle">Selector Planificación</div>
+          <div class="pcode">M_Plami1.frm</div>
+        </div>
+        <div class="process-card" id="pc-minrea" onclick="selectProcess('minrea')">
+          <div class="icon">📝</div>
+          <div class="ptitle">Editor Planif. Real</div>
+          <div class="pcode">M_MinRea.frm</div>
+        </div>
+        <div class="process-card" id="pc-conrac" onclick="selectProcess('conrac')">
+          <div class="icon">🍽️</div>
+          <div class="ptitle">Control de Raciones</div>
+          <div class="pcode">M_ConRac.frm</div>
+        </div>
+        <div class="process-card" id="pc-merpre" onclick="selectProcess('merpre')">
+          <div class="icon">📉</div>
+          <div class="ptitle">Mermas Preparación</div>
+          <div class="pcode">M_MerPre.frm</div>
+        </div>
+        <div class="process-card" id="pc-isalbod" onclick="selectProcess('isalbod')">
+          <div class="icon">📋</div>
+          <div class="ptitle">Informe Requisición</div>
+          <div class="pcode">I_SalBod.frm</div>
+        </div>
+        <div class="process-card" id="pc-salbod" onclick="selectProcess('salbod')">
+          <div class="icon">📦</div>
+          <div class="ptitle">Salida Bodega</div>
+          <div class="pcode">M_SalBod.frm</div>
+        </div>
+        <div class="process-card" id="pc-rcdiar" onclick="selectProcess('rcdiar')">
+          <div class="icon">🔒</div>
+          <div class="ptitle">Cierre Diario</div>
+          <div class="pcode">M_RCDiar.frm</div>
+        </div>
+        <div class="process-card" id="pc-vtacon" onclick="selectProcess('vtacon')">
+          <div class="icon">💰</div>
+          <div class="ptitle">Venta Contado</div>
+          <div class="pcode">M_VtaCon.frm</div>
+        </div>
+        <div class="process-card" id="pc-vencaf" onclick="selectProcess('vencaf')">
+          <div class="icon">☕</div>
+          <div class="ptitle">Venta Cafetería</div>
+          <div class="pcode">M_VenCaf.frm</div>
+        </div>
+        <div class="process-card" id="pc-vendir" onclick="selectProcess('vendir')">
+          <div class="icon">🛍️</div>
+          <div class="ptitle">Venta Directa</div>
+          <div class="pcode">M_VenDir.frm</div>
+        </div>
+        <div class="process-card" id="pc-produ1" onclick="selectProcess('produ1')">
+          <div class="icon">🌿</div>
+          <div class="ptitle">Árbol Ingrediente</div>
+          <div class="pcode">M_Produ1.frm</div>
+        </div>
+        <div class="process-card" id="pc-tabgra" onclick="selectProcess('tabgra')">
+          <div class="icon">⚖️</div>
+          <div class="ptitle">Tabla Gramaje</div>
+          <div class="pcode">M_TabGra.frm</div>
+        </div>
+        <div class="process-card" id="pc-lipca" onclick="selectProcess('lipca')">
+          <div class="icon">🏷️</div>
+          <div class="ptitle">Lista Precio Cafetería</div>
+          <div class="pcode">T_LiPrCa.frm</div>
+        </div>
+        <div class="process-card" id="pc-pvtacl" onclick="selectProcess('pvtacl')">
+          <div class="icon">💲</div>
+          <div class="ptitle">Precio Venta Cliente</div>
+          <div class="pcode">M_PVtaCl.frm</div>
+        </div>
+      </div>
+
+      <div id="flow-panel">
+        <p style="color:var(--text-muted);font-size:13px">Selecciona un submódulo de la grilla superior para ver su diagrama de flujo.</p>
+      </div>
+
+    </div>
+
+    <!-- ===== 4. REGLAS DE NEGOCIO ===== -->
+    <div class="section" id="sec-reglas">
+<div class="card">
+  <h3>4.1 Planificación</h3>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-001</div>
+    <div class="rule-text">La planificación teórica se genera con un mes de anticipación</div>
+    <div class="rule-src">Fuente: Sesiones levantamiento dic-2025</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-002</div>
+    <div class="rule-text">El chef ajusta la planificación real antes de comenzar la producción del día</div>
+    <div class="rule-src">Fuente: Sesiones levantamiento</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-003</div>
+    <div class="rule-text">Una minuta con <span class="mono">min_indblo IN (2, 11)</span> no puede ser modificada</div>
+    <div class="rule-src">Fuente: M_Plami1.frm / sgp_Sel_ValidarMinBloque</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-004</div>
+    <div class="rule-text">Los regímenes con código &gt; 9999 corresponden a minutas centralizadas (5-etapas) y son de solo lectura</div>
+    <div class="rule-src">Fuente: M_MinRea.frm / a_param '5etapas'</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-005</div>
+    <div class="rule-text">El número máximo de recetas adicionales por día está configurado en <span class="mono">a_param 'addreceta'</span></div>
+    <div class="rule-src">Fuente: M_MinRea.frm</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-006</div>
+    <div class="rule-text">No se puede reducir el número de raciones planificadas por debajo de las mermas ya registradas</div>
+    <div class="rule-src">Fuente: sgp_Ins_XmlMinutaReal</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-007</div>
+    <div class="rule-text">No se puede cambiar una receta si ya tiene mermas registradas</div>
+    <div class="rule-src">Fuente: sgp_Ins_XmlMinutaReal</div>
+  </div>
+</div>
+<div class="card">
+  <h3>4.2 Raciones</h3>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-010</div>
+    <div class="rule-text">Existen tres niveles de raciones: Planificadas, Producidas y Vendidas</div>
+    <div class="rule-src">Fuente: Sesiones levantamiento</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-011</div>
+    <div class="rule-text">La fila PRODUCIDAS en Control de Raciones requiere password para edición</div>
+    <div class="rule-src">Fuente: M_ConRac.frm / a_param 'parcomdia'</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-012</div>
+    <div class="rule-text">Los valores especiales 'PRODUCIDAS', 'PERSONAL' y 'MERMAS' en <span class="mono">mir_rutcli</span> son preservados en operaciones de facturación</div>
+    <div class="rule-src">Fuente: sgp_Ins_MinutaRacionFacturable</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-013</div>
+    <div class="rule-text">Al marcar raciones como facturables (Fac=1), se eliminan las raciones de clientes reales pero se conservan las filas especiales</div>
+    <div class="rule-src">Fuente: sgp_Ins_MinutaRacionFacturable</div>
+  </div>
+</div>
+<div class="card">
+  <h3>4.3 Mermas</h3>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-020</div>
+    <div class="rule-text">Las mermas por raciones no pueden superar las raciones planificadas (<span class="mono">mid_nummer &le; mid_numrac</span>)</div>
+    <div class="rule-src">Fuente: M_MerPre.frm col5 validación</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-021</div>
+    <div class="rule-text">Los días con fecha anterior al cierre diario aparecen bloqueados (rojo) en el editor de mermas</div>
+    <div class="rule-src">Fuente: M_MerPre.frm / vg_ciedia</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-022</div>
+    <div class="rule-text">La merma de producción tiene dos componentes: merma por receta (en <span class="mono">b_minutadet</span>) y merma global de desconche/pan/producción (en <span class="mono">b_mermadesconche</span>)</div>
+    <div class="rule-src">Fuente: Análisis BD</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-023</div>
+    <div class="rule-text">El check "No considera Mermas" guarda <span class="mono">Considera_Merma='N'</span> y excluye la merma del cálculo de costos</div>
+    <div class="rule-src">Fuente: M_MerPre.frm / b_mermadesconche</div>
+  </div>
+</div>
+<div class="card">
+  <h3>4.4 Requisición y Salida de Bodega</h3>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-030</div>
+    <div class="rule-text">La fórmula de requisición es: <span class="mono">Cantidad = (Raciones &times; GramajePorRación) / FacingProducto</span></div>
+    <div class="rule-src">Fuente: I_SalBod.frm / sgp_DelIns_formatorequesicionestdetallado</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-031</div>
+    <div class="rule-text">Solo se incluyen días abiertos (no cerrados) en el cálculo de requisición</div>
+    <div class="rule-src">Fuente: sgp_DelIns_formatorequesicionestdetallado</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-032</div>
+    <div class="rule-text">La requisición tipo 2 (xEstructura Detallado) es el documento oficial para SAP</div>
+    <div class="rule-src">Fuente: I_SalBod.frm</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-033</div>
+    <div class="rule-text">Si existen servicios sin comensales, se muestra advertencia y se exporta Excel de alerta</div>
+    <div class="rule-src">Fuente: I_SalBod.frm</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-034</div>
+    <div class="rule-text">Una Salida de Producción (SP) no puede modificarse si ya tiene una Devolución de Producción (DP) asociada</div>
+    <div class="rule-src">Fuente: M_SalBod.frm / sgp_Sel_ValidarDevolucionProduccion</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-035</div>
+    <div class="rule-text">Si al procesar una salida de bodega el stock resulta negativo, se ejecuta ROLLBACK automático</div>
+    <div class="rule-src">Fuente: M_SalBod.frm</div>
+  </div>
+</div>
+<div class="card">
+  <h3>4.5 Cierre Diario</h3>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-040</div>
+    <div class="rule-text">El cierre diario solo puede ejecutarse desde el PC configurado en <span class="mono">a_param 'SvrAppCont'</span></div>
+    <div class="rule-src">Fuente: M_RCDiar.frm</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-041</div>
+    <div class="rule-text">Antes de cerrar, deben estar completas todas las actividades del día en <span class="mono">b_casinotipoactividades</span></div>
+    <div class="rule-src">Fuente: M_RCDiar.frm / 14+ validaciones</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-042</div>
+    <div class="rule-text">El cierre diario calcula el PMP de todos los productos del casino</div>
+    <div class="rule-src">Fuente: M_RCDiar.frm / CalcularPMPDiaSql</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-043</div>
+    <div class="rule-text">Los días feriados (<span class="mono">b_Fecha_Inhabiles</span>) requieren recálculo del PMP</div>
+    <div class="rule-src">Fuente: M_RCDiar.frm</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-044</div>
+    <div class="rule-text">En casinos con inventario rotativo, el saldo PMP se actualiza con el stock físico (<span class="mono">tin_stofis</span>)</div>
+    <div class="rule-src">Fuente: M_RCDiar.frm</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-045</div>
+    <div class="rule-text">La fecha del último cierre se almacena encriptada en <span class="mono">a_param 'ciediario'</span></div>
+    <div class="rule-src">Fuente: a_param / sgp_p_desencripta</div>
+  </div>
+</div>
+<div class="card">
+  <h3>4.6 Ventas</h3>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-050</div>
+    <div class="rule-text">Las ventas de cafetería tienen ciclo: Abierta &rarr; Cerrada &rarr; Reabierta (con efecto de stock en cierre)</div>
+    <div class="rule-src">Fuente: M_VenCaf.frm</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-051</div>
+    <div class="rule-text">Las ventas de cafetería con tipo CR o CU requieren cliente identificado</div>
+    <div class="rule-src">Fuente: M_VenCaf.frm</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-052</div>
+    <div class="rule-text">En venta directa, el color azul indica que la cantidad supera el stock disponible</div>
+    <div class="rule-src">Fuente: M_VenDir.frm</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-053</div>
+    <div class="rule-text">La venta servicio contado admite 5 formas de pago: Contado, Cheque, Cheque Restaurant, Tarjeta de Crédito, Vale</div>
+    <div class="rule-src">Fuente: M_VtaCon.frm</div>
+  </div>
+</div>
+<div class="card">
+  <h3>4.7 Integración FLMS/SAP</h3>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-060</div>
+    <div class="rule-text">Los movimientos de bodega llegan desde SAP a través de la tabla <span class="mono">b_totventas_SGP_FLMS</span></div>
+    <div class="rule-src">Fuente: FLMS_SGP_ValidaCargaSalidasDeBodega</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-061</div>
+    <div class="rule-text">El proceso de integración valida 9 categorías de error antes de aceptar un movimiento</div>
+    <div class="rule-src">Fuente: FLMS_SGP_IdentificaErrores</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-062</div>
+    <div class="rule-text">Los registros con Estado=3 en FLMS son reprocesados por <span class="mono">FLMS_SGP_ReprocesaCargaSalidasDeBodega</span></div>
+    <div class="rule-src">Fuente: Análisis BD</div>
+  </div>
+</div>
+<div class="card">
+  <h3 style="color:var(--primary);margin:24px 0 12px">4.8 Cafetería — Lista de Precios</h3>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-063</div>
+    <div class="rule-text">Cada casino tiene su propio catálogo de artículos de cafetería independiente, filtrado por <span class="mono">tpc_cencos</span></div>
+    <div class="rule-src">Fuente: T_LiPrCa.frm, sección 4.8</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-064</div>
+    <div class="rule-text">El código de artículo de cafetería es asignado automáticamente por el sistema como <span class="mono">MAX(tpc_codigo)+1</span> por casino; el usuario no puede modificarlo</div>
+    <div class="rule-src">Fuente: T_LiPrCa.frm, sección 4.8</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-065</div>
+    <div class="rule-text">No se puede eliminar un artículo de cafetería que tenga ingredientes u otros registros asociados en tablas relacionadas (<span class="mono">b_detpreciocaf</span>)</div>
+    <div class="rule-src">Fuente: T_LiPrCa.frm, sección 4.8</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-066</div>
+    <div class="rule-text">El buscador de productos para composición de artículos filtra a productos con control de stock activo (<span class="mono">pro_ctrsto=1</span>) y con fecha de vigencia no expirada</div>
+    <div class="rule-src">Fuente: T_LiPrCa.frm, sección 4.8</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-067</div>
+    <div class="rule-text">Un mismo producto (ingrediente) no puede repetirse dentro de la composición de un mismo artículo de cafetería</div>
+    <div class="rule-src">Fuente: T_LiPrCa.frm / b_detpreciocaf, sección 4.8</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-068</div>
+    <div class="rule-text">Durante la edición de artículos, la pestaña de Composición queda deshabilitada y viceversa (operación mutuamente excluyente entre pestañas)</div>
+    <div class="rule-src">Fuente: T_LiPrCa.frm, sección 4.8</div>
+  </div>
+</div>
+<div class="card">
+  <h3 style="color:var(--primary);margin:24px 0 12px">4.9 Precio Venta Cliente</h3>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-069</div>
+    <div class="rule-text">El precio de venta es individual por cliente y se asocia a la combinación Contrato + Régimen + Servicio + Fecha de vigencia</div>
+    <div class="rule-src">Fuente: M_PVtaCl.frm / b_preciovta, sección 4.9</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-070</div>
+    <div class="rule-text">No puede existir más de un precio para el mismo cliente en la misma combinación (clave única: <span class="mono">prv_cencos + prv_codreg + prv_codser + prv_fecvig + prv_rutcli</span>)</div>
+    <div class="rule-src">Fuente: M_PVtaCl.frm / b_preciovta, sección 4.9</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-071</div>
+    <div class="rule-text">Solo clientes de tipo 1 (externos) y con estado activo (<span class="mono">cli_activo='1'</span>) pueden ser registrados con precio de venta</div>
+    <div class="rule-src">Fuente: M_PVtaCl.frm / b_clientes, sección 4.9</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-072</div>
+    <div class="rule-text">El RUT del cliente se valida con algoritmo de dígito verificador chileno antes de aceptar</div>
+    <div class="rule-src">Fuente: M_PVtaCl.frm, sección 4.9</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-073</div>
+    <div class="rule-text">Al eliminar un precio con raciones ya registradas en <span class="mono">b_minutaraciones</span> para fechas iguales o posteriores a la vigencia, el sistema advierte explícitamente y requiere confirmación</div>
+    <div class="rule-src">Fuente: M_PVtaCl.frm / b_minutaraciones, sección 4.9</div>
+  </div>
+  <div class="rule-item">
+    <div class="rule-id">RN-PROD-074</div>
+    <div class="rule-text">Los cuatro campos del encabezado (Contrato, Régimen, Servicio, Fecha) deben estar completos antes de ejecutar cualquier operación de ABM sobre la grilla</div>
+    <div class="rule-src">Fuente: M_PVtaCl.frm, sección 4.9</div>
+  </div>
+</div>
+    </div>
+
+    <!-- ===== 5. VALIDACIONES ===== -->
+    <div class="section" id="sec-validaciones">
+<div class="card">
+  <h3>5.1 Validaciones en Frontend (VB6)</h3>
+  <table>
+    <thead><tr><th>Formulario</th><th>Validación</th><th>Acción si falla</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">M_Plami1</td><td>Período no bloqueado (min_indblo IN 2, 11)</td><td>Mensaje de error, no abre M_MinRea</td></tr>
+      <tr><td class="mono">M_MinRea</td><td>Régimen &gt; 9999 + parámetro 5etapas activo</td><td>Celda solo lectura (amarilla)</td></tr>
+      <tr><td class="mono">M_MerPre</td><td>Col5 (MermaxRaciones) &le; mid_numrac</td><td>Rechaza el valor y muestra mensaje</td></tr>
+      <tr><td class="mono">M_MerPre</td><td>Día anterior a vg_ciedia</td><td>Fila bloqueada en color rojo</td></tr>
+      <tr><td class="mono">M_ConRac</td><td>Fila PRODUCIDAS sin password</td><td>Bloquea edición de la celda</td></tr>
+      <tr><td class="mono">M_SalBod</td><td>Stock resultante negativo</td><td>ROLLBACK y mensaje al usuario</td></tr>
+      <tr><td class="mono">M_SalBod</td><td>Existe DP para el SP</td><td>Bloquea modificación del documento</td></tr>
+      <tr><td class="mono">M_VenDir</td><td>Cantidad &gt; stock disponible</td><td>Color azul en celda (advertencia visual)</td></tr>
+      <tr><td class="mono">M_RCDiar</td><td>PC &ne; SvrAppCont</td><td>Botón cierre deshabilitado</td></tr>
+      <tr><td class="mono">M_RCDiar</td><td>Actividades del día incompletas</td><td>Lista actividades pendientes</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="card">
+  <h3>5.2 Validaciones en Stored Procedures (BD)</h3>
+  <table>
+    <thead><tr><th>SP</th><th>Validación</th><th>Error retornado</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">sgp_Ins_XmlMinutaReal</td><td>mid_nummer &gt; mid_numrac (merma &gt; raciones)</td><td>@Num_error &gt; 0</td></tr>
+      <tr><td class="mono">sgp_Ins_XmlMinutaReal</td><td>Cambio de receta con mermas existentes</td><td>@Num_error &gt; 0</td></tr>
+      <tr><td class="mono">sgp_Sel_ValidarMinBloque</td><td>min_indblo IN (2, 11)</td><td>Retorna registros (bloqueo)</td></tr>
+      <tr><td class="mono">sgp_Sel_ValidarMinutaMermaPorPreparacion</td><td>mid_tipmin='2' no existe</td><td>Sin datos &rarr; error</td></tr>
+      <tr><td class="mono">sgp_Sel_ValidarServicioComensalesCeroSalProduccion</td><td>Servicios con comensales=0</td><td>Retorna registros (warning)</td></tr>
+      <tr><td class="mono">sgp_Upd_ValidarProductoVigente</td><td>Productos no vigentes en bodega</td><td>Error específico</td></tr>
+      <tr><td class="mono">sgp_Sel_ValidarDevolucionProduccion</td><td>Existe DP para el SP</td><td>Retorna registros (bloqueo)</td></tr>
+      <tr><td class="mono">FLMS_SGP_IdentificaErrores</td><td>9 categorías de errores FLMS</td><td>VARCHAR(200) con códigos</td></tr>
+      <tr><td class="mono">FLMS_SGP_ValidaRacionesNoVendidas</td><td>mid_nummer &gt; mid_numrac en FLMS</td><td>Estado=3</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="card">
+  <h3>5.3 Validaciones de Integridad FLMS (9 Categorías)</h3>
+  <table>
+    <thead><tr><th>Código</th><th>Categoría</th><th>Descripción</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">1</td><td>Centro de Costo</td><td>El ceco del movimiento no existe en el sistema</td></tr>
+      <tr><td class="mono">2</td><td>Tipo Documento</td><td>El tipo de documento no es válido</td></tr>
+      <tr><td class="mono">4</td><td>Régimen</td><td>El régimen no existe para el casino</td></tr>
+      <tr><td class="mono">5</td><td>Servicio</td><td>El servicio no existe para el régimen</td></tr>
+      <tr><td class="mono">6</td><td>Total &ne; Suma</td><td>El total del documento no coincide con la suma del detalle</td></tr>
+      <tr><td class="mono">7</td><td>Ingrediente</td><td>El ingrediente no está en el catálogo</td></tr>
+      <tr><td class="mono">8</td><td>Producto</td><td>El producto no existe en el sistema</td></tr>
+      <tr><td class="mono">9</td><td>Cantidad negativa</td><td>La cantidad del movimiento es negativa</td></tr>
+    </tbody>
+  </table>
+  <div class="alert alert-info" style="margin-top:12px">El código 3 no aparece en la documentación. Puede ser reservado o eliminado. Confirmar con el equipo técnico.</div>
+</div>
+<div class="card">
+  <h3>5.4 Validaciones en T_LiPrCa (Lista Precio Cafetería)</h3>
+  <table>
+    <thead><tr><th>Formulario</th><th>Validación</th><th>Momento</th><th>Acción si falla</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">T_LiPrCa</td><td>Nombre del artículo no vacío</td><td>Al grabar artículo</td><td>Mensaje "Falta información...", cursor en Nombre. Sin grabado.</td></tr>
+      <tr><td class="mono">T_LiPrCa</td><td>Precio del artículo ≠ 0</td><td>Al grabar artículo</td><td>Mensaje "Falta información...", cursor en Precio. Sin grabado.</td></tr>
+      <tr><td class="mono">T_LiPrCa</td><td>Código de ingrediente no vacío</td><td>Al grabar composición</td><td>Mensaje "Falta información...", cursor en campo Código. Sin grabado.</td></tr>
+      <tr><td class="mono">T_LiPrCa</td><td>Cantidad de ingrediente ≠ 0</td><td>Al grabar composición</td><td>Mensaje "Falta información...", cursor en Cantidad. Sin grabado.</td></tr>
+      <tr><td class="mono">T_LiPrCa</td><td>Producto no duplicado en composición (vía buscador)</td><td>Al agregar ingrediente</td><td>Mensaje "Producto ya fue ingresado". Cancela incorporación.</td></tr>
+      <tr><td class="mono">T_LiPrCa</td><td>Código ingresado manualmente existe en b_productos</td><td>Al agregar ingrediente manualmente</td><td>Mensaje "Producto no existe". Limpia campo.</td></tr>
+      <tr><td class="mono">T_LiPrCa</td><td>Código ingresado manualmente no duplicado en composición</td><td>Al agregar ingrediente manualmente</td><td>Mensaje "Producto ya fue ingresado". Limpia campo.</td></tr>
+      <tr><td class="mono">T_LiPrCa</td><td>Artículo seleccionado al Eliminar</td><td>Al Eliminar artículo</td><td>Mensaje "Debe seleccionar un registro...". No procede.</td></tr>
+      <tr><td class="mono">T_LiPrCa</td><td>Artículo sin datos asociados en otras tablas</td><td>Al Eliminar artículo</td><td>Mensaje de dato asociado a otra tabla. Revierte. No elimina.</td></tr>
+      <tr><td class="mono">T_LiPrCa</td><td>Grilla con datos al Imprimir</td><td>Al Imprimir</td><td>Mensaje "No existe datos a imprimir". No genera informe.</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="card">
+  <h3>5.5 Validaciones en M_PVtaCl (Precio Venta Cliente)</h3>
+  <table>
+    <thead><tr><th>Formulario</th><th>Validación</th><th>Momento</th><th>Acción si falla</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">M_PVtaCl</td><td>Encabezado completo (Contrato + Régimen + Servicio + Fecha)</td><td>Al Agregar/Modificar/Eliminar</td><td>Mensaje "Falta información en encabezado...". Operación no continúa.</td></tr>
+      <tr><td class="mono">M_PVtaCl</td><td>Fecha de vigencia válida</td><td>Al cambiar fecha</td><td>Grilla se limpia. Sin consulta.</td></tr>
+      <tr><td class="mono">M_PVtaCl</td><td>RUT existe en b_clientes, tipo=1 (externo), activo</td><td>Al ingresar/salir del campo RUT</td><td>Campo RUT queda en blanco. Cursor vuelve a la celda.</td></tr>
+      <tr><td class="mono">M_PVtaCl</td><td>Dígito verificador RUT correcto (algoritmo chileno)</td><td>Al abandonar campo RUT</td><td>Valor no se acepta.</td></tr>
+      <tr><td class="mono">M_PVtaCl</td><td>RUT no duplicado en grilla activa</td><td>Al ingresar RUT</td><td>Mensaje "Cliente existe". Limpia celda.</td></tr>
+      <tr><td class="mono">M_PVtaCl</td><td>RUT no duplicado en b_preciovta (misma combinación encabezado)</td><td>Al Grabar (INSERT)</td><td>Mensaje "Cliente existe". Cancela inserción.</td></tr>
+      <tr><td class="mono">M_PVtaCl</td><td>RUT no vacío al Grabar</td><td>Al Grabar</td><td>Mensaje "Falta información...". Foco vuelve a celda RUT.</td></tr>
+      <tr><td class="mono">M_PVtaCl</td><td>Raciones asociadas en b_minutaraciones al Eliminar</td><td>Al Eliminar</td><td>Mensaje con advertencia de raciones asociadas. Requiere confirmación explícita (Sí/No).</td></tr>
+    </tbody>
+  </table>
+</div>
+    </div>
+
+    <!-- ===== 6. OBJETOS BD ===== -->
+    <div class="section" id="sec-bd">
+      <div class="db-tabs">
+        <button class="db-tab active" id="dbtab-sp" onclick="showDbTab('sp')">Stored Procedures</button>
+        <button class="db-tab" id="dbtab-tables" onclick="showDbTab('tables')">Tablas Clave</button>
+        <button class="db-tab" id="dbtab-funcs" onclick="showDbTab('funcs')">Funciones UDF</button>
+        <button class="db-tab" id="dbtab-views" onclick="showDbTab('views')">Vistas</button>
+        <button class="db-tab" id="dbtab-notes" onclick="showDbTab('notes')">Notas Técnicas</button>
+      </div>
+      <div class="db-section active" id="dbsec-sp">
+<div class="sp-card">
+  <div class="sp-header" onclick="toggleSp(this)"><span class="sp-name">sgp_Ins_XmlMinutaReal</span><span>&#9660;</span></div>
+  <div class="sp-body">
+    <div class="sp-row"><span class="sp-label">Propósito</span><span>Inserta o actualiza la planificación real desde XML.</span></div>
+    <div class="sp-row"><span class="sp-label">Parámetros</span><span class="mono">@XmlMinuta TEXT, @Ceco VARCHAR(10), @CodRegimen INT, @CodServicio INT, @FechaDia INT, @Raciones INT, @Color VARCHAR(1), @Usuario VARCHAR(20)</span></div>
+    <div class="sp-row"><span class="sp-label">Tablas afectadas</span><span class="mono">b_minutadet (mid_tipmin='2' DELETE+INSERT), b_minutaraciones (Color='1' UPDATE PRODUCIDAS)</span></div>
+    <div class="sp-row"><span class="sp-label">Transacciones</span><span>SET XACT_ABORT ON / BEGIN TRY / BEGIN TRAN / COMMIT / ROLLBACK</span></div>
+    <div class="sp-row"><span class="sp-label">Llamado desde</span><span class="mono">M_MinRea.frm</span></div>
+    <div class="sp-row"><span class="sp-label">Retorno</span><span class="mono">@Num_error INT, @error VARCHAR, @cRows INT</span></div>
+    <div class="alert alert-warning" style="margin-top:8px">Valida: mid_nummer &gt; mid_numrac &rarr; ROLLBACK. Cambio de receta con mermas &rarr; ROLLBACK. Color='0' preserva costos; Color='1' actualiza PRODUCIDAS.</div>
+  </div>
+</div>
+<div class="sp-card">
+  <div class="sp-header" onclick="toggleSp(this)"><span class="sp-name">sgp_Ins_XmlMinutaTeorica</span><span>&#9660;</span></div>
+  <div class="sp-body">
+    <div class="sp-row"><span class="sp-label">Propósito</span><span>Inserta o actualiza la planificación teórica desde XML. Sin validaciones de merma.</span></div>
+    <div class="sp-row"><span class="sp-label">Tablas afectadas</span><span class="mono">b_minutadet (mid_tipmin='1' DELETE+INSERT)</span></div>
+    <div class="sp-row"><span class="sp-label">Transacciones</span><span>BEGIN TRAN / COMMIT / ROLLBACK</span></div>
+    <div class="sp-row"><span class="sp-label">Llamado desde</span><span class="mono">M_MinTeo.frm</span></div>
+    <div class="alert alert-info" style="margin-top:8px">No realiza validaciones de merma. Inserta con mid_tipmin='1'.</div>
+  </div>
+</div>
+<div class="sp-card">
+  <div class="sp-header" onclick="toggleSp(this)"><span class="sp-name">sgp_Sel_ValidarMinBloque</span><span>&#9660;</span></div>
+  <div class="sp-body">
+    <div class="sp-row"><span class="sp-label">Propósito</span><span>Verifica si una minuta está bloqueada para una fecha y casino.</span></div>
+    <div class="sp-row"><span class="sp-label">Parámetros</span><span class="mono">@Ceco VARCHAR(10), @FechaMinuta INT (YYYYMMDD)</span></div>
+    <div class="sp-row"><span class="sp-label">Tablas leídas</span><span class="mono">b_minuta WHERE min_indblo IN (2, 11)</span></div>
+    <div class="sp-row"><span class="sp-label">Llamado desde</span><span class="mono">M_Plami1.frm, M_MinRea.frm</span></div>
+    <div class="sp-row"><span class="sp-label">Retorno</span><span>Retorna filas si la minuta está bloqueada</span></div>
+  </div>
+</div>
+<div class="sp-card">
+  <div class="sp-header" onclick="toggleSp(this)"><span class="sp-name">sgp_Upd_XmlMermaPreparacion</span><span>&#9660;</span></div>
+  <div class="sp-body">
+    <div class="sp-row"><span class="sp-label">Propósito</span><span>Guarda mermas por preparación: por receta y mermas globales desconche/pan/producción.</span></div>
+    <div class="sp-row"><span class="sp-label">Parámetros</span><span class="mono">@XML TEXT, @cencos, @codreg INT, @codser INT, @fecha INT, @ConsideraMerma VARCHAR(1), @Desconche FLOAT, @Pan FLOAT, @Produccion FLOAT, @usuario VARCHAR(20)</span></div>
+    <div class="sp-row"><span class="sp-label">XML entrada</span><span class="mono">&lt;GrabaMerma&gt;&lt;Merma CR="cod" NM="nummerma" MO="mermaxkilo" MS="mermaservida" NL="numlin"/&gt;&lt;/GrabaMerma&gt;</span></div>
+    <div class="sp-row"><span class="sp-label">Tablas afectadas</span><span class="mono">b_minutadet (UPDATE mid_nummer, mid_mermaxkilo, mid_mermaxcantservida), b_mermadesconche (INSERT/UPDATE)</span></div>
+    <div class="sp-row"><span class="sp-label">Llamado desde</span><span class="mono">M_MerPre.frm</span></div>
+  </div>
+</div>
+<div class="sp-card">
+  <div class="sp-header" onclick="toggleSp(this)"><span class="sp-name">sgp_Sel_MermaPorPreparacion</span><span>&#9660;</span></div>
+  <div class="sp-body">
+    <div class="sp-row"><span class="sp-label">Propósito</span><span>Retorna mermas registradas por receta para un día, régimen, servicio y bodega.</span></div>
+    <div class="sp-row"><span class="sp-label">Parámetros</span><span class="mono">@cencos, @codreg INT, @codser INT, @fecha INT, @codbod INT</span></div>
+    <div class="sp-row"><span class="sp-label">Cálculo clave</span><span class="mono">CantBruta = CASE WHEN mid_nummer &gt; 0 AND mid_mermaxkilo = 0 THEN SGP_FN_RNVCantidadesReceta * mid_nummer ELSE mid_mermaxkilo END</span></div>
+    <div class="sp-row"><span class="sp-label">Llamado desde</span><span class="mono">M_MerPre.frm</span></div>
+  </div>
+</div>
+<div class="sp-card">
+  <div class="sp-header" onclick="toggleSp(this)"><span class="sp-name">sgp_Sel_DetalleLecturaxPeriodo</span><span>&#9660;</span></div>
+  <div class="sp-body">
+    <div class="sp-row"><span class="sp-label">Propósito</span><span>Retorna lecturas de vales agrupadas por período para un casino.</span></div>
+    <div class="sp-row"><span class="sp-label">Parámetros</span><span class="mono">@Ceco VARCHAR(10), @Periodo INT (YYYYMM)</span></div>
+    <div class="sp-row"><span class="sp-label">Tablas leídas</span><span class="mono">b_detallelectura GROUP BY período</span></div>
+    <div class="sp-row"><span class="sp-label">Llamado desde</span><span class="mono">M_ConRac.frm</span></div>
+  </div>
+</div>
+<div class="sp-card">
+  <div class="sp-header" onclick="toggleSp(this)"><span class="sp-name">sgp_Ins_MinutaRacionFacturable</span><span>&#9660;</span></div>
+  <div class="sp-body">
+    <div class="sp-row"><span class="sp-label">Propósito</span><span>Marca raciones como facturables. Fac=1 elimina raciones de clientes reales preservando filas especiales.</span></div>
+    <div class="sp-row"><span class="sp-label">Parámetros</span><span class="mono">@Ceco, @Reg INT, @Ser INT, @Fecha INT, @Fac INT (0 o 1)</span></div>
+    <div class="sp-row"><span class="sp-label">Lógica Fac=1</span><span class="mono">DELETE FROM b_minutaraciones WHERE mir_rutcli NOT IN ('PRODUCIDAS','PERSONAL','MERMAS')</span></div>
+    <div class="sp-row"><span class="sp-label">Tablas afectadas</span><span class="mono">b_minutaracionfacturable (INSERT), b_minutaraciones (DELETE condicional)</span></div>
+    <div class="sp-row"><span class="sp-label">Llamado desde</span><span class="mono">M_ConRac.frm</span></div>
+    <div class="alert alert-warning" style="margin-top:8px">Los valores 'PRODUCIDAS', 'PERSONAL' y 'MERMAS' en mir_rutcli nunca se eliminan en operaciones de facturación.</div>
+  </div>
+</div>
+<div class="sp-card">
+  <div class="sp-header" onclick="toggleSp(this)"><span class="sp-name">sgp_Del_MinutaRaciones / sgp_Ins_MinutaRaciones</span><span>&#9660;</span></div>
+  <div class="sp-body">
+    <div class="sp-row"><span class="sp-label">Propósito</span><span>Borrado e inserción simple de raciones en b_minutaraciones para actualizar control de raciones.</span></div>
+    <div class="sp-row"><span class="sp-label">Tablas afectadas</span><span class="mono">b_minutaraciones (DELETE / INSERT)</span></div>
+    <div class="sp-row"><span class="sp-label">Llamado desde</span><span class="mono">M_ConRac.frm</span></div>
+  </div>
+</div>
+<div class="sp-card">
+  <div class="sp-header" onclick="toggleSp(this)"><span class="sp-name">sgp_DelIns_formatorequesicionestdetallado</span><span>&#9660;</span></div>
+  <div class="sp-body">
+    <div class="sp-row"><span class="sp-label">Propósito</span><span>Calcula y guarda la requisición de salida de bodega para envío a SAP (tipo 2 xEstructura Detallado).</span></div>
+    <div class="sp-row"><span class="sp-label">Parámetros</span><span class="mono">@XMLServicio TEXT, @XMLRegimen TEXT, @cencos, @codbod INT, @yyyymmdd_ini INT, @yyyymmdd_fin INT, @usuario VARCHAR(20)</span></div>
+    <div class="sp-row"><span class="sp-label">Fórmula</span><span class="mono">Cantidad = (mid_numrac &times; red_canpro) / pro_facing</span></div>
+    <div class="sp-row"><span class="sp-label">Restricciones</span><span>mid_tipmin='2'; excluye días cerrados (ppd_fecdia &le; ciediario desencriptado)</span></div>
+    <div class="sp-row"><span class="sp-label">Tablas afectadas</span><span class="mono">b_formatorequesicionestdetallado (DELETE+INSERT)</span></div>
+    <div class="sp-row"><span class="sp-label">Llamado desde</span><span class="mono">I_SalBod.frm (botón Generar, tipo 2)</span></div>
+  </div>
+</div>
+<div class="sp-card">
+  <div class="sp-header" onclick="toggleSp(this)"><span class="sp-name">sgp_Upd_ReabrirCierreDiario</span><span>&#9660;</span></div>
+  <div class="sp-body">
+    <div class="sp-row"><span class="sp-label">Propósito</span><span>Reversa un cierre diario previamente ejecutado para un casino y fecha.</span></div>
+    <div class="sp-row"><span class="sp-label">Parámetros</span><span class="mono">@cencos VARCHAR(10), @yyyymmdd INT</span></div>
+    <div class="sp-row"><span class="sp-label">Lógica</span><span>UPDATE b_productospmpdia SET ppd_saldo=0; DELETE+INSERT b_productospmpdia para el día</span></div>
+    <div class="sp-row"><span class="sp-label">Tablas afectadas</span><span class="mono">b_productospmpdia</span></div>
+    <div class="sp-row"><span class="sp-label">Llamado desde</span><span class="mono">M_RCDiar.frm (botón Reabrir)</span></div>
+    <div class="alert alert-danger" style="margin-top:8px">Operación destructiva. Elimina y recrea registros PMP del día indicado.</div>
+  </div>
+</div>
+<div class="sp-card">
+  <div class="sp-header" onclick="toggleSp(this)"><span class="sp-name">sgp_Sel_ValidarDevolucionProduccion</span><span>&#9660;</span></div>
+  <div class="sp-body">
+    <div class="sp-row"><span class="sp-label">Propósito</span><span>Verifica si existe un DP asociado al SP indicado. Bloquea modificación si existe.</span></div>
+    <div class="sp-row"><span class="sp-label">Parámetros</span><span class="mono">@Ceco, @codreg INT, @codser INT, @codbod INT, @Fecha INT, @numdoc INT</span></div>
+    <div class="sp-row"><span class="sp-label">Tablas leídas</span><span class="mono">b_totventas WHERE tov_tipdoc='DP'</span></div>
+    <div class="sp-row"><span class="sp-label">Llamado desde</span><span class="mono">M_SalBod.frm</span></div>
+    <div class="sp-row"><span class="sp-label">Retorno</span><span>Retorna filas si existe DP: bloquea modificación del SP</span></div>
+  </div>
+</div>
+<div class="sp-card">
+  <div class="sp-header" onclick="toggleSp(this)"><span class="sp-name">FLMS_SGP_ValidaCargaSalidasDeBodega</span><span>&#9660;</span></div>
+  <div class="sp-body">
+    <div class="sp-row"><span class="sp-label">Propósito</span><span>Valida movimientos de bodega desde SAP/FLMS. Asigna Estado=1 (OK) o Estado=3 (error).</span></div>
+    <div class="sp-row"><span class="sp-label">Flujo</span><span>1. Desencripta ciediario. 2. SELECT pendientes de b_totventas_SGP_FLMS. 3. Llama FLMS_SGP_IdentificaErrores por registro. 4. UPDATE Estado.</span></div>
+    <div class="sp-row"><span class="sp-label">Tablas afectadas</span><span class="mono">b_totventas_SGP_FLMS (UPDATE Estado)</span></div>
+    <div class="sp-row"><span class="sp-label">Estados</span><span class="mono">Estado=1: OK, Estado=3: error con códigos</span></div>
+  </div>
+</div>
+<div class="sp-card">
+  <div class="sp-header" onclick="toggleSp(this)"><span class="sp-name">FLMS_SGP_ValidaRacionesNoVendidas</span><span>&#9660;</span></div>
+  <div class="sp-body">
+    <div class="sp-row"><span class="sp-label">Propósito</span><span>Valida raciones no vendidas en integración FLMS. CURSOR sobre b_minuta_SGP_FLMS.</span></div>
+    <div class="sp-row"><span class="sp-label">Lógica</span><span class="mono">CURSOR WHERE estado_proceso IS NULL: IF mid_nummer &gt; mid_numrac &rarr; Estado=3 ELSE Estado=1</span></div>
+    <div class="sp-row"><span class="sp-label">Tablas afectadas</span><span class="mono">b_minuta_SGP_FLMS (UPDATE Estado)</span></div>
+  </div>
+</div>
+<div class="sp-card">
+  <div class="sp-header" onclick="toggleSp(this)"><span class="sp-name">sgp_Sel_TraerCostoFoodCostMinutaCierreDiario</span><span>&#9660;</span></div>
+  <div class="sp-body">
+    <div class="sp-row"><span class="sp-label">Propósito</span><span>Retorna costo Food Cost de minutas para cierre diario: teórico vs real vs vendido.</span></div>
+    <div class="sp-row"><span class="sp-label">Lógica interna</span><span>Tabla temporal #TempPaso: costo teórico (mid_tipmin='1'), real (mid_tipmin='2'), vendido (tov_tipdoc='SP')</span></div>
+    <div class="sp-row"><span class="sp-label">Llamado desde</span><span class="mono">M_RCDiar.frm</span></div>
+  </div>
+</div>
+      </div>
+      <div class="db-section" id="dbsec-tables">
+<div class="card">
+  <h3>Tablas de Planificación y Minutas</h3>
+  <table>
+    <thead><tr><th>Tabla</th><th>Descripción</th><th>Tablas relacionadas</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">b_minuta</td><td>Encabezado de minuta. Clave: (cencos, fecmin, codreg, codser, tipmin). Estado: min_indblo 0/2/11</td><td class="mono">b_minutadet, b_minutaraciones</td></tr>
+      <tr><td class="mono">b_minutadet</td><td>Detalle de recetas por minuta. tipmin='1'=teórica, '2'=real. Contiene mermas: mid_nummer, mid_mermaxkilo, mid_mermaxcantservida</td><td class="mono">b_minuta</td></tr>
+      <tr><td class="mono">b_minutaraciones</td><td>Raciones por cliente/día. mir_rutcli puede ser RUT real, 'PRODUCIDAS', 'PERSONAL' o 'MERMAS'</td><td class="mono">b_minuta</td></tr>
+      <tr><td class="mono">b_minutaracionfacturable</td><td>Control de facturación de raciones. facturado=0/1</td><td class="mono">b_minutaraciones</td></tr>
+      <tr><td class="mono">b_mermadesconche</td><td>Mermas globales por día: Considera_Merma, Merma_Desconche, Merma_Pan, Merma_Produccion</td><td class="mono">b_minuta</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="card">
+  <h3>Tablas de Inventario y Costos</h3>
+  <table>
+    <thead><tr><th>Tabla</th><th>Descripción</th><th>Campos clave</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">b_productospmpdia</td><td>PMP diario por producto y casino. Se genera al ejecutar el cierre diario</td><td class="mono">ppd_cencos, ppd_codpro, ppd_fecdia, ppd_propon, ppd_saldo</td></tr>
+      <tr><td class="mono">b_bodegas</td><td>Stock actual por bodega y producto</td><td class="mono">bod_codbod, bod_codpro, bod_canmer</td></tr>
+      <tr><td class="mono">b_totventas</td><td>Cabecera de movimientos de salida. tipdoc: SP, DP, ME, TR, VD</td><td class="mono">tov_tipdoc, tov_cencos, tov_fecdoc, tov_totven</td></tr>
+      <tr><td class="mono">b_detventas</td><td>Detalle de movimientos de salida (líneas de producto)</td><td class="mono">dev_codpro, dev_canpro, dev_propic</td></tr>
+      <tr><td class="mono">b_parametros</td><td>Correlativos de documentos por tipo y bodega</td><td class="mono">par_tipdoc (SP/DP/ME/SE/DE), par_codbod, par_correlativo</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="card">
+  <h3>Tablas de Ventas y Configuración</h3>
+  <table>
+    <thead><tr><th>Tabla</th><th>Descripción</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">b_ventacontado</td><td>Encabezado de ventas de servicio contado. Campos: vtc_forpag (0-4), vtc_totmon, vtc_opccli</td></tr>
+      <tr><td class="mono">b_ventacontadodet</td><td>Detalle de venta contado por centro de costo (cuando cliente es CoCo)</td></tr>
+      <tr><td class="mono">b_totventascaf</td><td>Encabezado venta cafetería. tvc_estado: ''=abierta, 'C'=cerrada</td></tr>
+      <tr><td class="mono">b_detventascaf / b_detventascafpro</td><td>Detalle de ítems y productos de venta cafetería</td></tr>
+      <tr><td class="mono">b_formatorequesicionestdetallado</td><td>Requisición calculada para SAP (tipo 2). Campos: Fecha_minuta, Ceco_Sap, Regimen, Servicio, Codigo_Producto, Cantidad</td></tr>
+      <tr><td class="mono">b_cierreperiodo</td><td>Control de cierre mensual. cie_estado: 1=abierto, 0=cerrado</td></tr>
+      <tr><td class="mono">a_param</td><td>Parámetros por casino. Claves: ciediario (encriptado), parcomdia (encriptado), SvrAppCont, addreceta, 5etapas, pargrarnve, ctainsumo, ctalimdes</td></tr>
+      <tr><td class="mono">b_casinotipoactividades</td><td>Control de actividades para cierre diario. Tipos 1-10.</td></tr>
+      <tr><td class="mono">b_Fecha_Inhabiles</td><td>Días feriados. Afecta el cálculo de PMP en el cierre diario</td></tr>
+      <tr><td class="mono">b_totventas_SGP_FLMS</td><td>Tabla de interfaz para integración desde FLMS/SAP. Estado: NULL/1/3</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="card">
+  <h3>Tablas de Cafetería y Precios de Venta</h3>
+  <table>
+    <thead><tr><th>Tabla</th><th>Descripción</th><th>Campos clave</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">b_totpreciocaf</td><td>Artículos de cafetería con precio de venta. Catálogo por casino (tpc_cencos). Clave primaria: tpc_codigo + tpc_cencos</td><td class="mono">tpc_codigo, tpc_cencos, tpc_nombre, tpc_precio, tpc_activo</td></tr>
+      <tr><td class="mono">b_detpreciocaf</td><td>Composición de ingredientes por artículo de cafetería. Cada fila indica qué producto y en qué cantidad compone el artículo. Clave primaria: dpc_codigo + dpc_codmer + dpc_cencos</td><td class="mono">dpc_codigo, dpc_codmer, dpc_cantidad, dpc_cencos</td></tr>
+      <tr><td class="mono">b_preciovta</td><td>Precios de venta individual por cliente, vinculados a la combinación Contrato + Régimen + Servicio + Fecha de vigencia. Clave primaria: prv_cencos + prv_codreg + prv_codser + prv_fecvig + prv_rutcli</td><td class="mono">prv_cencos, prv_codreg, prv_codser, prv_fecvig, prv_rutcli, prv_preven, prv_SPRS</td></tr>
+    </tbody>
+  </table>
+  <div class="alert alert-info" style="margin-top:12px"><strong>Nota:</strong> <span class="mono">b_totpreciocaf</span> y <span class="mono">b_detpreciocaf</span> son usadas exclusivamente por <span class="mono">T_LiPrCa.frm</span> con SQL directo (sin Stored Procedures). <span class="mono">b_preciovta</span> es leída mediante <span class="mono">RutinaLectura.PrecioVta</span> desde <span class="mono">M_PVtaCl.frm</span>.</div>
+</div>
+      </div>
+      <div class="db-section" id="dbsec-funcs">
+<div class="card">
+  <table>
+    <thead><tr><th>Función</th><th>Tipo</th><th>Propósito</th><th>Uso</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="mono">sgp_p_desencripta</td>
+        <td>Escalar</td>
+        <td>Desencripta valores de a_param (ciediario, parcomdia). Algoritmo: CHAR(ASCII(char) - 73 - posición_1_based)</td>
+        <td>Vistas, SPs de cierre y mermas</td>
+      </tr>
+      <tr>
+        <td class="mono">fn_sgp_p_CalculaCosaliCosdes</td>
+        <td>Escalar</td>
+        <td>Calcula costo alimento (Op=1, cuenta ctainsumo) o desechable (Op=2, cuenta ctalimdes) por receta. Receta patrón: cencos='0'</td>
+        <td>M_MinRea.frm, SPs de costo</td>
+      </tr>
+      <tr>
+        <td class="mono">fn_sgp_Pro_TraerDiaSeguridad</td>
+        <td>Escalar</td>
+        <td>Retorna días de seguridad para un producto en un casino, recorriendo árbol a_tipopro &rarr; b_paramdesp</td>
+        <td>Planificación</td>
+      </tr>
+      <tr>
+        <td class="mono">FLMS_SGP_IdentificaErrores</td>
+        <td>Escalar</td>
+        <td>Retorna VARCHAR(200) con códigos de error separados por coma. 9 categorías: 1=ceco, 2=tipdoc, 4=régimen, 5=servicio, 6=total&ne;suma, 7=ingrediente, 8=producto, 9=cantidad&lt;0</td>
+        <td>FLMS_SGP_ValidaCargaSalidasDeBodega</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+      </div>
+      <div class="db-section" id="dbsec-views">
+<div class="card">
+  <table>
+    <thead><tr><th>Vista</th><th>Propósito</th><th>Tablas que consolida</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="mono">Sel_FechaUltimoCierre</td>
+        <td>Retorna FechaCierre (ayer) y FechaProceso (hoy) desencriptando 'ciediario' de a_param</td>
+        <td class="mono">a_param + sgp_p_desencripta</td>
+      </tr>
+      <tr>
+        <td class="mono">Sel_Minuta_Planificada</td>
+        <td>Minutas reales con ponderación ROUND((mid_numrac / min_racrea) * 100, 0)</td>
+        <td class="mono">b_minuta + b_minutadet (mid_tipmin='2')</td>
+      </tr>
+      <tr>
+        <td class="mono">Sel_Precio_Stock_SGP</td>
+        <td>Precios y stocks al último cierre (ppd_fecdia=máximo, bod_canmer &gt; 0)</td>
+        <td class="mono">b_productos + b_productospmpdia + b_bodegas</td>
+      </tr>
+      <tr>
+        <td class="mono">Sel_Producto_Ingrediente_SGP</td>
+        <td>Árbol producto &rarr; ingrediente con PMP incluido</td>
+        <td class="mono">b_productos + b_productosing + b_contlistpreing + b_productospmpdia + b_ingrediente</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+      </div>
+      <div class="db-section" id="dbsec-notes">
+<div class="card">
+  <h3>Notas sobre Transacciones</h3>
+  <div class="alert alert-warning"><strong>Patrón mixto de transacciones:</strong> En este sistema existe una arquitectura híbrida donde parte de las transacciones se controlan desde VB6 y parte desde SQL Server. Es crítico entenderlo para el nuevo desarrollo.</div>
+  <table>
+    <thead><tr><th>Formulario</th><th>Tipo transacción</th><th>Operaciones bajo transacción</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">M_MinRea.frm</td><td><span class="badge badge-blue">SP interno</span></td><td>BEGIN TRAN/COMMIT/ROLLBACK dentro de sgp_Ins_XmlMinutaReal. VB6 NO usa BeginTrans.</td></tr>
+      <tr><td class="mono">M_MerPre.frm</td><td><span class="badge badge-blue">SP interno</span></td><td>BEGIN TRAN/COMMIT/ROLLBACK dentro de sgp_Upd_XmlMermaPreparacion. VB6 NO usa BeginTrans.</td></tr>
+      <tr><td class="mono">M_ConRac.frm</td><td><span class="badge badge-orange">VB6</span></td><td>BeginTrans/CommitTrans en VB6 en líneas 1908, 1981, 2059, 2068.</td></tr>
+      <tr><td class="mono">M_SalBod.frm</td><td><span class="badge badge-orange">VB6</span></td><td>BeginTrans/CommitTrans en VB6. ROLLBACK si stock negativo.</td></tr>
+      <tr><td class="mono">M_VtaCon.frm</td><td><span class="badge badge-orange">VB6</span></td><td>BeginTrans/CommitTrans en operaciones Borrar y Confirmar. No usa SPs.</td></tr>
+      <tr><td class="mono">M_VenCaf.frm</td><td><span class="badge badge-orange">VB6</span></td><td>BeginTrans/CommitTrans en múltiples operaciones.</td></tr>
+      <tr><td class="mono">M_VenDir.frm</td><td><span class="badge badge-orange">VB6</span></td><td>BeginTrans/CommitTrans en VB6.</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="card">
+  <h3>Notas sobre Encriptación</h3>
+  <div class="alert alert-danger"><strong>Datos encriptados en a_param:</strong> Dos parámetros críticos están encriptados con un algoritmo propio embebido en el código SQL.</div>
+  <table>
+    <thead><tr><th>Parámetro</th><th>Contenido</th><th>Función de desencriptado</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">ciediario</td><td>Fecha del último cierre diario (formato YYYYMMDD como texto)</td><td class="mono">sgp_p_desencripta(@valor)</td></tr>
+      <tr><td class="mono">parcomdia</td><td>Password para editar la celda PRODUCIDAS en Control de Raciones</td><td class="mono">sgp_p_desencripta(@valor)</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:12px;color:#4a5568;margin-top:10px">Algoritmo: <span class="mono">CHAR(ASCII(char) - 73 - posición_1based)</span>. La clave está hardcodeada en la función SQL.</p>
+</div>
+<div class="card">
+  <h3>Notas sobre XML en Stored Procedures</h3>
+  <p style="font-size:13px;margin-bottom:10px">Varios SPs del módulo reciben parámetros en formato XML usando el SP del sistema <span class="mono">sp_xml_preparedocument</span>.</p>
+  <table>
+    <thead><tr><th>SP</th><th>Estructura XML</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">sgp_Ins_XmlMinutaReal</td><td><span class="mono">&lt;GrabaMinuta&gt;&lt;Minuta Op="" NumRacion="" CodReceta="" TipoReceta="" CosAli="" CosDes=""/&gt;&lt;/GrabaMinuta&gt;</span></td></tr>
+      <tr><td class="mono">sgp_Upd_XmlMermaPreparacion</td><td><span class="mono">&lt;GrabaMerma&gt;&lt;Merma CR="" NM="" MO="" MS="" NL=""/&gt;&lt;/GrabaMerma&gt;</span></td></tr>
+      <tr><td class="mono">sgp_DelIns_formatorequesicionestdetallado</td><td><span class="mono">&lt;Servicio&gt;&lt;Ser Ser="id"/&gt;&lt;/Servicio&gt;</span> y <span class="mono">&lt;Regimen&gt;&lt;Reg Reg="id"/&gt;&lt;/Regimen&gt;</span></td></tr>
+    </tbody>
+  </table>
+</div>
+      </div>
+    </div>
+
+    <!-- ===== 7. INTEGRACIONES ===== -->
+    <div class="section" id="sec-integraciones">
+<div class="card">
+  <h3>Diagrama General de Integraciones <span style="font-size:11px;color:#94a3b8;font-weight:400;margin-left:6px">🔍 click para ampliar</span></h3>
+  <div class="mermaid zoomable-mermaid" style="cursor:zoom-in;">
+graph TB
+    subgraph SGP_LOCAL
+        SGP[Módulo Producción VB6 + SQL Server]
+    end
+    subgraph Sistemas_Externos
+        SAP[SAP Sistema ERP Central]
+        FLMS[FLMS Sistema Logístico]
+        CR[Crystal Reports]
+        XLS[Microsoft Excel]
+    end
+    subgraph Interfaces
+        FLMS_TAB[b_totventas_SGP_FLMS Tabla interfaz]
+        REQ_TAB[b_formatorequesicionestdetallado Tabla requisición SAP]
+    end
+    SAP -->|Movimientos de bodega| FLMS
+    FLMS -->|Carga masiva| FLMS_TAB
+    FLMS_TAB -->|ProcesoDeIntegracion_FLMStoSGP| SGP
+    SGP -->|Requisición tipo 2| REQ_TAB
+    REQ_TAB -->|Lectura periódica| SAP
+    SGP -->|Datos reportes| CR
+    SGP -->|Exportación| XLS
+  </div>
+</div>
+<div class="card">
+  <h3>Flujo de Integración FLMS → SGP <span style="font-size:11px;color:#94a3b8;font-weight:400;margin-left:6px">🔍 click para ampliar</span></h3>
+  <div class="mermaid zoomable-mermaid" style="cursor:zoom-in;">
+sequenceDiagram
+    participant SAP
+    participant FLMS
+    participant FLMS_TAB as b_totventas_SGP_FLMS
+    participant VAL as FLMS_SGP_ValidaCargaSalidasDeBodega
+    participant ERR as FLMS_SGP_IdentificaErrores
+    participant SGP as b_totventas / b_detventas
+    SAP->>FLMS: Genera movimientos de bodega
+    FLMS->>FLMS_TAB: INSERT registros Estado=NULL
+    FLMS_TAB->>VAL: ProcesoDeIntegracion_FLMStoSGP
+    VAL->>ERR: Valida cada registro 9 categorías
+    ERR-->>VAL: Retorna códigos error
+    alt Sin errores
+        VAL->>FLMS_TAB: UPDATE Estado=1
+        VAL->>SGP: INSERT en tablas SGP
+    else Con errores
+        VAL->>FLMS_TAB: UPDATE Estado=3 + códigos error
+    end
+  </div>
+</div>
+<div class="card">
+  <h3>Flujo Requisición SGP → SAP <span style="font-size:11px;color:#94a3b8;font-weight:400;margin-left:6px">🔍 click para ampliar</span></h3>
+  <div class="mermaid zoomable-mermaid" style="cursor:zoom-in;">
+sequenceDiagram
+    participant CHEF as Chef/Usuario
+    participant ISALBOD as I_SalBod VB6
+    participant SP as sgp_DelIns_formatorequesicionestdetallado
+    participant REQ as b_formatorequesicionestdetallado
+    participant SAP
+    CHEF->>ISALBOD: Selecciona Tipo 2 y rango fechas
+    ISALBOD->>SP: Ejecuta con XML servicios/regímenes
+    SP->>SP: Calcula raciones x gramaje / facing
+    SP->>REQ: DELETE previo + INSERT nuevos registros
+    ISALBOD->>REQ: SELECT resultados
+    ISALBOD->>CHEF: Muestra en grilla + exporta Excel
+    SAP->>REQ: Lee periódicamente la tabla
+  </div>
+</div>
+<div class="card">
+  <h3>Dependencias entre Formularios</h3>
+  <div class="mermaid">
+graph TD
+    M_Plami1 --> M_MinTeo[M_MinTeo Planificación Teórica]
+    M_Plami1 --> M_MinRea
+    M_MinRea -->|Planificación real| I_SalBod
+    I_SalBod -->|Requisición generada| M_SalBod
+    M_SalBod -->|Salida registrada| M_MerPre
+    M_MinRea -->|Minuta publicada| M_ConRac
+    M_ConRac -->|Raciones controladas| M_RCDiar
+    M_MerPre -->|Mermas registradas| M_RCDiar
+    M_VtaCon -->|Ventas registradas| M_RCDiar
+    M_VenCaf -->|Cafetería cerrada| M_RCDiar
+    M_VenDir -->|Ventas directas| M_RCDiar
+    M_RCDiar -->|Cierre completado| Nuevo_dia[Nuevo día habilitado]
+  </div>
+</div>
+<div class="card">
+  <h3>Reportes Crystal Reports</h3>
+  <table>
+    <thead><tr><th>Informe</th><th>Formulario</th><th>Tipo</th></tr></thead>
+    <tbody>
+      <tr><td>Requisición Resumida</td><td class="mono">I_SalBod tipo 0</td><td>Crystal Reports</td></tr>
+      <tr><td>Requisición por Sector</td><td class="mono">I_SalBod tipo 1</td><td>Crystal Reports</td></tr>
+      <tr><td>Requisición Estructura Resumida</td><td class="mono">I_SalBod tipo 3</td><td>Crystal Reports</td></tr>
+      <tr><td>Resumen Requisición</td><td class="mono">I_SalBod tipo 4</td><td>Crystal Reports</td></tr>
+      <tr><td>Devoluciones</td><td class="mono">I_SalBod tipo 5</td><td>Crystal Reports</td></tr>
+      <tr><td>MenosDev</td><td class="mono">I_SalBod tipo 6</td><td>Crystal Reports</td></tr>
+    </tbody>
+  </table>
+</div>
+</div>
+
+    <!-- ===== 8. TRAZABILIDAD ===== -->
+    <div class="section" id="sec-trazabilidad">
+<div class="card">
+  <h3>Campos de Auditoría por Tabla</h3>
+  <table>
+    <thead><tr><th>Tabla</th><th>Campo Usuario</th><th>Campo Fecha</th><th>Observación</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">b_minuta</td><td class="mono">min_usuariocreacion</td><td class="mono">min_fechacreacion</td><td>Solo creación</td></tr>
+      <tr><td class="mono">b_mermadesconche</td><td class="mono">Usuario</td><td class="mono">Fecha_Modificacion, Fecha_Creacion</td><td>Creación y modificación</td></tr>
+      <tr><td class="mono">b_formatorequesicionestdetallado</td><td>Sin campo usuario</td><td>Sin fecha</td><td>Sin auditoría (tabla temporal SAP)</td></tr>
+      <tr><td>Llamadas a SP</td><td>Parámetro @Usuario</td><td>Implícito en SP</td><td>El usuario se pasa como parámetro</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="card">
+  <h3>Tablas de Log</h3>
+  <table>
+    <thead><tr><th>Tabla</th><th>Descripción</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">log_enviocierrediario</td><td>Registro de envíos del cierre diario al servidor central</td></tr>
+      <tr><td class="mono">log_cierrediario</td><td>Log detallado de cada ejecución del cierre diario</td></tr>
+      <tr><td class="mono">FLMS_SGP_IU_LogIntegraMermaMin_Out</td><td>Log de integración de mermas desde FLMS</td></tr>
+      <tr><td class="mono">FLMS_SGP_IU_LogIntegraOut</td><td>Log general de integración FLMS saliente</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="card">
+  <h3>Estados de Documentos</h3>
+  <div class="grid-2">
+    <div>
+      <h4>Minuta (b_minuta.min_indblo)</h4>
+      <table>
+        <thead><tr><th>Valor</th><th>Estado</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">0</td><td>Abierta — editable</td></tr>
+          <tr><td class="mono">2</td><td>Cerrada bloqueada — no reabrible</td></tr>
+          <tr><td class="mono">11</td><td>Cerrada no bloqueada — reapertura autorizada</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h4>Otros estados</h4>
+      <table>
+        <thead><tr><th>Tabla/Campo</th><th>Valores</th></tr></thead>
+        <tbody>
+          <tr><td class="mono">b_cierreperiodo.cie_estado</td><td>1=Abierto, 0=Cerrado</td></tr>
+          <tr><td class="mono">b_totventascaf.tvc_estado</td><td>''=En curso, 'C'=Cerrada</td></tr>
+          <tr><td class="mono">b_totventas_SGP_FLMS.Estado</td><td>NULL=Pendiente, 1=OK, 3=Error</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="alert alert-info" style="margin-top:12px">El PMP queda registrado históricamente por (ppd_cencos, ppd_codpro, ppd_fecdia), permitiendo reconstruir el costo de inventario para cualquier fecha pasada.</div>
+</div>
+</div>
+
+    <!-- ===== 9. VALORIZACIÓN ===== -->
+    <div class="section" id="sec-valorizacion">
+<div class="card">
+  <h3>Precio Medio Ponderado (PMP)</h3>
+  <div class="alert alert-info"><strong>Método de valorización:</strong> PMP calculado diariamente durante el cierre.</div>
+  <h4>Fórmula PMP</h4>
+  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px;font-family:monospace;font-size:13px;margin:12px 0">
+    PMP_nuevo = (Stock_anterior × PMP_anterior + Cantidad_entrada × Precio_entrada)<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/ (Stock_anterior + Cantidad_entrada)
+  </div>
+  <table>
+    <thead><tr><th>Método</th><th>Cuándo se usa</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">CalcularPMPDiaSql()</td><td>Cierre diario estándar</td></tr>
+      <tr><td class="mono">CalcularPMPDiaSqlPEL()</td><td>Cuando hay reproceso de integración SAP (PEL)</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="card">
+  <h3>Costo de Receta — fn_sgp_p_CalculaCosaliCosdes</h3>
+  <table>
+    <thead><tr><th>Op</th><th>Cuenta a_param</th><th>Descripción</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">1</td><td class="mono">ctainsumo</td><td>Costo alimentos/insumos</td></tr>
+      <tr><td class="mono">2</td><td class="mono">ctalimdes</td><td>Costo desechables</td></tr>
+    </tbody>
+  </table>
+  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;font-family:monospace;font-size:12px;margin-top:12px">
+    Costo = SUM(red_canpro × mic_cospro)<br>
+    FROM b_recetadet JOIN b_minutacosto<br>
+    WHERE codrec = @CodRec AND fecha &lt;= @Fecha
+  </div>
+  <p style="font-size:12px;margin-top:8px;color:#4a5568">Para recetas patrón: busca con <span class="mono">cencos='0'</span> (patrón global).</p>
+</div>
+<div class="card">
+  <h3>Fórmulas Adicionales</h3>
+  <div class="grid-2">
+    <div>
+      <h4>Costo de Merma</h4>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;font-family:monospace;font-size:12px">
+        CostoMerma = CostoTotal × (MermaxRaciones / RacionesPlan)
+      </div>
+    </div>
+    <div>
+      <h4>Fórmula de Requisición</h4>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;font-family:monospace;font-size:12px">
+        Cantidad = Raciones × Gramaje / Facing<br>
+        (mid_numrac × red_canpro) / pro_facing
+      </div>
+    </div>
+  </div>
+  <div class="grid-2" style="margin-top:12px">
+    <div>
+      <h4>Ponderación de Receta</h4>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;font-family:monospace;font-size:12px">
+        Ponderacion = ROUND((mid_numrac / min_racrea) × 100, 0)
+      </div>
+      <p style="font-size:12px;margin-top:6px;color:#4a5568">Vista: Sel_Minuta_Planificada</p>
+    </div>
+    <div>
+      <h4>Flujo de Costos <span style="font-size:11px;color:#94a3b8;font-weight:400;margin-left:6px">🔍 click para ampliar</span></h4>
+      <div class="mermaid zoomable-mermaid" id="flujo-costos" style="cursor:zoom-in;" title="Click para ampliar">
+flowchart LR
+    A[Precio compra] --> B[PMP diario b_productospmpdia]
+    B --> C[Costo receta fn_CalculaCosali]
+    C --> D[Costo minuta b_minutadet.mid_cosrec]
+    D --> E[Food Cost sgp_Sel_TraerCostoFoodCost]
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+    <!-- ===== 10. REPORTES ===== -->
+    <div class="section" id="sec-reportes">
+<div class="card">
+  <h3>Inventario de Reportes</h3>
+  <table>
+    <thead><tr><th>ID</th><th>Nombre</th><th>Formulario</th><th>Tipo</th><th>Destino</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">R-001</td><td>Requisición Resumida</td><td class="mono">I_SalBod tipo 0</td><td>Crystal Reports</td><td>Pantalla/Impresora</td></tr>
+      <tr><td class="mono">R-002</td><td>Requisición por Sector</td><td class="mono">I_SalBod tipo 1</td><td>Crystal Reports</td><td>Pantalla/Impresora</td></tr>
+      <tr><td class="mono">R-003</td><td>Requisición xEstructura Detallado</td><td class="mono">I_SalBod tipo 2</td><td><span class="badge badge-green">Excel + BD</span></td><td>SAP/Excel</td></tr>
+      <tr><td class="mono">R-004</td><td>Requisición xEstructura Resumido</td><td class="mono">I_SalBod tipo 3</td><td>Crystal Reports</td><td>Pantalla/Impresora</td></tr>
+      <tr><td class="mono">R-005</td><td>Requisición Resumen</td><td class="mono">I_SalBod tipo 4</td><td>Crystal Reports</td><td>Pantalla/Impresora</td></tr>
+      <tr><td class="mono">R-006</td><td>Devoluciones</td><td class="mono">I_SalBod tipo 5</td><td>Crystal Reports</td><td>Pantalla/Impresora</td></tr>
+      <tr><td class="mono">R-007</td><td>Requisición MenosDev</td><td class="mono">I_SalBod tipo 6</td><td>Crystal Reports</td><td>Pantalla/Impresora</td></tr>
+      <tr><td class="mono">R-008</td><td>Alerta Servicios Sin Comensales</td><td class="mono">I_SalBod</td><td><span class="badge badge-orange">Excel automático</span></td><td>Excel</td></tr>
+      <tr><td class="mono">R-009</td><td>Food Cost Minuta Cierre Diario</td><td class="mono">M_RCDiar</td><td>En pantalla</td><td>Pantalla</td></tr>
+      <tr><td class="mono">R-010</td><td>Lista de precios cafetería</td><td class="mono">T_LiPrCa (Pestaña Artículos)</td><td>InforAN.bas</td><td>Pantalla/Impresora</td></tr>
+      <tr><td class="mono">R-011</td><td>Lista de precios cafetería con composición</td><td class="mono">T_LiPrCa (Pestaña Artículos, con checkbox)</td><td>InforAN.bas</td><td>Pantalla/Impresora</td></tr>
+      <tr><td class="mono">R-012</td><td>Composición artículo de cafetería</td><td class="mono">T_LiPrCa (Pestaña Composición)</td><td>InforAN.bas</td><td>Pantalla/Impresora</td></tr>
+      <tr><td class="mono">R-013</td><td>Precios de venta por cliente</td><td class="mono">M_PVtaCl</td><td>Informe VB6</td><td>Pantalla/Impresora</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="card">
+  <h3>Consultas SQL (Vistas)</h3>
+  <table>
+    <thead><tr><th>Vista</th><th>Descripción</th><th>Uso</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">Sel_FechaUltimoCierre</td><td>Fecha del último cierre diario por casino</td><td>Control de acceso a edición</td></tr>
+      <tr><td class="mono">Sel_Minuta_Planificada</td><td>Minutas reales con ponderación por receta</td><td>Análisis planificación</td></tr>
+      <tr><td class="mono">Sel_Precio_Stock_SGP</td><td>Precios y stocks al último cierre</td><td>Valorización inventario</td></tr>
+      <tr><td class="mono">Sel_Producto_Ingrediente_SGP</td><td>Árbol producto → ingrediente con PMP</td><td>Análisis nutricional y costos</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="card">
+  <h3>SPs de Análisis y Reportes</h3>
+  <table>
+    <thead><tr><th>SP</th><th>Descripción</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">sgp_Sel_TraerCostoFoodCostMinutaCierreDiario</td><td>Food Cost: teórico + real + vendido en tabla temporal #TempPaso</td></tr>
+      <tr><td class="mono">sgp_Sel_CalcularSalidaProduccionMinutaTeorica</td><td>Compara teórico vs realizado en b_totventas (tov_tipdoc='SP')</td></tr>
+      <tr><td class="mono">sgp_Sel_DetalleMermasCierreDiario</td><td>Detalle de mermas para el período YYYYMM (usa pargrarnve)</td></tr>
+      <tr><td class="mono">sgp_Sel_MermaDesconcheCierreDiario</td><td>Datos de b_mermadesconche para el período</td></tr>
+    </tbody>
+  </table>
+</div>
+</div>
+
+    <!-- ===== 11. CASOS ESPECIALES ===== -->
+    <div class="section" id="sec-casos">
+<div class="card">
+  <h3>11.1 Casinos con Sistema 5-Etapas</h3>
+  <p style="font-size:13px">Casinos que reciben minutas centralizadas desde una cocina central (régimen código &gt; 9999).</p>
+  <div class="alert alert-warning"><strong>Comportamiento:</strong> Celdas en M_MinRea se muestran en amarillo y son de solo lectura. El parámetro <span class="mono">a_param '5etapas'</span> controla si el casino opera bajo este esquema.</div>
+</div>
+<div class="card">
+  <h3>11.2 Inventario Rotativo</h3>
+  <p style="font-size:13px">Casinos donde el inventario físico se toma periódicamente y se usa como saldo real.</p>
+  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;font-family:monospace;font-size:12px;margin-top:10px">
+    UPDATE b_productospmpdia<br>
+    SET ppd_saldo = tin_stofis -- stock físico tomado<br>
+    WHERE ppd_fecdia = @fecha AND ppd_cencos = @ceco
+  </div>
+</div>
+<div class="card">
+  <h3>11.3 Días Feriados (b_Fecha_Inhabiles)</h3>
+  <p style="font-size:13px">El proceso de cierre detecta feriados dentro del período y para cada feriado recalcula el PMP. Garantiza que el PMP del día siguiente al feriado incluya los movimientos correctos.</p>
+</div>
+<div class="card">
+  <h3>11.4 Reproceso SAP (PEL)</h3>
+  <p style="font-size:13px">Cuando SAP envía una corrección de datos (PEL), el sistema usa <span class="mono">CalcularPMPDiaSqlPEL()</span> en lugar de <span class="mono">CalcularPMPDiaSql()</span>. Procesa primero los movimientos del reproceso antes de recalcular PMP.</p>
+</div>
+<div class="card">
+  <h3>11.5 Control de Stock Negativo</h3>
+  <div class="grid-2">
+    <div><div class="alert alert-danger"><strong>M_SalBod:</strong> Si al generar el documento SP el stock queda negativo → ROLLBACK automático de toda la transacción VB6. El documento SP no se genera.</div></div>
+    <div><div class="alert alert-warning"><strong>M_VenDir:</strong> Muestra en color azul las líneas donde la cantidad supera el stock. Permite al usuario decidir, pero no bloquea automáticamente.</div></div>
+  </div>
+</div>
+<div class="card">
+  <h3>11.6 Clientes CoCo (Centro de Costo)</h3>
+  <p style="font-size:13px">Si el cliente aparece en <span class="mono">b_clientecencos</span>, se habilita el Tab2 (Detalle Centro Costo) en M_VtaCon. Permite ingresar montos de venta diferenciados por sub-centro de costo.</p>
+</div>
+<div class="card">
+  <h3>11.7 Receta Patrón vs Receta de Régimen</h3>
+  <table>
+    <thead><tr><th>Tipo</th><th>mid_tiprec</th><th>cencos en función costo</th></tr></thead>
+    <tbody>
+      <tr><td>Receta Patrón</td><td class="mono">0</td><td class="mono">'0' (global)</td></tr>
+      <tr><td>Receta de Régimen</td><td class="mono">&gt; 0</td><td class="mono">Centro de costo específico</td></tr>
+    </tbody>
+  </table>
+</div>
+<div class="card">
+  <h3>11.8 Reapertura de Cierre</h3>
+  <p style="font-size:13px">Solo el PC autorizado (SvrAppCont) puede reabrir. Usa <span class="mono">sgp_Upd_ReabrirCierreDiario</span>.</p>
+  <div class="alert alert-danger"><strong>Riesgo:</strong> La reapertura invalida todos los registros PMP del día. Si existen documentos posteriores que ya usaron el PMP calculado, pueden quedar inconsistentes. Gestionar con precaución.</div>
+</div>
+</div>
+
+    <!-- ===== 12. PREGUNTAS ABIERTAS ===== -->
+    <div class="section" id="sec-preguntas">
+<div class="card">
+  <h3>Preguntas Abiertas — Requieren validación con el equipo</h3>
+  <div class="alert alert-warning" style="margin-bottom:16px"><strong>14 preguntas</strong> quedaron sin respuesta definitiva. Son críticas para el diseño del nuevo sistema.</div>
+  <div class="question"><div class="q-id">❓ Pregunta-PROD-001</div><div class="q-text">¿Cuál es la distinción exacta entre min_indblo=2 (cerrado bloqueado) y min_indblo=11 (cerrado no bloqueado)? Ambos bloquean la edición en M_MinRea.</div></div>
+  <div class="question"><div class="q-id">❓ Pregunta-PROD-002</div><div class="q-text">¿El código de error 3 de FLMS_SGP_IdentificaErrores fue eliminado o reservado? Solo se documentaron 9 categorías pero el código 3 no aparece.</div></div>
+  <div class="question"><div class="q-id">❓ Pregunta-PROD-003</div><div class="q-text">¿Qué módulo genera la planificación teórica inicial (M_MinTeo)? ¿Tiene lógica similar a M_MinRea?</div></div>
+  <div class="question"><div class="q-id">❓ Pregunta-PROD-004</div><div class="q-text">¿El proceso de digitalización de la requisición (bodeguero confirma físico vs planificado) está implementado o es una propuesta?</div></div>
+  <div class="question"><div class="q-id">❓ Pregunta-PROD-005</div><div class="q-text">¿Cuáles son los criterios exactos para que un casino tenga inventario rotativo?</div></div>
+  <div class="question"><div class="q-id">❓ Pregunta-PROD-006</div><div class="q-text">¿Qué es la tabla b_minutafijadia y cuándo se usa en lugar de la minuta real en M_SalBod?</div></div>
+  <div class="question"><div class="q-id">❓ Pregunta-PROD-007</div><div class="q-text">¿Qué SP o proceso actualiza b_casinotipoactividades al completar cada actividad del día? Se verifica en cierre pero no se documentó cómo se completa.</div></div>
+  <div class="question"><div class="q-id">❓ Pregunta-PROD-008</div><div class="q-text">¿Qué representa mir_nroguia en b_minutaraciones y desde qué módulo se genera?</div></div>
+  <div class="question"><div class="q-id">❓ Pregunta-PROD-009</div><div class="q-text">¿La tabla b_detallelectura corresponde a lecturas de tarjetas/vales electrónicos? ¿Qué sistema las genera?</div></div>
+  <div class="question"><div class="q-id">❓ Pregunta-PROD-010</div><div class="q-text">¿El parámetro pargrarnve (gramos por ración no vendida) es fijo por casino o varía por receta?</div></div>
+  <div class="question"><div class="q-id">❓ Pregunta-PROD-011</div><div class="q-text">¿Qué ocurre con los documentos tipo ME (Merma) y SE/DE en el correlativo de b_parametros?</div></div>
+  <div class="question"><div class="q-id">❓ Pregunta-PROD-012</div><div class="q-text">¿El proceso FLMS_SGP_ValidaRacionesNoVendidas es parte del cierre diario o un proceso independiente?</div></div>
+  <div class="question"><div class="q-id">❓ Pregunta-PROD-013</div><div class="q-text">¿Existe un proceso para sincronizar la planificación teórica con cambios de última hora antes de producción?</div></div>
+  <div class="question"><div class="q-id">❓ Pregunta-PROD-014</div><div class="q-text">¿Cómo se maneja el control de versiones de la planificación cuando un chef cambia la minuta real después de generada la requisición? La requisición tipo 2 se genera puntualmente.</div></div>
+</div>
+</div>
+
+    <!-- ===== 13. GLOSARIO ===== -->
+    <div class="section" id="sec-glosario">
+<div class="card">
+  <h3>Glosario de Términos</h3>
+  <div class="glos-item"><span class="glos-term">Ceco / Centro de Costo</span><span>Identificador único de cada casino operado por Sodexo Chile. Corresponde al código del contrato.</span></div>
+  <div class="glos-item"><span class="glos-term">Régimen</span><span>Clasificación del tipo de alimentación dentro de un casino. Código ≤ 9999 = local/patrón. Código &gt; 9999 = centralizado (5-etapas).</span></div>
+  <div class="glos-item"><span class="glos-term">Servicio</span><span>Tiempo de comida dentro de un régimen: desayuno, almuerzo, once, cena, etc.</span></div>
+  <div class="glos-item"><span class="glos-term">Minuta</span><span>Planificación del menú para un día específico, régimen y servicio. Puede ser teórica (tipmin='1') o real (tipmin='2').</span></div>
+  <div class="glos-item"><span class="glos-term">Minuta Teórica</span><span>Planificación inicial del menú, hecha con un mes de anticipación. Sirve como base para la real.</span></div>
+  <div class="glos-item"><span class="glos-term">Minuta Real</span><span>Planificación ajustada por el chef antes de la producción del día.</span></div>
+  <div class="glos-item"><span class="glos-term">Raciones</span><span>Número de porciones a servir. Hay tres niveles: planificadas, producidas y vendidas.</span></div>
+  <div class="glos-item"><span class="glos-term">PMP</span><span>Precio Medio Ponderado. Método de valorización de inventario calculado diariamente en el cierre.</span></div>
+  <div class="glos-item"><span class="glos-term">SP (Salida Producción)</span><span>Documento que registra la salida de mercaderías desde bodega hacia cocina.</span></div>
+  <div class="glos-item"><span class="glos-term">DP (Devolución Producción)</span><span>Documento que registra el retorno de mercaderías no utilizadas desde cocina a bodega.</span></div>
+  <div class="glos-item"><span class="glos-term">ME (Merma)</span><span>Documento o registro de pérdida de materias primas durante el proceso productivo.</span></div>
+  <div class="glos-item"><span class="glos-term">5-Etapas</span><span>Sistema de producción centralizado donde una cocina central prepara y distribuye a varios casinos. Regímenes con código &gt; 9999.</span></div>
+  <div class="glos-item"><span class="glos-term">Facing</span><span>Factor de conversión que representa la cantidad de producto por unidad de empaque/presentación (pro_facing en b_productos).</span></div>
+  <div class="glos-item"><span class="glos-term">Merma por Preparación</span><span>Pérdida de materia prima durante el proceso de cocción/preparación, medida en raciones o kilogramos.</span></div>
+  <div class="glos-item"><span class="glos-term">Desconche</span><span>Tipo específico de merma correspondiente a restos de alimentos después del servicio.</span></div>
+  <div class="glos-item"><span class="glos-term">RNV</span><span>Raciones No Vendidas. Raciones producidas pero no consumidas por comensales.</span></div>
+  <div class="glos-item"><span class="glos-term">Food Cost</span><span>Porcentaje del costo de alimentos sobre el total de ventas. Indicador clave de gestión.</span></div>
+  <div class="glos-item"><span class="glos-term">FLMS</span><span>Sistema logístico externo (SAP) que envía movimientos de bodega al SGP LOCAL para su integración.</span></div>
+  <div class="glos-item"><span class="glos-term">CoCo</span><span>Cliente con configuración de "Centro de Costo" que requiere desglose de ventas por sub-unidad.</span></div>
+  <div class="glos-item"><span class="glos-term">ciediario</span><span>Parámetro de a_param que almacena encriptada la fecha del último cierre diario.</span></div>
+  <div class="glos-item"><span class="glos-term">parcomdia</span><span>Parámetro de a_param que almacena encriptado el password para editar la fila PRODUCIDAS.</span></div>
+  <div class="glos-item"><span class="glos-term">SvrAppCont</span><span>Parámetro de a_param con el nombre del PC autorizado para ejecutar el cierre diario.</span></div>
+  <div class="glos-item"><span class="glos-term">addreceta</span><span>Parámetro de a_param que limita el número de recetas adicionales por día en la planificación.</span></div>
+  <div class="glos-item"><span class="glos-term">pargrarnve</span><span>Parámetro de a_param con los gramos por ración no vendida para cálculo de merma RNV.</span></div>
+  <div class="glos-item"><span class="glos-term">indblo</span><span>Indicador de bloqueo de una minuta: 0=abierta, 2=cerrada bloqueada, 11=cerrada no bloqueada.</span></div>
+  <div class="glos-item"><span class="glos-term">vaSpread1</span><span>Componente de grilla FarPoint Spread utilizado en formularios VB6 para mostrar datos tabulares interactivos.</span></div>
+  <div class="glos-item"><span class="glos-term">fpText / fpLongInteger / fpDoubleSingle</span><span>Controles de entrada de datos del componente FarPoint usado en VB6.</span></div>
+  <div class="glos-item"><span class="glos-term">SSTab</span><span>Control de pestañas (tabs) de Sheridan Software usado en los formularios VB6.</span></div>
+  <div class="glos-item"><span class="glos-term">Crystal Reports</span><span>Motor de reportes utilizado para generar los informes de requisición e inventario.</span></div>
+  <div class="glos-item"><span class="glos-term">BeginTrans / CommitTrans / RollbackTrans</span><span>Métodos de control de transacciones en ADO/DAO desde VB6.</span></div>
+  <div class="glos-item"><span class="glos-term">SET XACT_ABORT ON</span><span>Instrucción SQL Server que hace que la transacción se revierta automáticamente ante cualquier error.</span></div>
+  <div class="glos-item"><span class="glos-term">sp_xml_preparedocument</span><span>SP del sistema SQL Server que parsea un documento XML y retorna un handle para su procesamiento.</span></div>
+  <div class="glos-item"><span class="glos-term">tin_stofis</span><span>Campo que representa el stock físico tomado en un inventario físico rotativo.</span></div>
+  <div class="glos-item"><span class="glos-term">ppd_fecdia</span><span>Fecha del día de cálculo del PMP en formato entero YYYYMMDD.</span></div>
+  <div class="glos-item"><span class="glos-term">mid_tipmin</span><span>Tipo de minuta en b_minutadet: '1'=teórica, '2'=real.</span></div>
+  <div class="glos-item"><span class="glos-term">red_canpro</span><span>Cantidad de producto por receta en b_recetadet (gramaje en unidades del producto).</span></div>
+  <div class="glos-item"><span class="glos-term">pro_facing</span><span>Factor de empaque/presentación del producto en b_productos.</span></div>
+</div>
+</div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+  mermaid.initialize({ startOnLoad: false, theme: 'neutral', securityLevel: 'loose' });
+
+  const sectionTitles = {
+    intro: '1. Introducción al Módulo',
+    datos: '2. Entidades y Modelo de Datos',
+    flujos: '3. Funcionalidades por Submódulo',
+    reglas: '4. Reglas de Negocio',
+    validaciones: '5. Validaciones del Sistema',
+    bd: '6. Objetos de Base de Datos',
+    integraciones: '7. Integraciones y Dependencias',
+    trazabilidad: '8. Trazabilidad y Auditoría',
+    valorizacion: '9. Valorización y Costos',
+    reportes: '10. Reportes y Consultas',
+    casos: '11. Casos Especiales',
+    preguntas: '12. Preguntas Abiertas',
+    glosario: '13. Glosario'
+  };
+
+  function showSection(id) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const sec = document.getElementById('sec-' + id);
+    if (sec) {
+      sec.classList.add('active');
+      // render mermaid in this section
+      mermaid.run({ nodes: sec.querySelectorAll('.mermaid') });
+    }
+    document.querySelectorAll('.nav-item').forEach(n => {
+      if (n.getAttribute('onclick') && n.getAttribute('onclick').includes("'" + id + "'")) {
+        n.classList.add('active');
+      }
+    });
+    document.getElementById('section-title').textContent = sectionTitles[id] || id;
+  }
+
+  // Process cards for flujos section
+  const processData = {
+    plami1: { title: 'Selector Planificación', code: 'M_Plami1.frm', icon: '📅', desc: 'Punto de entrada al proceso de planificación. Selecciona contrato, régimen, servicio y período.' },
+    minrea: { title: 'Editor Planificación Real', code: 'M_MinRea.frm', icon: '📝', desc: 'Editor donde el chef define recetas y raciones del día. 5.111 líneas de código.' },
+    conrac: { title: 'Control de Raciones', code: 'M_ConRac.frm', icon: '🍽️', desc: 'Registro de raciones por cliente/día. Fila PRODUCIDAS protegida con password.' },
+    merpre: { title: 'Mermas por Preparación', code: 'M_MerPre.frm', icon: '📉', desc: 'Registro de mermas durante preparación. Mermas por raciones, kilos y desconche.' },
+    isalbod: { title: 'Informe Requisición', code: 'I_SalBod.frm', icon: '📋', desc: 'Genera informes de requisición. Tipo 2 guarda en BD para SAP.' },
+    salbod: { title: 'Salida Bodega a Producción', code: 'M_SalBod.frm', icon: '📦', desc: 'Registra movimiento físico bodega→cocina. Genera documento SP.' },
+    rcdiar: { title: 'Cierre Diario', code: 'M_RCDiar.frm', icon: '🔒', desc: 'Cierre del día operacional. Calcula PMP. Solo desde PC autorizado (SvrAppCont).' },
+    vtacon: { title: 'Venta Servicio Contado', code: 'M_VtaCon.frm', icon: '💰', desc: 'Registra ventas de servicios al contado. 5 formas de pago.' },
+    vencaf: { title: 'Venta Cafetería', code: 'M_VenCaf.frm', icon: '☕', desc: 'Gestiona ventas de cafetería con control de stock por producto.' },
+    vendir: { title: 'Venta Directa', code: 'M_VenDir.frm', icon: '🛍️', desc: 'Registro de ventas directas. Color azul indica stock insuficiente.' },
+    produ1: { title: 'Árbol Ingrediente', code: 'M_Produ1.frm', icon: '🌿', desc: 'Solo lectura. Visualiza composición de receta e ingredientes nutricionales.' },
+    tabgra: { title: 'Tabla Gramaje', code: 'M_TabGra.frm', icon: '⚖️', desc: 'Define gramos/porción por Zona/SubSegmento/IngReceta/Régimen.' },
+    lipca: { title: 'Lista Precio Cafetería', code: 'T_LiPrCa.frm', icon: '🏷️', desc: 'Administra el catálogo de artículos de cafetería con precio de venta y composición de ingredientes. Dos pestañas: Artículos (b_totpreciocaf) y Composición (b_detpreciocaf). Sin SPs: SQL directo.' },
+    pvtacl: { title: 'Precio Venta Cliente', code: 'M_PVtaCl.frm', icon: '💲', desc: 'Registra el precio de venta individual por cliente para una combinación Contrato + Régimen + Servicio + Fecha de vigencia. El precio queda asociado a las raciones planificadas en b_minutaraciones.' }
+  };
+
+  function selectProcess(id) {
+    document.querySelectorAll('.process-card').forEach(c => c.classList.remove('selected'));
+    const card = document.getElementById('pc-' + id);
+    if (card) card.classList.add('selected');
+    const panel = document.getElementById('flow-panel');
+    const data = processData[id];
+    if (!data || !panel) return;
+    const mermaidMap = {
+      plami1: `flowchart TD\n    A[Abre M_Plami1] --> B[Ingresa RUT contrato]\n    B --> C[Sistema carga regímenes\\nRutinaLectura.Regimen]\n    C --> D[Selecciona régimen]\n    D --> E[Sistema carga servicios]\n    E --> F[Selecciona servicio y mes/año]\n    F --> G[Sistema carga calendario\\nvaSpread1]\n    G --> H{Botón presionado}\n    H -- Planificación --> I[ValidarAccesoMinutaBloqueyBloqueo]\n    H -- Estructura Fija --> J[Abre editor estructura fija]\n    H -- Salir --> K[Cierra formulario]\n    I --> L{min_indblo IN 2 o 11?}\n    L -- Sí bloqueado --> M[Mensaje período bloqueado]\n    L -- No libre --> N[Abre M_MinRea]`,
+      minrea: `flowchart TD\n    A[Abre M_MinRea] --> B[DetallePlantillaMinuta\\nCarga grilla con datos]\n    B --> C[VectorCol\\nMapea posición días]\n    C --> D[Usuario edita recetas/raciones]\n    D --> E{Tipo modificación}\n    E -- Agregar receta --> F[Busca en catálogo]\n    E -- Cambiar raciones --> G[Edita NºRaciones]\n    E -- Eliminar receta --> H[Borra fila]\n    F --> I[Construye XML GrabaMinuta]\n    G --> I\n    H --> I\n    I --> J[sgp_Ins_XmlMinutaReal]\n    J --> K{Error?}\n    K -- raciones < mermas --> L[Rechaza]\n    K -- receta con mermas --> M[Rechaza]\n    K -- OK --> N[COMMIT en BD]\n    N --> O[Refresca grilla]`,
+      conrac: `flowchart TD\n    A[Abre M_ConRac] --> B[sgp_Sel_DetalleLecturaxPeriodo\\nCarga grilla]\n    B --> C[Usuario edita raciones por cliente/día]\n    C --> D{Fila PRODUCIDAS?}\n    D -- Sí --> E[Solicita password\\nDesencripta parcomdia]\n    E --> F{Password correcto?}\n    F -- No --> G[Bloquea edición]\n    F -- Sí --> H[Permite edición]\n    D -- No --> H\n    H --> I[Guardar]\n    I --> J[sgp_Del_MinutaRaciones]\n    J --> K[sgp_Ins_MinutaRaciones]\n    K --> L[sgp_Del_MinutaRacionFacturable]\n    L --> M[sgp_Ins_MinutaRacionFacturable]\n    M --> N{Fac=1?}\n    N -- Sí --> O[DELETE clientes preserva PRODUCIDAS/PERSONAL/MERMAS]\n    N -- No --> P[Solo marca facturable]`,
+      merpre: `flowchart TD\n    A[Abre M_MerPre] --> B[sgp_Sel_ValidarMinutaMermaPorPreparacion]\n    B --> C{Minuta real existe?}\n    C -- No --> D[Mensaje sin planificación real]\n    C -- Sí --> E[sgp_Sel_MermaPorPreparacion\\nCarga grilla]\n    E --> F[Usuario ingresa mermas por receta]\n    F --> G{Merma > Raciones?}\n    G -- Sí --> H[Rechaza valor]\n    G -- No --> I{Día < cierre?}\n    I -- Sí cerrado --> J[Bloquea fila en rojo]\n    I -- No --> K[Permite edición]\n    K --> L[Ingresa Desconche/Pan/Produccion]\n    L --> M[Construye XML GrabaMerma]\n    M --> N[sgp_Upd_XmlMermaPreparacion]\n    N --> O[UPDATE b_minutadet]\n    O --> P[INSERT/UPDATE b_mermadesconche]\n    P --> Q[COMMIT]`,
+      isalbod: `flowchart TD\n    A[Selecciona tipo informe] --> B{Tipo 2?}\n    B -- No otros tipos --> C[Crystal Reports → Pantalla]\n    B -- Sí tipo 2 --> D[sgp_Sel_ValidarServicioComensalesCeroSalProduccion]\n    D --> E{Servicios sin comensales?}\n    E -- Sí --> F[Warning + Excel automático]\n    E -- No --> G[Construye XMLServicio y XMLRegimen]\n    F --> G\n    G --> H[sgp_Upd_ValidarProductoVigente]\n    H --> I[sgp_DelIns_formatorequesicionestdetallado\\nCalcula y guarda requisición]\n    I --> J[Exporta a Excel]\n    J --> K[Datos en b_formatorequesicionestdetallado\\npara SAP]`,
+      salbod: `flowchart TD\n    A[Abre M_SalBod] --> B[Selecciona fecha y bodega]\n    B --> C{Fuente de datos}\n    C -- Minuta Real --> D[Lee b_minutadet tipmin=2]\n    C -- Estructura Fija --> E[Lee b_minutafijadia]\n    D --> F[Calcula: raciones x red_canpro / rec_basrac]\n    E --> F\n    F --> G[Busca PMP en b_productospmpdia]\n    G --> H{Modo}\n    H -- A nuevo --> I[BeginTrans VB6]\n    H -- M modificar --> J[sgp_Sel_ValidarDevolucionProduccion]\n    J --> K{Existe DP?}\n    K -- Sí --> L[Bloquea modificación]\n    K -- No --> I\n    I --> M[INSERT b_totventas SP + b_detventas]\n    M --> N[UPDATE b_bodegas -stock]\n    N --> O{Stock negativo?}\n    O -- Sí --> P[ROLLBACK VB6]\n    O -- No --> Q[CommitTrans VB6]`,
+      rcdiar: `flowchart TD\n    A[Abre M_RCDiar] --> B{PC autorizado?\\nGetComputerName vs SvrAppCont}\n    B -- No --> C[Botón cierre deshabilitado]\n    B -- Sí --> D[Muestra calendario cyan/azul/verde]\n    D --> E[Selecciona día]\n    E --> F[Ejecuta 14+ validaciones CierrePeriodo]\n    F --> G{Todas las actividades OK?}\n    G -- No --> H[Lista actividades pendientes]\n    G -- Sí --> I{vg_tipbase=2?}\n    I -- Sí reproceso SAP --> J[CalcularPMPDiaSqlPEL]\n    I -- No --> K[CalcularPMPDiaSql]\n    K --> L[Actualiza b_productospmpdia]\n    J --> L\n    L --> M{Inventario rotativo?}\n    M -- Sí --> N[UPDATE ppd_saldo = tin_stofis]\n    M -- No --> O[Actualiza a_param ciediario]\n    N --> O\n    O --> P{Días feriados?}\n    P -- Sí --> Q[Recalcula PMP por feriado]\n    P -- No --> R[Marca día verde - Cierre OK]\n    Q --> R`,
+      vtacon: `flowchart TD\n    A[Abre M_VtaCon] --> B[Carga grilla calendario\\nmonto x día]\n    B --> C{Cliente en b_clientecencos?}\n    C -- Sí CoCo --> D[Habilita Tab2 Detalle CeCo]\n    C -- No --> E[Solo Tab1]\n    D --> F[Selecciona forma de pago\\n0=Contado 1=Cheque 2=ChqRest 3=TC 4=Vale]\n    E --> F\n    F --> G[Ingresa montos por día]\n    G --> H{Confirmar?}\n    H -- Borrar --> I[BeginTrans VB6\\nDELETE b_ventacontado]\n    H -- Confirmar --> J[BeginTrans VB6\\nINSERT b_ventacontado]\n    I --> K[CommitTrans VB6]\n    J --> K`,
+      vencaf: `flowchart TD\n    A[Abre M_VenCaf] --> B[Tab1: Venta Cafetería\\nTab2: Inventario]\n    B --> C[Selecciona tipo pago\\nCR/CU/CA]\n    C --> D{CR o CU?}\n    D -- Sí --> E[Requiere cliente identificado]\n    D -- CA --> F[Sin cliente]\n    E --> G[Ingresa productos vendidos]\n    F --> G\n    G --> H{Operación}\n    H -- Op=1 Cerrar --> I[BeginTrans VB6\\nUPDATE tvc_estado=C]\n    I --> J[UPDATE b_bodegas -stock]\n    J --> K[CommitTrans VB6]\n    H -- Op=2 Reabrir --> L[BeginTrans VB6\\nUPDATE tvc_estado=vacío]\n    L --> M[Revierte stock]\n    M --> K`,
+      vendir: `flowchart TD\n    A[Abre M_VenDir] --> B[Carga productos disponibles]\n    B --> C[Ingresa cantidad a vender]\n    C --> D{Cantidad > stock?}\n    D -- Sí --> E[Marca celda en AZUL\\nAdvertencia visual]\n    D -- No --> F[Normal]\n    E --> G[Usuario decide continuar?]\n    F --> H[BeginTrans VB6]\n    G -- Sí --> H\n    G -- No --> C\n    H --> I[INSERT b_totventas VD]\n    I --> J[UPDATE b_bodegas -stock]\n    J --> K[CommitTrans VB6]`,
+      produ1: `flowchart TD\n    A[Abre M_Produ1] --> B[Ingresa código receta]\n    B --> C[Consulta b_ingrediente]\n    C --> D[JOIN b_productos + a_unidad]\n    D --> E[Busca PMP en b_productospmpdia]\n    E --> F[Muestra árbol ingredientes\\nSolo lectura]\n    F --> G[Visualiza aportes nutricionales]`,
+      tabgra: `flowchart TD\n    A[Abre M_TabGra] --> B[sgpadm_s_zona 6 0\\nCarga jerarquía zonas]\n    B --> C[TreeView: Zona → SubSegmento\\n→ IngReceta → Régimen]\n    C --> D[Usuario selecciona nodo]\n    D --> E[Carga grilla de gramajes]\n    E --> F[Define gramos/porción\\npor TipMin y Fecha]\n    F --> G[Guarda configuración]`,
+      lipca: `flowchart TD\n    A([Abre T_LiPrCa]) --> B(SELECT b_totpreciocaf WHERE tpc_cencos = casino activo)\n    B --> C[Grilla de artículos con Código, Nombre, Precio, Activo]\n    C --> D{Acción del usuario}\n    D --> E[Pestaña 1: Artículos]\n    D --> F[Pestaña 2: Composición]\n    E --> G{Operación}\n    G -- Agregar --> H[Fila vacía al final de la grilla]\n    H --> I[Usuario ingresa Nombre y Precio]\n    I --> J{Nombre y Precio válidos?}\n    J -- No --> K[Mensaje: Falta información]\n    K --> I\n    J -- Sí --> L[(INSERT b_totpreciocaf\\ncódigo = MAX+1 por casino)]\n    L --> B\n    G -- Modificar --> M[Edita Nombre, Precio o Activo]\n    M --> N{Datos válidos?}\n    N -- No --> O[Mensaje: Falta información]\n    O --> M\n    N -- Sí --> P[(UPDATE b_totpreciocaf)]\n    P --> B\n    G -- Eliminar --> Q{¿Tiene datos asociados?}\n    Q -- Sí --> R[Mensaje: dato asociado. No elimina.]\n    Q -- No --> S{Confirma?}\n    S -- Sí --> T[(DELETE b_totpreciocaf)]\n    T --> B\n    G -- Imprimir --> U{¿Con composición?}\n    U -- No --> V[Lista de precios cafetería]\n    U -- Sí --> W[Lista de precios con composición]\n    F --> X(SELECT b_detpreciocaf JOIN b_productos JOIN a_unidad)\n    X --> Y[Grilla: Código, Nombre producto, Unidad, Cantidad]\n    Y --> Z{Operación composición}\n    Z -- Agregar --> AA[Buscador productos pro_ctrsto=1 vigentes]\n    AA --> AB{Producto ya en composición?}\n    AB -- Sí --> AC[Mensaje: Producto ya fue ingresado]\n    AB -- No --> AD[Usuario ingresa Cantidad]\n    AD --> AE{Cantidad válida?}\n    AE -- No --> AF[Mensaje: Falta información]\n    AE -- Sí --> AG[(INSERT b_detpreciocaf)]\n    AG --> X\n    Z -- Modificar --> AH[Edita Cantidad]\n    AH --> AI[(UPDATE b_detpreciocaf)]\n    AI --> X\n    Z -- Eliminar --> AJ{Confirma?}\n    AJ -- Sí --> AK[(DELETE b_detpreciocaf)]`,
+      pvtacl: `flowchart TD\n    A([Abre M_PVtaCl]) --> B[Usuario completa Contrato + Régimen + Servicio + Fecha]\n    B --> C{Encabezado completo?}\n    C -- No --> D[Mensaje: Falta información en encabezado]\n    C -- Sí --> E{Fecha válida?}\n    E -- No --> F[Grilla vacía. Sin consulta.]\n    E -- Sí --> G(RutinaLectura.PrecioVta\\nSELECT b_clientes + b_preciovta)\n    G --> H[Grilla: RUT Cliente, Nombre, Precio de Venta]\n    H --> I{Operación del usuario}\n    I -- Agregar --> J[Habilita ingreso nueva fila]\n    J --> K[Usuario ingresa RUT]\n    K --> L{RUT existe en b_clientes?\\ntipo=1, activo=1}\n    L -- No --> M[Campo RUT en blanco. Cursor vuelve.]\n    L -- Sí --> N{Dígito verificador correcto?}\n    N -- No --> M\n    N -- Sí --> O{RUT duplicado en grilla o BD?}\n    O -- Sí --> P[Mensaje: Cliente existe. Limpia celda.]\n    O -- No --> Q[Usuario ingresa Precio de Venta]\n    Q --> R[Grabar]\n    R --> S[(INSERT b_preciovta)]\n    S --> G\n    I -- Modificar --> T[Edita Precio de Venta]\n    T --> U[Grabar]\n    U --> V[(UPDATE b_preciovta)]\n    V --> G\n    I -- Eliminar --> W{Tiene raciones en b_minutaraciones\\nfecha >= vigencia?}\n    W -- Sí --> X[Advertencia: raciones asociadas\\nRequiere confirmación Sí/No]\n    W -- No --> Y[Confirmación estándar]\n    X --> Z{Confirma?}\n    Y --> Z\n    Z -- Sí --> AA[(DELETE b_preciovta)]\n    AA --> G\n    I -- Imprimir --> AB[Informe precios de venta por cliente]`
+    };
+    panel.innerHTML = `
+      <h3>${data.icon} ${data.title} <span class="badge badge-gray" style="font-size:11px;margin-left:8px">${data.code}</span></h3>
+      <p class="flow-desc">${data.desc}</p>
+      <div class="mermaid">${mermaidMap[id] || 'flowchart TD\n    A[Sin diagrama disponible]'}</div>
+    `;
+    mermaid.run({ nodes: panel.querySelectorAll('.mermaid') });
+  }
+
+  // SP card toggle + Flujo de Costos zoom
+  document.addEventListener('click', function(e) {
+    // SP card toggle
+    const header = e.target.closest('.sp-header');
+    if (header) {
+      const body = header.nextElementSibling;
+      if (body) body.classList.toggle('open');
+      return;
+    }
+    // Zoom-in para cualquier diagrama con clase zoomable-mermaid (incluye #flujo-costos)
+    const zoomTarget = e.target.closest('.zoomable-mermaid');
+    if (zoomTarget) {
+      const svg = zoomTarget.querySelector('svg');
+      if (svg) {
+        const modal = document.getElementById('mermaid-zoom-modal');
+        const content = document.getElementById('mermaid-zoom-content');
+        const cloned = svg.cloneNode(true);
+        const bw = zoomTarget.getBoundingClientRect().width || 500;
+        const bh = zoomTarget.getBoundingClientRect().height || 300;
+        const isSequence = zoomTarget.textContent.trim().startsWith('sequenceDiagram');
+        const scaleFactor = isSequence ? 2.2 : 2.8;
+        const maxW = window.innerWidth * 0.88;
+        const maxH = window.innerHeight * 0.82;
+        const scaledW = Math.min(bw * scaleFactor, maxW);
+        cloned.style.width = scaledW + 'px';
+        cloned.style.height = 'auto';
+        cloned.style.maxHeight = maxH + 'px';
+        cloned.removeAttribute('width');
+        cloned.removeAttribute('height');
+        cloned.style.display = 'block';
+        content.innerHTML = '';
+        content.appendChild(cloned);
+        modal.style.display = 'flex';
+      }
+      return;
+    }
+    // Zoom-out: click fuera del contenido cierra el modal
+    const modal = document.getElementById('mermaid-zoom-modal');
+    if (modal && e.target === modal) {
+      modal.style.display = 'none';
+    }
+  });
+
+  // DB tabs
+  function showDbTab(tab) {
+    document.querySelectorAll('.db-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.db-section').forEach(s => s.classList.remove('active'));
+    document.getElementById('dbtab-' + tab).classList.add('active');
+    document.getElementById('dbsec-' + tab).classList.add('active');
+  }
+
+  window.addEventListener('load', function() {
+    showSection('intro');
+  });
+</script>
+
+<!-- Modal zoom Flujo de Costos -->
+<div id="mermaid-zoom-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.72);z-index:9999;cursor:zoom-out;align-items:center;justify-content:center;">
+  <div id="mermaid-zoom-content" style="background:#fff;border-radius:14px;padding:32px 36px;max-width:90vw;max-height:88vh;overflow:auto;cursor:default;box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+  </div>
+  <div style="position:fixed;top:18px;right:24px;color:#fff;font-size:13px;opacity:0.8;pointer-events:none;">✕ Click fuera para cerrar</div>
+</div>
+</body>
+</html>

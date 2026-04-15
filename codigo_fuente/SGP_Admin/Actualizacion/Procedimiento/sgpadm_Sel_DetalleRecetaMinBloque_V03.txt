@@ -1,0 +1,241 @@
+/*                          
+==========================================================================                          
+Sistema : Sgp Administrador                          
+Modulo :  Minutas - Recetas (M_Receta.frm)                          
+                          
+SP o Function : sgpadm_Sel_DetalleRecetaMinBloque                        
+Descripcion  :  Muestra el detalle de la receta de la minuta bloque                        
+                          
+Observaciones :                           
+                          
+F. creacion:      17/10/2013                          
+Creador:          Jorge Paz                          
+                          
+==========================================================================                          
+Modificaciones:                          
+Fecha             Programador             Motivo y/o Modificacion                          
+27/03/2014    Jorge Paz Núñez			  Cambio de metodo llamada a la función x          
+										  procedimiento   
+18/01/2022        Jorge Paz Núñez         Cambiar nombre sub procedimiento 
+                                          PA_sgpadm_CostoxUnaRecetaProducto x
+										  PA_sgpadm_CostoxUnaRecetaProducto_V02
+										  esto incluye dos nuevo cambio a la
+										  tabla excepción formato compras que son
+										  fecha inicio y fin.   
+										  Cambio nom de procedimiento sgpadm_Sel_DetalleRecetaMinBloque
+										  x sgpadm_Sel_DetalleRecetaMinBloque_V02                             									                          
+07/08/2025        JPAZN                   incluir nuevo item huella de carbono -
+										  tabla de gramaje x niveles
+==========================================================================                          
+Test:                          
+sgpadm_Sel_DetalleRecetaMinBloque '52240', 147, 10495, 10495, 10001, 20140401, 1        
+sgpadm_Sel_DetalleRecetaMinBloque_V03 '22700', 4855, 10320, 10320, 10566, 20250101, 1
+sgpadm_Sel_DetalleRecetaMinBloque_V03 '22700', 27537, 10320, 10320, 10001, 20250203, 1
+
+==========================================================================                          
+*/                          
+  
+alter PROC [dbo].[sgpadm_Sel_DetalleRecetaMinBloque_V03]
+  (
+   @Ceco VARCHAR(20)
+  ,@CodReceta INT
+  ,@TipRec INT
+  ,@CodRegimen INT
+  ,@CodServicio INT
+  ,@Fecha INT
+  ,@OpPrecio INT                        
+  )
+AS 
+  SET NOCOUNT ON                      
+          
+  DECLARE @CodSubSeg INT
+   ,@CodZona INT                            
+  SELECT  @CodSubSeg = 0
+         ,@CodZona = 0                            
+                            
+----> Traer codigo sub-segmento                            
+  SELECT  @CodSubSeg = cli_subseg
+         ,@CodZona = cli_codzon
+  FROM    b_clientes WITH ( NOLOCK )
+  WHERE   cli_codigo = @Ceco
+          AND cli_tipo = 0                            
+                            
+  SELECT  br2.red_codigo
+         ,br2.red_nroite
+         ,isnull(reemplazo.IdIngredienteCambio,br2.red_codpro) AS red_codpro
+         ,ISNULL(reemplazo.CantIngredienteCambio,br2.red_canpro) as red_canpro
+         ,br2.red_cospro
+         ,CASE WHEN ISNULL(reemplazo.IdIngredienteCambio, '') = '' THEN br2.red_pctapr
+               ELSE bi.ing_pctapr
+          END AS red_pctapr
+         ,CASE WHEN ISNULL(reemplazo.IdIngredienteCambio, '') = '' THEN br2.red_pctcoc
+               ELSE bi.ing_pctcoc
+          END AS red_pctcoc
+         ,CASE WHEN ISNULL(reemplazo.IdIngredienteCambio, '') = '' THEN br2.red_pctnut
+               ELSE bi.ing_pctnut
+          END AS red_pctnut
+         ,canneta = ( ( CASE WHEN ISNULL(reemplazo.IdIngredienteCambio, '') = '' THEN br2.red_pctnut
+                             ELSE bi.ing_pctnut
+                        END / 100 ) * ( CASE WHEN reemplazo.CantIngredienteCambio IS NULL THEN br2.red_canpro
+                                             ELSE reemplazo.CantIngredienteCambio
+                                        END ) )
+         ,cangvneta = ( ( CASE WHEN ISNULL(reemplazo.IdIngredienteCambio, '') = '' THEN br2.red_pctnut
+                             ELSE bi.ing_pctnut
+                          END / 100 ) * ( CASE WHEN reemplazo.CantIngredienteCambio IS NULL THEN br2.red_canpro
+                                               ELSE reemplazo.CantIngredienteCambio
+                                          END ) )
+         ,precos = CONVERT(FLOAT, 0)
+         ,canservida = ( ( ( CASE WHEN ISNULL(reemplazo.IdIngredienteCambio, '') = '' THEN br2.red_pctapr
+                                  ELSE bi.ing_pctapr
+                             END / 100 ) * CASE WHEN reemplazo.CantIngredienteCambio IS NULL THEN br2.red_canpro
+                                                ELSE reemplazo.CantIngredienteCambio
+                                           END ) * ( CASE WHEN ISNULL(reemplazo.IdIngredienteCambio, '') = '' THEN br2.red_pctcoc
+                                                          ELSE bi.ing_pctcoc
+                                                     END / 100 ) )
+         ,HuellaCarbono=isnull(bi.Huella_Carbono,0)
+		 ,bi.ing_nombre
+         ,bi.ing_indgrv
+         ,bi.ing_precos
+         ,bi.ing_indppr
+         ,au.unm_codigo
+         ,au.unm_nomcor
+         ,br.rec_indppr
+  INTO    #paso_receta
+  FROM    dbo.b_receta AS br WITH ( NOLOCK )
+  INNER JOIN dbo.b_recetadet AS br2 WITH ( NOLOCK ) ON br2.red_codigo = br.rec_codigo
+  OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+        @Ceco,
+        @CodRegimen,
+        br.rec_codigo,
+        br2.red_codpro,
+        br.rec_tippla
+    ) AS reemplazo
+  INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON bi.ing_codigo = isnull(reemplazo.IdIngredienteCambio, br2.red_codpro)
+  INNER JOIN dbo.a_unidadmed AS au WITH ( NOLOCK ) ON bi.ing_unimed = au.unm_codigo
+  WHERE   br.rec_codigo = @CodReceta
+  GROUP BY br2.red_codigo
+         ,br2.red_nroite
+         ,br2.red_codpro
+         ,br2.red_canpro
+         ,br2.red_cospro
+         ,br2.red_pctapr
+         ,br2.red_pctcoc
+         ,br2.red_pctnut
+         ,bi.ing_nombre
+         ,bi.ing_indgrv
+         ,bi.ing_precos
+         ,bi.ing_indppr
+         ,au.unm_codigo
+         ,au.unm_nomcor
+         ,br.rec_indppr
+         ,bi.ing_pctapr
+         ,bi.ing_pctcoc
+         ,bi.ing_pctnut
+		 ,reemplazo.IdIngredienteCambio
+         ,reemplazo.CantIngredienteCambio
+		 ,bi.Huella_Carbono
+
+  CREATE TABLE #sgpadm_Fun_CostoMinutaProducto
+    (
+     ing_codigo VARCHAR(20) COLLATE DATABASE_DEFAULT
+    ,pro_codigo VARCHAR(20) COLLATE DATABASE_DEFAULT
+    ,pro_nombre VARCHAR(100) COLLATE DATABASE_DEFAULT
+    ,pro_facing FLOAT
+    ,fi INT
+    ,ft INT
+    ,PMP FLOAT
+    ,PMPIng FLOAT
+    ,Convenio FLOAT
+    ,ConvenioIng FLOAT
+    ,Lista FLOAT
+    ,ListaIng FLOAT
+    )          
+                                                         
+  INSERT  #sgpadm_Fun_CostoMinutaProducto
+          ( 
+           ing_codigo
+          ,pro_codigo
+          ,pro_nombre
+          ,pro_facing
+          ,fi
+          ,ft
+          ,PMP
+          ,PMPIng
+          ,Convenio
+          ,ConvenioIng
+          ,Lista
+          ,ListaIng       
+          )
+          EXEC dbo.PA_sgpadm_CostoxUnaRecetaProducto_V03 @Ceco, @Fecha, @CodRegimen, @CodServicio, @CodReceta, @OpPrecio  
+                            
+  SELECT  ing_codigo
+         ,pro_codigo
+         ,pro_nombre
+         ,pro_facing
+         ,fi
+         ,ft
+         ,PMP
+         ,PMPIng
+         ,Convenio
+         ,ConvenioIng
+         ,Lista
+         ,ListaIng
+         ,( ISNULL(CASE WHEN @OpPrecio = 1 THEN ConvenioIng --Convenio          
+                        WHEN @OpPrecio = 2 THEN PMPIng --PMP          
+                        ELSE ListaIng --Lista          
+                   END, 0) ) AS pmp1
+  INTO    #sgpadm_Fun_CostoMinutaProducto2
+  FROM    #sgpadm_Fun_CostoMinutaProducto
+  WHERE   ( ISNULL(CASE WHEN @OpPrecio = 1 THEN Convenio
+                        WHEN @OpPrecio = 2 THEN PMP
+                        ELSE Lista
+                   END, 0) ) > 0                                       
+          
+  SELECT  red_codigo
+         ,red_nroite
+         ,red_codpro
+         ,red_canpro
+         ,red_cospro
+         ,red_pctapr
+         ,red_pctcoc
+         ,red_pctnut
+         ,canneta
+         ,cangvneta
+		 ,CONVERT(NUMERIC(18, 2), ISNULL(AVG(fun.PMP1) * MAX(red_canpro), 0)) AS precos
+         ,canservida
+         ,ing_nombre
+         ,ing_indgrv
+         ,ing_precos
+         ,ing_indppr
+         ,unm_codigo
+         ,unm_nomcor
+         ,rec_indppr
+		 ,HuellaCarbono
+  FROM    #paso_receta AS pc
+  LEFT JOIN #sgpadm_Fun_CostoMinutaProducto2 AS fun ON fun.ing_codigo = pc.red_codpro
+                                                   AND fun.fi = @Fecha
+  GROUP BY red_codigo
+         ,red_nroite
+         ,red_codpro
+         ,red_canpro
+         ,red_cospro
+         ,red_pctapr
+         ,red_pctcoc
+         ,red_pctnut
+         ,canneta
+         ,cangvneta
+         ,canservida
+         ,ing_nombre
+         ,ing_indgrv
+         ,ing_precos
+         ,ing_indppr
+         ,unm_codigo
+         ,unm_nomcor
+         ,rec_indppr   
+		 ,HuellaCarbono       
+          
+  DROP TABLE #paso_receta          
+          
+  DROP TABLE #sgpadm_Fun_CostoMinutaProducto                    
+  DROP TABLE #sgpadm_Fun_CostoMinutaProducto2 
+

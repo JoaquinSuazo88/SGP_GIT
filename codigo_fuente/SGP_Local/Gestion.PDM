@@ -1,0 +1,367 @@
+[Root]
+Most Recent Package=Paquete de instalación sgp local
+
+
+[Package|Paquete de instalación sgp local|wssgp]
+Icon1=SgpSDX.exe
+Title1=Icon3
+StartIn1=$(AppPath)
+Key1=Icon3
+Icon2=Interop.UrlProxy.dll
+Title2=Icon5
+StartIn2=$(AppPath)
+Key2=Icon5
+Icon3=SgpSDX.exe.config
+Title3=Icon6
+StartIn3=$(AppPath)
+Key3=Icon6
+Icon4=SgpSDX.XmlSerializers.dll
+Title4=Icon7
+StartIn4=$(AppPath)
+Key4=Icon7
+
+[Package|Paquete de instalación sgp local|Gestion]
+Icon1=sgp.exe
+Title1=Gestion
+StartIn1=$(AppPath)
+Key1=Icon1
+
+[Package|Paquete de instalación sgp local|Root]
+SubWizProgID=PDWizard.SetupPkgSubWiz
+BuildFolder=C:\bkpsgp\sgp chile\204\Instalador SGP 204
+
+[Package|Paquete de instalación sgp local|Configure DAO ISAMs]
+Applicable=No
+
+[Package|Paquete de instalación sgp local|Configure DAO ODBC]
+JetWorkspace=
+ODBCDirect=
+
+[Package|Paquete de instalación sgp local|Files Found]
+Gestion.ini=C:\bkpsgp\sgp chile\204\Gestion.ini
+vbc12575.oca=C:\bkpsgp\sgp chile\204\vbc12575.oca
+Actualizador.mdb=C:\bkpsgp\sgp chile\204\Actualizador.mdb
+
+[Package|Paquete de instalación sgp local|Files Released]
+
+[Package|Paquete de instalación sgp local|Missing Dependency Information]
+C:\Archivos de programa\ActiveZip\activezip.ocx=
+C:\Archivos de programa\Chilkat Software Inc\Chilkat FTP\ChilkatFTP.dll=
+C:\WINDOWS\system32\Edt32x30.ocx=
+C:\Archivos de programa\Microsoft Office\Office\MSWORD9.OLB=
+C:\Archivos de programa\Archivos comunes\Software FX Shared\Cfx4032.ocx=
+C:\Archivos de programa\Chilkat Software Inc\Common\ChilkatUtil.dll=
+C:\Archivos de programa\Chilkat Software Inc\Common\ChilkatLog.dll=
+C:\Archivos de programa\Chilkat Software Inc\Chilkat Mail\ChilkatMail.dll=
+C:\WINDOWS\system32\vspdf8.ocx=
+C:\Archivos de programa\Microsoft Office\Office\EXCEL9.OLB=
+C:\Archivos de programa\Archivos comunes\Microsoft Shared\DAO\dao360.dll=
+C:\Archivos de programa\Archivos comunes\System\ado\msadox.dll=
+C:\WINDOWS\system32\msado25.tlb=
+C:\WINDOWS\system32\vsprint8.ocx=
+C:\Windows\System32\Cal32x30.ocx=
+C:\Program Files\ActiveZip\activezip.ocx=
+C:\Windows\System32\Flp32a30.ocx=
+C:\Windows\System32\ChilkatMail.dll=
+C:\Windows\System32\ChilkatMail2.dll=
+C:\Windows\System32\vsflex8l.ocx=
+C:\Program Files\Microsoft Office\Office14\MSWORD.OLB=
+C:\Windows\System32\EXCEL9.OLB=
+C:\Windows\System32\ieframe.dll=
+C:\Windows\System32\ChilkatFTP.dll=
+C:\Windows\System32\Cfx4032.ocx=
+C:\Program Files\Chilkat Software Inc\Chilkat Mail ActiveX\ChilkatUtil.dll=
+D:\Desarrollo\GestionCasino190\ChilkatLog.dll=
+C:\Windows\System32\dao360.dll=
+C:\Program Files\Common Files\System\ado\msadox.dll=
+C:\Windows\System32\wininet.dll=
+C:\Windows\System32\SensApi.dll=
+C:\Basura\wssgp\SgpSDX.exe=
+C:\Basura\wssgp\Interop.UrlProxy.dll=
+C:\Basura\wssgp\SgpSDX.XmlSerializers.dll=
+C:\Basura\wssgp\UrlProxy.dll=
+C:\Program Files (x86)\ActiveZip\activezip.ocx=
+C:\Program Files (x86)\SFX Compiler\COMDLG32.OCX=
+C:\Program Files (x86)\SFX Compiler\TABCTL32.OCX=
+C:\Windows\SysWOW64\SPR32X60.ocx=
+C:\Program Files (x86)\Chilkat Software, Inc\Chilkat Mail\ChilkatMail2_91.dll=
+C:\Program Files (x86)\Chilkat Software Inc\Chilkat Mail ActiveX\ChilkatMail2.dll=
+C:\Windows\SysWOW64\vsflex8l.ocx=
+C:\Windows\System32\MSWORD.OLB=
+C:\Windows\SysWOW64\EXCEL9.OLB=
+C:\Windows\SysWOW64\ieframe.dll=
+C:\Windows\SysWOW64\msstdfmt.dll=
+C:\Program Files (x86)\Chilkat Software Inc\Chilkat FTP\ChilkatFTP.dll=
+C:\Program Files (x86)\Common Files\Software FX Shared\Cfx4032.ocx=
+C:\Windows\SysWOW64\ChilkatUtil.dll=
+C:\Windows\SysWOW64\ChilkatLog.dll=
+C:\Windows\SysWOW64\VSPdf8.ocx=
+C:\Windows\SysWOW64\dao360.dll=
+C:\Program Files (x86)\Common Files\system\ado\msadox.dll=
+C:\Program Files (x86)\Common Files\system\ado\msado25.tlb=
+C:\Windows\SysWOW64\VSPrint8.ocx=
+
+[Package|Paquete de instalación sgp local|Out-of-Date Dependency Information]
+C:\WINDOWS\system32\COMDLG32.OCX=
+C:\WINDOWS\system32\TABCTL32.OCX=
+C:\WINDOWS\system32\MSCOMCTL.OCX=
+C:\Archivos de programa\Spread60\Bin\SPR32X60.ocx=
+C:\WINDOWS\system32\scrrun.dll=
+C:\Windows\System32\MSINET.OCX=
+C:\Windows\System32\richtx32.ocx=
+C:\Program Files\Spread60\Bin\SPR32X60.ocx=
+C:\Windows\SysWOW64\MSINET.OCX=
+C:\Windows\SysWOW64\richtx32.ocx=
+C:\Windows\SysWOW64\MSCOMCTL.OCX=
+C:\Windows\SysWOW64\scrrun.dll=
+
+[Package|Paquete de instalación sgp local|Files Added]
+c:\bkpsgp\sgp chile\204\gestion.ini=
+c:\bkpsgp\sgp chile\204\sdxftp.ini=
+c:\bkpsgp\sgp chile\204\vbc12575.oca=
+actualizador.mdb=
+c:\basura\wssgp\sgpsdx.exe=
+c:\basura\wssgp\interop.urlproxy.dll=
+c:\basura\wssgp\sgpsdx.exe.config=
+c:\basura\wssgp\sgpsdx.xmlserializers.dll=
+c:\basura\wssgp\urlproxy.dll=
+
+[Package|Paquete de instalación sgp local|Files Removed]
+c:\basura\wssgp\sgpsdx.exe=
+c:\basura\wssgp\sgpsdx.exe.config=
+c:\bkpsgp\sgp chile\202\actualizador.mdb=
+
+[Package|Paquete de instalación sgp local|Files In Project]
+C:\WINDOWS\system32\msvbvm60.dll=Yes
+C:\WINDOWS\system32\VB6ES.DLL=Yes
+C:\WINDOWS\system32\VB6STKIT.DLL=Yes
+C:\Windows\System32\SensApi.dll=Yes
+C:\Windows\System32\wininet.dll=Yes
+C:\Basura\wssgp\SgpSDX.exe=No
+C:\Basura\wssgp\Interop.UrlProxy.dll=Yes
+C:\Basura\wssgp\SgpSDX.exe.config=No
+C:\Basura\wssgp\SgpSDX.XmlSerializers.dll=Yes
+C:\Basura\wssgp\UrlProxy.dll=Yes
+C:\DISCO D\Desarrollo\GestionCasino204\Sgp.exe=Yes
+C:\Windows\System32\oleaut32.dll=Yes
+C:\Windows\System32\olepro32.dll=Yes
+C:\Windows\System32\asycfilt.dll=Yes
+C:\Windows\System32\stdole2.tlb=Yes
+C:\Program Files (x86)\VB98\Wizards\PDWizard\Redist\COMCAT.DLL=Yes
+C:\Windows\SysWOW64\VSPrint8.ocx=Yes
+C:\Program Files (x86)\Common Files\system\ado\msado25.tlb=Yes
+C:\Program Files (x86)\Common Files\system\ado\msadox.dll=Yes
+C:\Windows\SysWOW64\dao360.dll=Yes
+C:\Windows\SysWOW64\VSPdf8.ocx=Yes
+C:\Windows\SysWOW64\ChilkatLog.dll=Yes
+C:\Windows\SysWOW64\ChilkatUtil.dll=Yes
+C:\Program Files (x86)\Common Files\Software FX Shared\Cfx4032.ocx=Yes
+C:\Windows\SysWOW64\scrrun.dll=Yes
+C:\Windows\SysWOW64\msvcrt.dll=Yes
+C:\Windows\SysWOW64\SCRRNES.DLL=Yes
+C:\Program Files (x86)\Chilkat Software Inc\Chilkat FTP\ChilkatFTP.dll=Yes
+C:\Windows\SysWOW64\msstdfmt.dll=Yes
+C:\Windows\SysWOW64\ieframe.dll=Yes
+C:\Windows\SysWOW64\EXCEL9.OLB=Yes
+C:\Windows\System32\MSWORD.OLB=Yes
+C:\Windows\SysWOW64\vsflex8l.ocx=Yes
+C:\Program Files (x86)\Chilkat Software Inc\Chilkat Mail ActiveX\ChilkatMail2.dll=Yes
+C:\Program Files (x86)\Chilkat Software, Inc\Chilkat Mail\ChilkatMail2_91.dll=Yes
+C:\Windows\SysWOW64\SPR32X60.ocx=Yes
+C:\Windows\SysWOW64\Edt32x30.ocx=Yes
+C:\Windows\SysWOW64\atl.dll=Yes
+C:\Windows\SysWOW64\MSCOMCTL.OCX=Yes
+C:\Windows\SysWOW64\MSCmCES.dll=Yes
+C:\Program Files (x86)\SFX Compiler\TABCTL32.OCX=Yes
+C:\Windows\SysWOW64\richtx32.ocx=Yes
+C:\Program Files (x86)\VB98\Wizards\PDWizard\Redist\RICHED32.DLL=Yes
+C:\Windows\SysWOW64\RchTxES.dll=Yes
+C:\Program Files (x86)\SFX Compiler\COMDLG32.OCX=Yes
+C:\Windows\SysWOW64\mem32x30.ocx=Yes
+C:\Program Files (x86)\ActiveZip\activezip.ocx=Yes
+C:\Windows\SysWOW64\MSINET.OCX=Yes
+C:\Windows\SysWOW64\InetES.dll=Yes
+C:\Program Files (x86)\CalObjx3\BIN\Cal32x30.ocx=Yes
+C:\Program Files (x86)\VB98\Wizards\PDWizard\Redist\MSVCRT40.DLL=Yes
+C:\Program Files (x86)\VB98\Wizards\PDWizard\SETUP.EXE=Yes
+C:\Program Files (x86)\VB98\Wizards\PDWizard\SETUP1.EXE=Yes
+C:\Program Files (x86)\VB98\Wizards\PDWizard\ST6UNST.EXE=Yes
+C:\bkpsgp\sgp chile\204\Gestion.ini=Yes
+C:\bkpsgp\sgp chile\204\sdxftp.ini=Yes
+C:\bkpsgp\sgp chile\204\vbc12575.oca=Yes
+C:\bkpsgp\sgp chile\204\Actualizador.mdb=Yes
+
+[Package|Paquete de instalación sgp local|Configure Registry Files]
+Applicable=No
+
+[Package|Paquete de instalación sgp local|Configure Remote Servers]
+Applicable=No
+
+[Package|Paquete de instalación sgp local|Install Locations]
+C:\Desarrollo\sgp.exe=$(AppPath)
+C:\WINDOWS\system32\msvbvm60.dll=$(WinSysPathSysFile)
+C:\WINDOWS\system32\oleaut32.dll=$(WinSysPathSysFile)
+C:\WINDOWS\system32\olepro32.dll=$(WinSysPathSysFile)
+C:\WINDOWS\system32\asycfilt.dll=$(WinSysPathSysFile)
+C:\WINDOWS\system32\stdole2.tlb=$(WinSysPathSysFile)
+C:\Archivos de programa\Microsoft Visual Studio\VB98\Wizards\PDWizard\Redist\COMCAT.DLL=$(WinSysPathSysFile)
+C:\WINDOWS\system32\VB6ES.DLL=$(WinSysPath)
+C:\WINDOWS\system32\vsprint8.ocx=$(WinSysPath)
+C:\WINDOWS\system32\msado25.tlb=$(WinSysPath)
+C:\Archivos de programa\Archivos comunes\System\ado\msadox.dll=$(WinSysPath)
+C:\Archivos de programa\Archivos comunes\Microsoft Shared\DAO\dao360.dll=$(WinSysPath)
+C:\Archivos de programa\Microsoft Office\Office\EXCEL9.OLB=$(WinSysPath)
+C:\WINDOWS\system32\vspdf8.ocx=$(WinSysPath)
+C:\Archivos de programa\Chilkat Software Inc\Chilkat Mail\ChilkatMail.dll=$(WinSysPath)
+C:\Archivos de programa\Chilkat Software Inc\Common\ChilkatLog.dll=$(WinSysPath)
+C:\Archivos de programa\Chilkat Software Inc\Common\ChilkatUtil.dll=$(WinSysPath)
+C:\Archivos de programa\Archivos comunes\Software FX Shared\Cfx4032.ocx=$(WinSysPath)
+C:\Archivos de programa\Microsoft Office\Office\MSWORD9.OLB=$(WinSysPath)
+C:\WINDOWS\system32\scrrun.dll=$(WinSysPath)
+C:\WINDOWS\system32\msvcrt.dll=$(WinSysPathSysFile)
+C:\WINDOWS\system32\scrrnes.dll=$(WinSysPath)
+C:\Archivos de programa\Spread60\Bin\SPR32X60.ocx=$(WinSysPath)
+C:\WINDOWS\system32\mfc42.dll=$(WinSysPathSysFile)
+C:\WINDOWS\system32\Edt32x30.ocx=$(WinSysPath)
+C:\Archivos de programa\ListPro3\BIN\Flp32a30.ocx=$(WinSysPath)
+C:\WINDOWS\system32\atl.dll=$(WinSysPathSysFile)
+C:\WINDOWS\system32\MSCOMCTL.OCX=$(WinSysPath)
+C:\WINDOWS\system32\MSCMCES.DLL=$(WinSysPath)
+C:\WINDOWS\system32\TABCTL32.OCX=$(WinSysPath)
+C:\WINDOWS\system32\TABCTES.DLL=$(WinSysPath)
+C:\WINDOWS\system32\RICHTX32.OCX=$(WinSysPath)
+C:\Archivos de programa\Microsoft Visual Studio\VB98\Wizards\PDWizard\Redist\RICHED32.DLL=$(WinSysPathSysFile)
+C:\WINDOWS\system32\RCHTXES.DLL=$(WinSysPath)
+C:\WINDOWS\system32\COMDLG32.OCX=$(WinSysPath)
+C:\WINDOWS\system32\CMDLGES.DLL=$(WinSysPath)
+C:\Archivos de programa\Inppro30\BIN\mem32x30.ocx=$(WinSysPath)
+C:\Archivos de programa\Chilkat Software Inc\Chilkat FTP\ChilkatFTP.dll=$(WinSysPath)
+C:\Archivos de programa\ActiveZip\activezip.ocx=$(WinSysPath)
+C:\Archivos de programa\Microsoft Visual Studio\VB98\Wizards\PDWizard\SETUP.EXE=$(AppPath)
+C:\Archivos de programa\Microsoft Visual Studio\VB98\Wizards\PDWizard\SETUP1.EXE=$(WinPath)
+C:\WINDOWS\system32\VB6STKIT.DLL=$(WinSysPathSysFile)
+C:\Archivos de programa\Microsoft Visual Studio\VB98\Wizards\PDWizard\ST6UNST.EXE=$(WinPath)
+C:\bkpsgp\sgp chile\202\Sgp.exe=$(AppPath)
+C:\Program Files\Microsoft Visual Studio\VB98\Wizards\PDWizard\Redist\OLEAUT32.DLL=$(WinSysPathSysFile)
+C:\Program Files\Microsoft Visual Studio\VB98\Wizards\PDWizard\Redist\OLEPRO32.DLL=$(WinSysPathSysFile)
+C:\Program Files\Microsoft Visual Studio\VB98\Wizards\PDWizard\Redist\ASYCFILT.DLL=$(WinSysPathSysFile)
+C:\Program Files\Microsoft Visual Studio\VB98\Wizards\PDWizard\Redist\STDOLE2.TLB=$(WinSysPathSysFile)
+C:\Program Files\Microsoft Visual Studio\VB98\Wizards\PDWizard\Redist\COMCAT.DLL=$(WinSysPathSysFile)
+C:\Windows\System32\SensApi.dll=$(WinSysPath)
+C:\Windows\System32\wininet.dll=$(WinSysPath)
+C:\Program Files\Common Files\System\ado\msadox.dll=$(WinSysPath)
+C:\Windows\System32\dao360.dll=$(WinSysPath)
+D:\Desarrollo\GestionCasino190\ChilkatLog.dll=$(WinSysPath)
+C:\Program Files\Chilkat Software Inc\Chilkat Mail ActiveX\ChilkatUtil.dll=$(WinSysPath)
+C:\Windows\System32\Cfx4032.ocx=$(WinSysPath)
+C:\Program Files\Microsoft Visual Studio\VB98\Wizards\PDWizard\Redist\MSVCRT.DLL=$(WinSysPathSysFile)
+C:\Windows\System32\ChilkatFTP.dll=$(WinSysPath)
+C:\Windows\System32\msstdfmt.dll=$(WinSysPath)
+C:\Windows\System32\STDFTES.DLL=$(WinSysPath)
+C:\Windows\System32\ieframe.dll=$(WinSysPath)
+C:\Windows\System32\EXCEL9.OLB=$(WinSysPath)
+C:\Program Files\Microsoft Office\Office14\MSWORD.OLB=$(WinSysPath)
+C:\Windows\System32\vsflex8l.ocx=$(WinSysPath)
+C:\Windows\System32\ChilkatMail2.dll=$(WinSysPath)
+C:\Windows\System32\ChilkatMail.dll=$(WinSysPath)
+C:\Program Files\Spread60\Bin\SPR32X60.ocx=$(WinSysPath)
+C:\Program Files\Inppro30\BIN\Edt32x30.ocx=$(WinSysPath)
+C:\Windows\System32\Flp32a30.ocx=$(WinSysPath)
+C:\Program Files\Microsoft Visual Studio\VB98\Wizards\PDWizard\Redist\RICHED32.DLL=$(WinSysPathSysFile)
+C:\Program Files\Inppro30\BIN\mem32x30.ocx=$(WinSysPath)
+C:\Program Files\ActiveZip\activezip.ocx=$(WinSysPath)
+C:\Windows\System32\MSINET.OCX=$(WinSysPath)
+C:\Windows\System32\InetES.dll=$(WinSysPath)
+C:\Windows\System32\Cal32x30.ocx=$(WinSysPath)
+C:\Program Files\Microsoft Visual Studio\VB98\Wizards\PDWizard\SETUP.EXE=$(AppPath)
+C:\Program Files\Microsoft Visual Studio\VB98\Wizards\PDWizard\SETUP1.EXE=$(WinPath)
+C:\Program Files\Microsoft Visual Studio\VB98\Wizards\PDWizard\ST6UNST.EXE=$(WinPath)
+D:\Desarrollo\GestionCasino202\Gestion.ini=$(AppPath)
+C:\Program Files\SGP\sdxftp.ini=$(AppPath)
+C:\Program Files\Microsoft Visual Studio\VB98\vbc12575.oca=$(WinSysPath)
+C:\bkpsgp\sgp chile\202\Actualizador.mdb=$(AppPath)
+C:\Basura\wssgp\SgpSDX.exe=$(AppPath)
+C:\Basura\wssgp\Interop.UrlProxy.dll=$(WinSysPath)
+C:\Basura\wssgp\SgpSDX.exe.config=$(AppPath)
+C:\Basura\wssgp\SgpSDX.XmlSerializers.dll=$(WinSysPath)
+C:\Basura\wssgp\UrlProxy.dll=$(WinSysPath)
+C:\DISCO D\Desarrollo\GestionCasino204\Sgp.exe=$(AppPath)
+C:\Program Files (x86)\VB98\Wizards\PDWizard\Redist\COMCAT.DLL=$(WinSysPathSysFile)
+C:\Windows\SysWOW64\VSPrint8.ocx=$(WinSysPath)
+C:\Program Files (x86)\Common Files\system\ado\msado25.tlb=$(WinSysPath)
+C:\Program Files (x86)\Common Files\system\ado\msadox.dll=$(WinSysPath)
+C:\Windows\SysWOW64\dao360.dll=$(WinSysPath)
+C:\Windows\SysWOW64\VSPdf8.ocx=$(WinSysPath)
+C:\Windows\SysWOW64\ChilkatLog.dll=$(WinSysPath)
+C:\Windows\SysWOW64\ChilkatUtil.dll=$(WinSysPath)
+C:\Program Files (x86)\Common Files\Software FX Shared\Cfx4032.ocx=$(WinSysPath)
+C:\Windows\SysWOW64\scrrun.dll=$(WinSysPath)
+C:\Windows\SysWOW64\msvcrt.dll=$(WinSysPathSysFile)
+C:\Windows\SysWOW64\SCRRNES.DLL=$(WinSysPath)
+C:\Program Files (x86)\Chilkat Software Inc\Chilkat FTP\ChilkatFTP.dll=$(WinSysPath)
+C:\Windows\SysWOW64\msstdfmt.dll=$(WinSysPath)
+C:\Windows\SysWOW64\ieframe.dll=$(WinSysPath)
+C:\Windows\SysWOW64\EXCEL9.OLB=$(WinSysPath)
+C:\Windows\System32\MSWORD.OLB=$(WinSysPath)
+C:\Windows\SysWOW64\vsflex8l.ocx=$(WinSysPath)
+C:\Program Files (x86)\Chilkat Software Inc\Chilkat Mail ActiveX\ChilkatMail2.dll=$(WinSysPath)
+C:\Program Files (x86)\Chilkat Software, Inc\Chilkat Mail\ChilkatMail2_91.dll=$(WinSysPath)
+C:\Windows\SysWOW64\SPR32X60.ocx=$(WinSysPath)
+C:\Windows\SysWOW64\Edt32x30.ocx=$(WinSysPath)
+C:\Windows\SysWOW64\atl.dll=$(WinSysPathSysFile)
+C:\Windows\SysWOW64\MSCOMCTL.OCX=$(WinSysPath)
+C:\Windows\SysWOW64\MSCmCES.dll=$(WinSysPath)
+C:\Program Files (x86)\SFX Compiler\TABCTL32.OCX=$(WinSysPath)
+C:\Windows\SysWOW64\richtx32.ocx=$(WinSysPath)
+C:\Program Files (x86)\VB98\Wizards\PDWizard\Redist\RICHED32.DLL=$(WinSysPathSysFile)
+C:\Windows\SysWOW64\RchTxES.dll=$(WinSysPath)
+C:\Program Files (x86)\SFX Compiler\COMDLG32.OCX=$(WinSysPath)
+C:\Windows\SysWOW64\mem32x30.ocx=$(WinSysPath)
+C:\Program Files (x86)\ActiveZip\activezip.ocx=$(WinSysPath)
+C:\Windows\SysWOW64\MSINET.OCX=$(WinSysPath)
+C:\Windows\SysWOW64\InetES.dll=$(WinSysPath)
+C:\Program Files (x86)\CalObjx3\BIN\Cal32x30.ocx=$(WinSysPath)
+C:\Program Files (x86)\VB98\Wizards\PDWizard\Redist\MSVCRT40.DLL=$(WinSysPathSysFile)
+C:\Program Files (x86)\VB98\Wizards\PDWizard\SETUP.EXE=$(AppPath)
+C:\Program Files (x86)\VB98\Wizards\PDWizard\SETUP1.EXE=$(WinPath)
+C:\Program Files (x86)\VB98\Wizards\PDWizard\ST6UNST.EXE=$(WinPath)
+C:\bkpsgp\sgp chile\204\Gestion.ini=$(AppPath)
+C:\bkpsgp\sgp chile\204\sdxftp.ini=$(AppPath)
+C:\bkpsgp\sgp chile\204\vbc12575.oca=$(AppPath)
+C:\bkpsgp\sgp chile\204\Actualizador.mdb=$(AppPath)
+
+[Package|Paquete de instalación sgp local|Configure Shared Files]
+Applicable=Yes
+C:\Desarrollo\sgp.exe=No
+C:\bkpsgp\sgp chile\202\Sgp.exe=Yes
+D:\Desarrollo\GestionCasino202\Gestion.ini=Yes
+C:\Program Files\SGP\sdxftp.ini=Yes
+C:\Program Files\Microsoft Visual Studio\VB98\vbc12575.oca=No
+C:\bkpsgp\sgp chile\202\Actualizador.mdb=Yes
+C:\Basura\wssgp\SgpSDX.exe=No
+C:\Basura\wssgp\SgpSDX.exe.config=No
+C:\DISCO D\Desarrollo\GestionCasino204\Sgp.exe=No
+C:\bkpsgp\sgp chile\204\Gestion.ini=No
+C:\bkpsgp\sgp chile\204\sdxftp.ini=No
+C:\bkpsgp\sgp chile\204\vbc12575.oca=No
+C:\bkpsgp\sgp chile\204\Actualizador.mdb=No
+
+[Package|Paquete de instalación sgp local|Distribution]
+Type=single
+Size=
+Title=Instalación Sistema SGP Local
+
+[Package|Paquete de instalación sgp local|IconGroups]
+Group0=SGP
+PrivateGroup0=Falso
+Parent0=$(Programs)
+
+[Package|Paquete de instalación sgp local|Package]
+PackageFolder=C:\bkpsgp\sgp chile\204\Instalador SGP 204
+ProjectFolder=C:\DISCO D\Desarrollo\GestionCasino204
+ServerSideCab=
+File1=C:\bkpsgp\sgp chile\204\Instalador SGP 204\setup.exe
+File2=C:\bkpsgp\sgp chile\204\Instalador SGP 204\Setup.Lst
+File3=C:\bkpsgp\sgp chile\204\Instalador SGP 204\Sgp.CAB
+Handler1=PDWizard.FolderDplySubWiz
+Handler2=PDWizard.WebPostDplySubWiz

@@ -1,0 +1,108 @@
+/*                          
+==========================================================================                          
+Sistema : Sgp Administrador                          
+Modulo :   Informe - Aporte Minutas SANSIS (I_AporteNutricionalSansis)  
+                          
+SP o Function : sgpadm_Sel_AporteMinutasSansis
+Descripcion  : Mostrar detalle aportes desde la minuta
+                          
+Observaciones :                           
+                          
+F. creacion:      30/11/2016  
+Creador:          Jorge Paz                          
+                          
+==========================================================================                          
+Modificaciones:                          
+Fecha             Programador             Motivo y/o Modificacion                          
+13/12/2022        Jorge Paz               cambio de fecha a formato mes/año, con tres meses maximo
+                                          emisión de informe.                          
+22/08/2025        JPAZN                   incluir tabla gramaje x nivel
+==========================================================================                          
+Test:                          
+sgpadm_Sel_AporteMinutasSansis_V02 '<?xml version="1.0" encoding="iso-8859-1" ?><Servicio> <Ser Ser = "10001"/></Servicio>', '20210', 10361, 201702, 201702
+sgpadm_Sel_AporteMinutasSansis_V03 '<?xml version="1.0" encoding="iso-8859-1" ?><Servicio> <Ser Ser = "10001"/></Servicio>', '20210', 10361, 201702, 201702
+
+==========================================================================                          
+*/                          
+                          
+alter PROC [dbo].[sgpadm_Sel_AporteMinutasSansis_V03]
+    (
+      @XmlServicio AS TEXT = NULL ,
+      @Ceco VARCHAR(10) ,
+      @Regimen INT ,
+      @FecIni INT ,
+      @FecFin INT    
+    )
+AS 
+
+    SET NOCOUNT ON              
+    SET XACT_ABORT ON    
+      
+    DECLARE @hdoc AS INTEGER                            
+                            
+    EXEC sp_xml_preparedocument @hdoc OUTPUT, @XmlServicio                            
+                            
+    SELECT  Ser
+    INTO    #TmpServicio
+    FROM    OPENXML (@hdoc, '/Servicio/Ser ', 1)                            
+    WITH                            
+    (                            
+    Ser  INT  
+    )                            
+      
+    CREATE INDEX #TmpServicio_01 ON #TmpServicio (Ser)  
+    
+    SELECT  c.rec_codigo,
+	        c.rec_tippla
+    INTO    #tmpReceta
+    FROM    cas_b_minuta a WITH ( NOLOCK )
+            INNER JOIN cas_b_minutadet b WITH ( NOLOCK ) ON a.min_cecori = b.mid_cecori
+                                                            AND a.min_codigo = b.mid_codigo
+            INNER JOIN b_receta c WITH ( NOLOCK ) ON b.mid_codrec = c.rec_codigo
+            INNER JOIN #TmpServicio AS ts WITH ( NOLOCK ) ON ts.Ser = a.min_codser
+    WHERE   a.min_cecori = @Ceco
+            AND a.min_codreg = @Regimen
+            AND convert(int,substring(convert(varchar(8),a.min_fecmin),1,6)) >= @FecIni
+            AND convert(int,substring(convert(varchar(8),a.min_fecmin),1,6)) <= @FecFin
+            AND b.mid_tipmin = '1'
+    GROUP BY c.rec_codigo,
+	         c.rec_tippla
+    
+    SELECT  b.red_codigo ,
+            b.red_codpro,
+			a.rec_tippla
+    INTO    #tmpDetReceta
+    FROM    #tmpReceta AS a WITH ( NOLOCK )
+            INNER JOIN b_recetadet AS b WITH ( NOLOCK ) ON a.rec_codigo = b.red_codigo
+    GROUP BY b.red_codigo ,
+            b.red_codpro,
+			a.rec_tippla
+    
+    UPDATE  #tmpDetReceta
+    SET     #tmpDetReceta.red_codpro = ISNULL(reemplazo.IdIngredienteCambio, b.red_codpro)
+    FROM    #tmpDetReceta AS b WITH ( NOLOCK )
+			OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    @Ceco,
+				    @Regimen,
+				    b.red_codigo,
+				    b.red_codpro,
+				    b.rec_tippla
+			) AS reemplazo
+
+    SELECT  a.red_codpro ,
+            ISNULL(d.pnu_codapo, 0) AS pnu_codapo ,
+            ISNULL(d.pnu_canapo, 0) AS pnu_canapo ,
+            ISNULL(c.ing_facnut, 0) AS ing_facnut
+    FROM    #tmpDetReceta AS a WITH ( NOLOCK )
+            INNER JOIN b_ingrediente AS c WITH ( NOLOCK ) ON a.red_codpro = c.ing_codigo
+            LEFT JOIN b_productonut AS d WITH ( NOLOCK ) ON c.ing_codigo = d.pnu_codpro
+    GROUP BY a.red_codpro ,
+           ISNULL(d.pnu_codapo, 0) ,
+            ISNULL(d.pnu_canapo, 0) ,
+            ISNULL(c.ing_facnut, 0)
+    ORDER BY a.red_codpro ,
+            pnu_codapo
+
+    DROP TABLE #tmpDetReceta 
+    DROP TABLE #tmpReceta
+    DROP TABLE #TmpServicio 

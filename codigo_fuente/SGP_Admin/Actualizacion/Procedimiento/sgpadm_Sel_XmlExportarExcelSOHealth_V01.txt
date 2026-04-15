@@ -1,0 +1,689 @@
+/*                                    
+==========================================================================                                    
+Sistema : Sgp Administrador                                    
+Modulo :   Informe - Exportar Excel So Health (C_SOHealth)            
+                                    
+SP o Function : sgpadm_Sel_XmlExportarExcelSOHealth_V01      
+Descripcion  : Mostrar detalle minuta con su receta aporte receta            
+                                    
+Observaciones :                                     
+                                    
+F. creacion:      26/03/2025
+Creador:          Jorge Andres Paz Núñez    
+                                    
+==========================================================================                                    
+Modificaciones:                                    
+Fecha             Programador             Motivo y/o Modificacion                                    
+==========================================================================                                    
+Test:                                    
+      
+
+==========================================================================                                    
+*/                                    
+                                    
+alter PROC [dbo].[sgpadm_Sel_XmlExportarExcelSOHealth_V01]
+    (
+      @XmlServicio AS TEXT = NULL ,
+      @Ceco AS VARCHAR(10) ,
+      @Regimen AS INT ,
+      @FecIni AS INT ,
+      @FecFin AS INT
+    )
+AS 
+
+SET NOCOUNT ON                        
+SET XACT_ABORT ON              
+                
+DECLARE @hdoc AS INTEGER                                      
+                                      
+EXEC sp_xml_preparedocument @hdoc OUTPUT, @XmlServicio                                      
+                                      
+SELECT  Ser
+INTO    #TmpServicio
+FROM    OPENXML (@hdoc, '/Servicio/Ser ', 1)                                      
+WITH                                      
+  (                                      
+  Ser  INT            
+  )                                      
+                
+CREATE INDEX #TmpServicio_01 ON #TmpServicio (Ser)            
+
+SELECT  br.rec_codigo
+      , br.rec_nombre
+	  , br.rec_nomfan
+	  , br.rec_catdie
+	  , convert(varchar(1000),'') as [Categoria Dietetica]
+	  , br.rec_tippla
+	  ,	convert(varchar(1000),'') as [Tipo de Plato]
+INTO    #tempreceta
+FROM    dbo.cas_b_minuta AS cbm WITH ( NOLOCK )
+        INNER JOIN dbo.cas_b_minutadet AS cbm2 WITH ( NOLOCK ) ON cbm.min_cecori = cbm2.mid_cecori
+                                                                   AND cbm.min_codigo = cbm2.mid_codigo
+        INNER JOIN dbo.b_receta AS br WITH ( NOLOCK ) ON cbm2.mid_codrec = br.rec_codigo
+        INNER JOIN dbo.b_recetadet AS br2 WITH ( NOLOCK ) ON br.rec_codigo = br2.red_codigo
+        INNER JOIN dbo.b_productosing AS bp WITH ( NOLOCK ) ON br2.red_codpro = bp.pri_coding
+        INNER JOIN dbo.b_productos AS bp2 WITH ( NOLOCK ) ON bp.pri_codpro = bp2.pro_codigo
+        INNER JOIN dbo.b_receta_Oferta AS bro WITH ( NOLOCK ) ON bro.rec_codigo = br.rec_codigo
+        INNER JOIN dbo.b_Cliente_Oferta AS bco WITH ( NOLOCK ) ON bco.codigo_oferta = bro.codigo_oferta
+        INNER JOIN dbo.b_clientes AS bc WITH ( NOLOCK ) ON bc.cli_codigo = bco.cli_codigo
+                                                           AND bc.cli_codigo = cbm.min_cecori
+        INNER JOIN dbo.b_Ofertas AS bo WITH ( NOLOCK ) ON bo.Codigo_oferta = bro.codigo_oferta
+		inner join #TmpServicio as tm on tm.ser = cbm.min_codser 
+		WHERE br.rec_indppr = 1
+        AND bco.cli_codigo = @Ceco
+		and cbm.min_codreg = @Regimen
+        AND cbm.min_fecmin >= @Fecini
+        AND cbm.min_fecmin <= @FecFin
+        AND cbm2.mid_tipmin = 1
+GROUP BY br.rec_codigo
+       , br.rec_nombre
+	   , br.rec_nomfan
+	   , br.rec_catdie
+	   , br.rec_tippla
+
+/* Actualizar categoria dietetica */
+ update #tempreceta
+ set [Categoria Dietetica] = ISNULL(SUBSTRING(dbo.sgpadm_p_buscararbolcatdietetica(a.rec_catdie), 1, LEN(dbo.sgpadm_p_buscararbolcatdietetica(a.rec_catdie)) - 1), '')
+ from #tempreceta as a
+ inner join a_recetacatdie as b with (nolock) on b.car_codigo = a.rec_catdie
+
+/* Actualizar tipo de plato */
+ update #tempreceta
+ set [Tipo de Plato] = ISNULL(SUBSTRING(dbo.sgpadm_p_buscararboltipplato1(a.rec_tippla), 1, LEN(dbo.sgpadm_p_buscararboltipplato1(a.rec_tippla) )- 1), '')
+ from #tempreceta as a
+ inner join a_recetatippla as b with (nolock) on b.tip_codigo = a.rec_tippla
+
+SELECT  tr.rec_codigo AS [Receta] ,
+        tr.rec_nombre AS [Nombre receta] ,
+		tr.rec_nomfan as [Nombre fantasia],
+		tr.rec_tippla,
+		tr.[Categoria Dietetica] as [Categoria Dietetica],
+		tr.[Tipo de Plato] as [Tipo de Plato],
+        br.red_nroite AS [Nro. Linea] ,
+        br.red_codpro AS [Ing. Origen] ,
+        br.red_canpro AS [Cant Origen] ,
+        br.red_pctapr AS red_pctapr ,
+        br.red_pctcoc AS red_pctcoc ,
+        br.red_pctnut AS red_pctnut,
+		convert(float,0) as Humedad,
+		convert(float,0) as Calorias,
+		convert(float,0) as Proteinas,
+		convert(float,0) as Hidratos,
+		convert(float,0) as Fibras,
+		convert(float,0) as Lipidos,
+		convert(float,0) as [Grasa Total],
+		convert(float,0) as [Ac. Grasos Sat.],
+		convert(float,0) as [Ac. Grasos Mon],
+		convert(float,0) as [Ac. Grasos Poli],
+		convert(float,0) as [Colesterol],
+		convert(float,0) as [N6],
+		convert(float,0) as [N3],
+		convert(float,0) as [Caroteno],
+		convert(float,0) as [Retinol],
+		convert(float,0) as [Vit. A Tot Re],
+		convert(float,0) as [Vitamina B1],
+		convert(float,0) as [Vitamina B2],
+		convert(float,0) as [Niacina ( B3)],
+		convert(float,0) as [Vitamina B6],
+		convert(float,0) as [Vitamina B12],
+		convert(float,0) as [Folato],
+		convert(float,0) as [Ac. Pantot (B5)],
+		convert(float,0) as [Vitamina C],
+		convert(float,0) as [Vitamina E],
+		convert(float,0) as [Calcio],
+		convert(float,0) as [Cobre],
+		convert(float,0) as [Hierro],
+		convert(float,0) as [Magnesio],
+		convert(float,0) as [Fosforo],
+		convert(float,0) as [Potasio],
+		convert(float,0) as [Selenio],
+		convert(float,0) as [Sodio],
+		convert(float,0) as [Zinc],
+		convert(float,0) as [A.c Graso Trans.],
+		convert(float,0) as [Azucares Totales]
+INTO    #DetalleReceta
+FROM    dbo.#tempreceta AS tr WITH ( NOLOCK )
+        INNER JOIN dbo.b_recetadet AS br WITH ( NOLOCK ) ON br.red_codigo = tr.rec_codigo
+        INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON bi.ing_codigo = br.red_codpro
+                                                              AND bi.ing_activo = 1
+                                                              AND bi.ing_indppr = 1
+        INNER JOIN dbo.b_productosing AS bp WITH ( NOLOCK ) ON bp.pri_coding = bi.ing_codigo
+        INNER JOIN dbo.b_productos AS bp2 WITH ( NOLOCK ) ON bp2.pro_codigo = bp.pri_codpro
+                                                             AND bp2.pro_activo = 1
+                                                             AND bp2.pro_indppr = 1
+group by tr.rec_codigo,
+        tr.rec_nombre,
+		tr.rec_nomfan,
+        br.red_nroite,
+        br.red_codpro,
+        br.red_canpro,
+        br.red_pctapr,
+        br.red_pctcoc,
+        br.red_pctnut,
+		tr.[Categoria Dietetica],
+		tr.[Tipo de Plato],
+		tr.rec_tippla
+
+
+/* Actualizar tabla de gramaje */
+UPDATE  #DetalleReceta
+SET     [Ing. Origen] = ISNULL(reemplazo.IdIngredienteCambio, dr.[Ing. Origen]) ,
+        [Cant Origen] = isnull(reemplazo.CantIngredienteCambio, dr.[Cant Origen]),
+        red_pctnut = CASE WHEN reemplazo.IdIngredienteOrigen is not null and reemplazo.IdIngredienteOrigen <> reemplazo.IdIngredienteCambio THEN bi2.ing_pctnut
+                                    ELSE dr.red_pctnut
+                               END,
+        red_pctapr = CASE WHEN reemplazo.IdIngredienteOrigen is not null and reemplazo.IdIngredienteOrigen <> reemplazo.IdIngredienteCambio THEN bi2.ing_pctapr
+                                    ELSE dr.red_pctapr
+                               END,
+		red_pctcoc = CASE WHEN reemplazo.IdIngredienteOrigen is not null and reemplazo.IdIngredienteOrigen <> reemplazo.IdIngredienteCambio THEN bi2.ing_pctcoc
+        ELSE dr.red_pctcoc
+                               END
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+		OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    @Ceco,
+				    @Regimen,
+				    dr.[Receta],
+				    dr.[Ing. Origen],
+				    dr.rec_tippla
+		) AS reemplazo
+        INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON bi.ing_codigo = ISNULL(reemplazo.IdIngredienteOrigen, dr.[Ing. Origen])
+                                                              AND bi.ing_activo = 1
+                                                              AND bi.ing_indppr = 1
+        INNER JOIN dbo.b_productosing AS bp WITH ( NOLOCK ) ON bp.pri_coding = bi.ing_codigo
+        INNER JOIN dbo.b_ingrediente AS bi2 WITH ( NOLOCK ) ON bi2.ing_codigo = ISNULL(reemplazo.IdIngredienteCambio, dr.[Ing. Origen])
+                                                               AND bi.ing_activo = 1
+                                                               AND bi.ing_indppr = 1
+               --AND bi2.ing_codigo = bp.pri_coding
+
+/* Humedad */
+UPDATE  #DetalleReceta
+set Humedad = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 1
+
+/* Caloria */
+UPDATE  #DetalleReceta
+set Calorias = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 2          
+
+/* Proteina */
+UPDATE  #DetalleReceta
+set Proteinas = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 3         
+
+/* Hidratos */
+UPDATE  #DetalleReceta
+set Hidratos = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 4       
+
+/* Fibras */
+UPDATE  #DetalleReceta
+set Fibras = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 5       
+
+/* Lipidos */
+UPDATE  #DetalleReceta
+set Lipidos = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 6     
+
+/* Grasa Total */
+UPDATE  #DetalleReceta
+set [Grasa Total] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 7
+
+/* Ac. Grasos Sat. */
+UPDATE  #DetalleReceta
+set [Ac. Grasos Sat.] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 8
+
+/* Ac. Grasos Mon */
+UPDATE  #DetalleReceta
+set [Ac. Grasos Mon] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 9
+
+/* Ac. Grasos Poli*/
+UPDATE  #DetalleReceta
+set [Ac. Grasos Poli] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 10
+
+/* Colesterol */
+UPDATE  #DetalleReceta
+set [Colesterol] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 11
+
+/* N6 */
+UPDATE  #DetalleReceta
+set [N6] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 12
+
+/* N3 */
+UPDATE  #DetalleReceta
+set [N3] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 13
+
+/* Caroteno */
+UPDATE  #DetalleReceta
+set [Caroteno] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 14
+
+/* Retinol */
+UPDATE  #DetalleReceta
+set [Retinol] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 15
+
+/* Vit. A Tot Re */
+UPDATE  #DetalleReceta
+set [Vit. A Tot Re] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 16
+
+/* Vitamina B1 */
+UPDATE  #DetalleReceta
+set [Vitamina B1] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 17
+
+/* Vitamina B2 */
+UPDATE  #DetalleReceta
+set [Vitamina B2] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 18
+
+/* Niacina ( B3) */
+UPDATE  #DetalleReceta
+set [Niacina ( B3)] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 19
+
+/* Vitamina B6 */
+UPDATE  #DetalleReceta
+set [Vitamina B6] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 20
+
+/* Vitamina B12 */
+UPDATE  #DetalleReceta
+set [Vitamina B12] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 21
+
+/* Folato */
+UPDATE  #DetalleReceta
+set [Folato] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 22
+
+/* Ac. Pantot (B5) */
+UPDATE  #DetalleReceta
+set [Ac. Pantot (B5)] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 23
+
+/* Vitamina C */
+UPDATE  #DetalleReceta
+set [Vitamina C] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 24
+
+/* Vitamina E */
+UPDATE  #DetalleReceta
+set [Vitamina E] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+ AND an.nut_codigo = 25
+
+/* Calcio */
+UPDATE  #DetalleReceta
+set [Calcio] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 26
+
+/* Cobre */
+UPDATE  #DetalleReceta
+set [Cobre] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                     AND an.nut_activo = '1'
+                   AND an.nut_codigo = 27
+
+/* Hierro */
+UPDATE  #DetalleReceta
+set [Hierro] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 28
+
+/* Magnesio */
+UPDATE  #DetalleReceta
+set [Magnesio] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 29
+
+/* Fosforo */
+UPDATE  #DetalleReceta
+set [Fosforo] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 30
+
+/* Potasio */
+UPDATE  #DetalleReceta
+set [Potasio] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 31
+
+/* Selenio */
+UPDATE  #DetalleReceta
+set [Selenio] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 32
+
+/* Sodio */
+UPDATE  #DetalleReceta
+set [Sodio] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 33
+
+/* Zinc */
+UPDATE  #DetalleReceta
+set [Zinc] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                     AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 34
+
+/* A.c Graso Trans. */
+UPDATE  #DetalleReceta
+set [A.c Graso Trans.] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 35
+
+/* Azucares Totales. */
+UPDATE  #DetalleReceta
+set [Azucares Totales] = ( ( dr.red_pctnut / 100 ) * ( bp.pnu_canapo * dr.[Cant Origen] ) / bi.ing_facnut )
+FROM    #DetalleReceta AS dr WITH ( NOLOCK )
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bp.pnu_codpro = bi.ing_codigo
+INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+                                                 AND an.nut_activo = '1'
+                                                 AND an.nut_codigo = 36
+
+--SELECT  DISTINCT
+--        dr.[Receta] ,
+--        dr.[Nombre receta] ,
+--        dr.[Nro. Linea] ,
+--        dr.[Ing. Origen] ,
+--        bi.ing_nombre AS [Nombre Ing. Origen] ,
+--        --dr.[Cant Origen] ,
+--        --( ( ( dr.red_pctapr / 100 ) * dr.[Cant Origen] ) * ( dr.red_pctcoc / 100 ) ) AS [Cantidad Servida] ,
+--        ( dr.[Cant Origen] * dr.red_pctnut ) / 100 AS [Cantidad Neta] ,
+--        au.unm_nomcor,
+--		Humedad,
+--		Calorias,
+--		Proteinas,
+--		Hidratos,
+--		Fibras,
+--		Lipidos,
+--		[Grasa Total],
+--		[Ac. Grasos Sat.],
+--		[Ac. Grasos Mon],
+--		[Ac. Grasos Poli],
+--		[Colesterol],
+--		[N6],
+--		[N3],
+--		[Caroteno],
+--		[Retinol],
+--		[Vit. A Tot Re],
+--		[Vitamina B1],
+--		[Vitamina B2],
+--		[Niacina ( B3)],
+--		[Vitamina B6],
+--		[Vitamina B12],
+--		[Folato],
+--		[Ac. Pantot (B5)],
+--		[Vitamina C],
+--		[Vitamina E],
+--		[Calcio],
+--		[Cobre],
+--		[Hierro],
+--		[Magnesio],
+--		[Fosforo],
+--		[Potasio],
+--		[Selenio],
+--		[Sodio],
+--		[Zinc],
+--		[A.c Graso Trans.],
+--		[Azucares Totales]
+--FROM    dbo.#DetalleReceta AS dr WITH ( NOLOCK )
+--        INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+--        INNER JOIN dbo.a_unidadmed AS au WITH ( NOLOCK ) ON au.unm_codigo = bi.ing_unimed
+--ORDER BY dr.[Receta] ,
+--        dr.[Nro. Linea] ,
+--        dr.[Ing. Origen]
+
+
+SELECT cbm.min_cecori as [Ceco],
+       bc.cli_nombre as [Nombre Ceco],
+	   substring(convert(varchar(8),cbm.min_fecmin),7,2) + '/' + substring(convert(varchar(8),cbm.min_fecmin),5,2) + '/' + substring(convert(varchar(8),cbm.min_fecmin),1,4)  as [Fecha],
+	   cbm.min_codreg as [Regimen],
+	   ar.reg_nombre as [Nombre Regimen],
+	   cbm.min_codser as [Servicio],
+	   ase.ser_nombre as [Nombre Servicio],
+	   cbm2.mid_codrec as [Código Receta],
+       dr.[Nombre receta] as [Nombre Receta],
+	   dr.[Nombre fantasia] as [Nombre fantasia],
+	   dr.[Categoria Dietetica] as [Categoria Dietetica],
+	   dr.[Tipo de Plato] as [Tipo de Plato],
+        dr.[Ing. Origen] ,
+        bi.ing_nombre AS [Nombre Ing. Origen] ,
+        dr.[Cant Origen] as [Gramos Bruto],
+		 ( ISNULL(( dr.red_pctnut / 100 ), 0) * ( dr.[Cant Origen] ) ) AS [Gramos Neto],
+        ( ( ( dr.red_pctapr / 100 ) * dr.[Cant Origen] ) * ( dr.red_pctcoc / 100 ) ) AS [Gramo Neto Servido] ,
+        ( dr.[Cant Origen] * dr.red_pctnut ) / 100 AS [Gramo Neto Nutricional] ,
+        au.unm_nomcor as [Unidad Medida],
+		Humedad,
+		Calorias,
+		Proteinas,
+		Hidratos,
+		Fibras,
+		Lipidos,
+		[Grasa Total],
+		[Ac. Grasos Sat.],
+		[Ac. Grasos Mon],
+		[Ac. Grasos Poli],
+		[Colesterol],
+		[N6],
+		[N3],
+		[Caroteno],
+		[Retinol],
+		[Vit. A Tot Re],
+		[Vitamina B1],
+		[Vitamina B2],
+		[Niacina ( B3)],
+		[Vitamina B6],
+		[Vitamina B12],
+		[Folato],
+		[Ac. Pantot (B5)],
+		[Vitamina C],
+		[Vitamina E],
+		[Calcio],
+		[Cobre],
+		[Hierro],
+		[Magnesio],
+		[Fosforo],
+		[Potasio],
+		[Selenio],
+		[Sodio],
+		[Zinc],
+		[A.c Graso Trans.],
+		[Azucares Totales]
+FROM    dbo.cas_b_minuta AS cbm WITH ( NOLOCK )
+INNER JOIN dbo.cas_b_minutadet AS cbm2 WITH ( NOLOCK ) ON cbm.min_cecori = cbm2.mid_cecori
+                                                      AND cbm.min_codigo = cbm2.mid_codigo
+inner join #TmpServicio as tm on tm.ser = cbm.min_codser 
+inner join b_clientes as bc with (nolock) on bc.cli_codigo = cbm.min_cecori
+inner join a_regimen as ar with (nolock) on ar.reg_codigo = cbm.min_codreg
+inner join a_servicio as ase with (nolock) on ase.ser_codigo = cbm.min_codser
+inner join dbo.#DetalleReceta AS dr WITH ( NOLOCK ) on dr.[Receta] = cbm2.mid_codrec
+INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON dr.[Ing. Origen] = bi.ing_codigo
+INNER JOIN dbo.a_unidadmed AS au WITH ( NOLOCK ) ON au.unm_codigo = bi.ing_unimed
+WHERE bc.cli_codigo = @Ceco
+and   cbm.min_codreg = @Regimen
+AND   cbm.min_fecmin >= @Fecini
+AND   cbm.min_fecmin <= @FecFin
+AND   cbm2.mid_tipmin = 1
+order by regimen,
+         servicio,
+		 Fecha,
+		 cbm2.mid_numlin 
+
+DROP TABLE #tempreceta
+DROP TABLE #DetalleReceta
+drop table #TmpServicio

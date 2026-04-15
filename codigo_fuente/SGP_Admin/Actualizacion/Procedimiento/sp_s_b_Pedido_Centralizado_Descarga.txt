@@ -1,0 +1,661 @@
+/*                                
+==========================================================================                                
+Sistema           : Sgp Administrador                                
+Modulo            : Pedido Centralizado                                
+                                
+SP o Function     : sp_s_b_Pedido_Centralizado_Descarga                                
+Descripcion       :                                     
+Observaciones     :                                
+                                
+F. creacion       : 30/10/2013                                
+Creador           : Cristián Cañas                                
+                                
+==========================================================================                                
+Modificaciones:                                
+ID    Fecha       Programador       Motivo y/o Modificacion                                
+CCA  30-10-2013  CCA               Cambio en el codigo a actualizar: antes 1 ahora 2.                                
+JPA  13/01/2014  Jorge Paz Núñez   Cambio de tabla gramaje x tabla gramaje x ceco                  
+JPA  09/12/2021  Jorge Paz Núñez   Incluir nombre estructura servicio de la minuta
+JPA  23/08/2025  JPAZN             Incluir tabla de gramaje x nivel
+==========================================================================                                
+                                
+                                
+Test:                               
+DECLARE @ceco VARCHAR(10)                          
+DECLARE @fechaini INT                          
+DECLARE @fechafin INT                           
+                          
+SET @ceco = '71470'                          
+SET @fechaini = 20220815                          
+SET @fechafin = 20220821                       
+exec sp_s_b_Pedido_Centralizado_Descarga_jpa  @ceco, @fechaini, @fechafin                               
+                                
+*/                           
+alter  PROCEDURE [dbo].[sp_s_b_Pedido_Centralizado_Descarga]        
+    @ceco VARCHAR(10)        
+   ,@fechaini INT        
+   ,@fechafin INT        
+AS         
+    SELECT  @ceco AS Ceco        
+           ,@fechaini AS fechaini        
+           ,@fechafin AS fechafin        
+    INTO    #tmp                           
+                          
+-----------------------------------------------------------cas_b_minuta--------------------------------------------------------------                          
+    SELECT  'b_minuta' AS tableName        
+           ,cbm.min_cecori        
+           ,cbm.min_codigo        
+           ,cbm.min_cencos        
+           ,cbm.min_codreg        
+           ,cbm.min_codser        
+           ,cbm.min_fecmin        
+           ,cbm.min_indblo        
+           ,cbm.min_racteo        
+           ,cbm.min_racrea        
+           ,cbm.min_porteo        
+           ,cbm.min_porrea        
+           ,cbm.min_fecmod        
+           ,cbm.ID_Bloque        
+    FROM    cas_b_minuta AS cbm WITH ( NOLOCK )        
+    INNER JOIN #tmp AS t ON cbm.min_cecori = t.Ceco        
+                            AND cbm.min_fecmin >= t.fechaini        
+                            AND cbm.min_fecmin <= t.fechafin                           
+                          
+-----------------------------------------------------------cas_b_minutadet--------------------------------------------------------------               
+          
+    CREATE TABLE #tmpMinutasDet        
+    (         
+     TableName VARCHAR(20) COLLATE DATABASE_default        
+    ,mid_codigo INT        
+    ,mid_tipmin VARCHAR(1) COLLATE DATABASE_default        
+    ,mid_numlin INT        
+    ,mid_estser INT        
+    ,mid_codrec INT        
+    ,mid_numrac FLOAT        
+    ,mid_descri VARCHAR(50) COLLATE DATABASE_default        
+    ,mid_cosrec FLOAT        
+    ,mid_fecval INT        
+    ,mid_tiprec INT        
+    ,mid_nummer FLOAT  
+  ,mid_rec5eta VARCHAR(1) COLLATE DATABASE_default        
+    ,mid_cosdes FLOAT       
+    ,mid_modmina VARCHAR(1) COLLATE DATABASE_default        
+    ,mid_modminb VARCHAR(1) COLLATE DATABASE_default        
+    )          
+          
+    INSERT  INTO #tmpMinutasDet        
+            (         
+             TableName        
+            ,mid_codigo        
+            ,mid_tipmin        
+            ,mid_numlin        
+            ,mid_estser        
+            ,mid_codrec        
+            ,mid_numrac        
+            ,mid_descri        
+            ,mid_cosrec        
+            ,mid_fecval        
+            ,mid_tiprec        
+            ,mid_nummer        
+            ,mid_rec5eta        
+            ,mid_cosdes        
+            ,mid_modmina        
+            ,mid_modminb          
+            )        
+            SELECT  'b_minutadet' AS TableName        
+                   ,cbm.mid_codigo        
+                   ,cbm.mid_tipmin        
+                   ,cbm.mid_numlin        
+                   ,cbm.mid_estser        
+                   ,cbm.mid_codrec        
+                   ,cbm.mid_numrac        
+                   ,cbm.mid_descri        
+                   ,cbm.mid_cosrec        
+                   ,cbm.mid_fecval        
+                   ,cbm.mid_tiprec        
+                   ,cbm.mid_nummer        
+                   ,cbm.mid_rec5eta        
+                   ,cbm.mid_cosdes        
+                   ,cbm.mid_modmina        
+                   ,cbm.mid_modminb        
+            FROM    dbo.cas_b_minutadet AS cbm WITH ( NOLOCK )        
+            INNER JOIN dbo.cas_b_minuta AS cbm2 WITH ( NOLOCK ) ON cbm.mid_cecori = cbm2.min_cecori        
+                                                              AND cbm.mid_codigo = cbm2.min_codigo        
+            INNER JOIN #tmp AS t ON cbm2.min_cecori = t.Ceco        
+                                    AND cbm2.min_fecmin >= t.fechaini        
+                                    AND cbm2.min_fecmin <= t.fechafin        
+            WHERE   cbm.mid_tipmin = 1 AND cbm.mid_codrec > 0          
+              
+    INSERT  INTO #tmpMinutasDet        
+            (         
+             TableName        
+            ,mid_codigo        
+            ,mid_tipmin        
+            ,mid_numlin        
+            ,mid_estser        
+            ,mid_codrec        
+            ,mid_numrac        
+            ,mid_descri        
+            ,mid_cosrec        
+            ,mid_fecval        
+            ,mid_tiprec        
+            ,mid_nummer        
+            ,mid_rec5eta        
+            ,mid_cosdes        
+            ,mid_modmina        
+            ,mid_modminb          
+            )        
+            SELECT  'b_minutadet' AS TableName        
+                   ,cbm.mid_codigo        
+                   ,2 AS mid_tipmin        
+                   ,cbm.mid_numlin        
+                   ,cbm.mid_estser        
+                   ,cbm.mid_codrec        
+                   ,cbm.mid_numrac        
+                   ,cbm.mid_descri        
+                   ,cbm.mid_cosrec        
+                   ,cbm.mid_fecval        
+                   ,cbm.mid_tiprec        
+                   ,cbm.mid_nummer        
+                   ,cbm.mid_rec5eta        
+                   ,cbm.mid_cosdes        
+                   ,cbm.mid_modmina        
+                   ,cbm.mid_modminb        
+            FROM    dbo.cas_b_minutadet AS cbm WITH ( NOLOCK )        
+            INNER JOIN dbo.cas_b_minuta AS cbm2 WITH ( NOLOCK ) ON cbm.mid_cecori = cbm2.min_cecori        
+                                                              AND cbm.mid_codigo = cbm2.min_codigo        
+            INNER JOIN #tmp AS t ON cbm2.min_cecori = t.Ceco        
+                                    AND cbm2.min_fecmin >= t.fechaini        
+   AND cbm2.min_fecmin <= t.fechafin        
+            WHERE   cbm.mid_tipmin = 1   AND cbm.mid_codrec > 0        
+                      
+    --INSERT  INTO #tmpMinutasDet          
+    --        (           
+    --         TableName          
+    --        ,mid_codigo          
+    --        ,mid_tipmin          
+    --        ,mid_numlin          
+    --        ,mid_estser          
+    --        ,mid_codrec          
+    --        ,mid_numrac          
+    --        ,mid_descri          
+    --        ,mid_cosrec          
+    --        ,mid_fecval          
+    --        ,mid_tiprec          
+    --        ,mid_nummer          
+    --        ,mid_rec5eta          
+    --        ,mid_cosdes          
+    --        ,mid_modmina          
+    --        ,mid_modminb          
+    --        )            --        SELECT  'b_minutadet' AS TableName          
+    --               ,cbm.mid_codigo          
+    --               ,1 AS mid_tipmin          
+    --               ,cbm.mid_numlin          
+    --               ,cbm.mid_estser          
+    --               ,cbm.mid_codrec          
+    --               ,cbm.mid_numrac          
+    --               ,cbm.mid_descri          
+    --               ,cbm.mid_cosrec          
+    --               ,cbm.mid_fecval          
+    --               ,cbm.mid_tiprec          
+    --               ,cbm.mid_nummer          
+    --               ,cbm.mid_rec5eta          
+    --               ,cbm.mid_cosdes          
+    --               ,cbm.mid_modmina          
+    --               ,cbm.mid_modminb          
+    --        FROM    dbo.cas_b_minutadet AS cbm WITH ( NOLOCK )          
+    --        INNER JOIN dbo.cas_b_minuta AS cbm2 WITH ( NOLOCK ) ON cbm.mid_cecori = cbm2.min_cecori          
+    --                                                          AND cbm.mid_codigo = cbm2.min_codigo          
+    --        INNER JOIN #tmp AS t ON cbm2.min_cecori = t.Ceco          
+    --                                AND cbm2.min_fecmin >= t.fechaini          
+    --                                AND cbm2.min_fecmin <= t.fechafin          
+    --        WHERE   cbm.mid_tipmin = 2          
+    --                AND NOT EXISTS ( SELECT 1          
+    --                                 FROM   #tmpMinutasDet t          
+    --                                 WHERE  t.mid_tipmin = cbm.mid_tipmin          
+    --                                        AND t.mid_codigo = cbm.mid_codigo          
+    --                                        AND t.mid_numlin = cbm.mid_numlin )             
+                                                  
+    SELECT  cbm.TableName        
+           ,cbm.mid_codigo        
+           ,cbm.mid_tipmin        
+           ,cbm.mid_numlin        
+           ,cbm.mid_estser        
+           ,cbm.mid_codrec        
+           ,cbm.mid_numrac        
+           ,cbm.mid_descri        
+           ,cbm.mid_cosrec        
+           ,cbm.mid_fecval        
+           ,cbm.mid_tiprec        
+           ,cbm.mid_nummer        
+           ,cbm.mid_rec5eta        
+           ,cbm.mid_cosdes        
+           ,cbm.mid_modmina        
+           ,cbm.mid_modminb        
+    FROM    #tmpMinutasDet cbm          
+          
+    DROP TABLE   #tmpMinutasDet               
+              
+    --SELECT  'b_minutadet' AS TableName            
+    --       ,cbm.mid_codigo            
+    --       ,cbm.mid_tipmin            
+    --       ,cbm.mid_numlin            
+    --       ,cbm.mid_estser            
+    --       ,cbm.mid_codrec            
+    --       ,cbm.mid_numrac            
+    --       ,cbm.mid_descri            
+    --       ,cbm.mid_cosrec            
+    --       ,cbm.mid_fecval            
+    --       ,cbm.mid_tiprec            
+    --       ,cbm.mid_nummer            
+    --       ,cbm.mid_rec5eta            
+    --       ,cbm.mid_cosdes            
+    --       ,cbm.mid_modmina        
+    --       ,cbm.mid_modminb  
+    --FROM    dbo.cas_b_minutadet AS cbm WITH ( NOLOCK )            
+    --INNER JOIN dbo.cas_b_minuta AS cbm2 WITH ( NOLOCK ) ON cbm.mid_cecori = cbm2.min_cecori            
+    --                                                       AND cbm.mid_codigo = cbm2.min_codigo            
+    --INNER JOIN #tmp AS t ON cbm2.min_cecori = t.Ceco            
+    --                        AND cbm2.min_fecmin >= t.fechaini            
+    --                        AND cbm2.min_fecmin <= t.fechafin            
+    --UNION ALL            
+    --SELECT  'b_minutadet' AS TableName            
+    --       ,cbm.mid_codigo            
+    --       ,2 AS mid_tipmin            
+    --       ,cbm.mid_numlin            
+    --       ,cbm.mid_estser            
+    --       ,cbm.mid_codrec            
+    --       ,cbm.mid_numrac            
+    --       ,cbm.mid_descri            
+    --       ,cbm.mid_cosrec            
+    --       ,cbm.mid_fecval            
+    --       ,cbm.mid_tiprec            
+    --       ,cbm.mid_nummer            
+    --       ,cbm.mid_rec5eta            
+    --       ,cbm.mid_cosdes            
+    --       ,cbm.mid_modmina            
+    --       ,cbm.mid_modminb            
+    --FROM    dbo.cas_b_minutadet AS cbm WITH ( NOLOCK )            
+    --INNER JOIN dbo.cas_b_minuta AS cbm2 WITH ( NOLOCK ) ON cbm.mid_cecori = cbm2.min_cecori            
+    --                                                       AND cbm.mid_codigo = cbm2.min_codigo            
+    --INNER JOIN #tmp AS t ON cbm2.min_cecori = t.Ceco            
+    --                        AND cbm2.min_fecmin >= t.fechaini            
+    --                        AND cbm2.min_fecmin <= t.fechafin                          
+            
+-----------------------------------------------------------a_servicio--------------------------------------------------------------                          
+    SELECT  DISTINCT        
+            'a_servicio' AS TableName        
+           ,as2.ser_codigo        
+           ,as2.ser_nombre        
+           ,as2.ser_orden        
+           ,as2.ser_codsap        
+           ,as2.ser_facturable        
+           ,as2.ser_activo        
+           ,NULL        
+           ,NULL        
+           ,NULL        
+           ,NULL        
+    FROM    dbo.a_servicio AS as2 WITH ( NOLOCK )        
+    INNER JOIN dbo.cas_b_minuta AS cbm ON as2.ser_codigo = cbm.min_codser        
+    INNER JOIN #tmp AS t ON cbm.min_cecori = t.Ceco        
+                            AND cbm.min_fecmin >= t.fechaini        
+                            AND cbm.min_fecmin <= t.fechafin                           
+                          
+-----------------------------------------------------------a_estservicio--------------------------------------------------------------                          
+    SELECT  DISTINCT        
+            'a_estservicio' AS TableName        
+           ,ae.ess_codser        
+           ,ae.ess_codigo        
+          -- ,case when isnull(cbm.mid_desest,'') <> ''
+		        --then convert(varchar(30),cbm.mid_desest)
+		        --else isnull(ae.ess_nombre,'') end as ess_nombre
+		   ,isnull(ae.ess_nombre,'') as ess_nombre        
+           ,ae.ess_orden
+           ,ae.ess_codsec
+           ,ae.ess_racmin
+           ,t.Ceco AS ess_cencos
+           --,NULL        
+           ,ae.ess_agrupacionestructura  
+	into #tmpEstServicio      
+    FROM    dbo.a_estservicio AS ae WITH ( NOLOCK )        
+    INNER JOIN dbo.cas_b_minutadet AS cbm WITH ( NOLOCK ) ON ae.ess_codigo = cbm.mid_estser        
+    INNER JOIN dbo.cas_b_minuta AS cbm2 WITH ( NOLOCK ) ON cbm.mid_cecori = cbm2.min_cecori        
+                                                       AND cbm.mid_codigo = cbm2.min_codigo
+				                                       and cbm2.min_codser = ae.ess_codser
+    INNER JOIN #tmp AS t ON cbm2.min_cecori = t.Ceco        
+                            AND cbm2.min_fecmin >= t.fechaini        
+        AND cbm2.min_fecmin <= t.fechafin  
+     
+	update #tmpEstServicio
+	set ess_nombre = convert(varchar(30),cbm.mid_desest)                   
+    FROM #tmpEstServicio AS ae WITH ( NOLOCK )        
+    INNER JOIN dbo.cas_b_minutadet AS cbm WITH ( NOLOCK ) ON ae.ess_codigo = cbm.mid_estser        
+	                                                     and isnull(cbm.mid_desest,'') <> ''
+    INNER JOIN dbo.cas_b_minuta AS cbm2 WITH ( NOLOCK ) ON cbm.mid_cecori = cbm2.min_cecori        
+                                                       AND cbm.mid_codigo = cbm2.min_codigo        
+    INNER JOIN #tmp AS t ON cbm2.min_cecori = t.Ceco        
+                            AND cbm2.min_fecmin >= t.fechaini        
+                            AND cbm2.min_fecmin <= t.fechafin  
+
+    SELECT  DISTINCT        
+            'a_estservicio' AS TableName        
+           ,ae.ess_codser        
+           ,ae.ess_codigo        
+		   ,isnull(ae.ess_nombre,'') as ess_nombre        
+           ,ae.ess_orden
+           ,ae.ess_codsec
+           ,ae.ess_racmin
+           ,ae.ess_cencos
+           ,NULL        
+           ,ae.ess_agrupacionestructura  
+	from #tmpEstServicio as ae with (nolock)
+
+	drop table #tmpEstServicio
+-----------------------------------------------------------a_regimen--------------------------------------------------------------                          
+    SELECT DISTINCT        
+            'a_regimen' AS TableName        
+           ,ar.reg_codigo        
+           ,ar.reg_nombre        
+           ,NULL        
+    FROM    dbo.a_regimen AS ar WITH ( NOLOCK )        
+    INNER JOIN dbo.cas_b_minuta AS cbm WITH ( NOLOCK ) ON ar.reg_codigo = cbm.min_codreg        
+    INNER JOIN #tmp AS t ON cbm.min_cecori = t.Ceco        
+                            AND cbm.min_fecmin >= t.fechaini        
+                            AND cbm.min_fecmin <= t.fechafin                           
+                          
+-----------------------------------------------------------a_unidadmed--------------------------------------------------------------                          
+    SELECT DISTINCT        
+            'a_unidadmed' AS TableName        
+           ,um.unm_codigo        
+           ,um.unm_nombre        
+           ,um.unm_nomcor        
+    FROM    a_unidadmed AS um WITH ( NOLOCK )                          
+                          
+-----------------------------------------------------------a_ctacontable--------------------------------------------------------------                          
+    SELECT DISTINCT        
+            'a_ctacontable' AS TableName        
+           ,a.cta_codigo        
+           ,a.cta_nombre        
+    FROM    a_ctacontable a WITH ( NOLOCK )        
+    INNER JOIN b_productos b WITH ( NOLOCK ) ON a.cta_codigo = b.pro_ctacon                            
+                          
+-----------------------------------------------------------a_tipopro--------------------------------------------------------------                          
+    SELECT DISTINCT        
+            'a_tipopro' AS TableName        
+           ,tip_codigo        
+           ,tip_nombre        
+           ,tip_previo        
+           ,tip_activo        
+    FROM    a_tipopro WITH ( NOLOCK )                          
+                          
+-----------------------------------------------------------a_unidad--------------------------------------------------------------                          
+    SELECT DISTINCT        
+            'a_unidad' AS TableName        
+           ,uni_codigo        
+           ,uni_nombre        
+           ,uni_nomcor        
+           ,uni_valuni        
+           ,uni_codunm        
+    FROM    a_unidad WITH ( NOLOCK )                            
+                          
+-----------------------------------------------------------a_embalaje--------------------------------------------------------------                     
+    SELECT DISTINCT        
+            'a_embalaje' AS TableName        
+           ,emb_codigo        
+           ,emb_nombre        
+           ,emb_nomcor        
+    FROM    a_embalaje WITH ( NOLOCK )                          
+                          
+-----------------------------------------------------------a_nutriente--------------------------------------------------------------                  
+    SELECT DISTINCT        
+            'a_nutriente' AS TableName        
+           ,nut_codigo        
+           ,nut_nombre        
+           ,nut_nomuni        
+           ,nut_indpri        
+           ,nut_secnro        
+    FROM    a_nutriente WITH ( NOLOCK )                          
+                          
+-----------------------------------------------------------b_productos--------------------------------------------------------------                          
+    SELECT      DISTINCT        
+            'b_productos' AS TableName        
+           ,a.pro_codigo        
+           ,a.pro_codbar        
+           ,a.pro_codcom        
+           ,a.pro_codtip        
+           ,a.pro_nombre        
+           ,a.pro_coduni        
+		   ,a.pro_facing        
+           ,a.pro_facsto        
+           ,a.pro_codemb        
+           ,a.pro_uniemb        
+           ,a.pro_upreco  
+           ,a.pro_fecuco        
+           ,a.pro_propon        
+           ,a.pro_ctacon        
+           ,a.pro_fecven        
+           ,a.pro_ctrsto        
+           ,a.pro_maepro        
+           ,a.pro_indppr        
+           ,a.pro_codref        
+           ,a.pro_codrei        
+           ,a.pro_cuohor        
+           ,a.pro_tipord        
+           ,a.pro_tippro
+		   ,a.pro_UniFactorIng
+    FROM    b_productos a WITH ( NOLOCK )
+    INNER JOIN a_unidad b WITH ( NOLOCK ) ON a.pro_coduni = b.uni_codigo
+    INNER JOIN a_embalaje c WITH ( NOLOCK ) ON a.pro_codemb = c.emb_codigo
+    WHERE   a.pro_indppr = 1
+                
+    --FROM    cas_b_minuta c WITH ( NOLOCK )            
+    --INNER JOIN cas_b_minutadet b WITH ( NOLOCK ) ON c.min_cencos = b.mid_cecori        
+    --                                                AND c.min_codigo = b.mid_codigo            
+    --INNER JOIN dbo.cas_b_receta AS cbr WITH ( NOLOCK ) ON b.mid_codrec = cbr.rec_codigo            
+    --INNER JOIN dbo.cas_b_recetadet AS cbr2 ON cbr2.red_codigo = cbr.rec_codigo            
+    --INNER JOIN dbo.b_ingrediente AS bi ON bi.ing_codigo = cbr2.red_codpro            
+    --INNER JOIN dbo.b_productosing AS bp WITH ( NOLOCK ) ON bi.ing_codigo = bp.pri_coding            
+    --INNER JOIN dbo.b_productos AS a WITH ( NOLOCK ) ON a.pro_codigo = bp.pri_codpro            
+    --INNER JOIN a_unidad b1 WITH ( NOLOCK ) ON a.pro_coduni = b1.uni_codigo            
+    --INNER JOIN a_embalaje c1 WITH ( NOLOCK ) ON a.pro_codemb = c1.emb_codigo            
+    --INNER JOIN #tmp AS t WITH ( NOLOCK ) ON c.min_fecmin >= t.fechaini            
+    --                                   AND c.min_fecmin <= t.fechafin            
+    --                                        AND b.mid_cecori = t.Ceco            
+    --WHERE   a.pro_indppr = 1                      
+                          
+-----------------------------------------------------------b_receta--------------------------------------------------------------                          
+                          
+    SELECT DISTINCT        
+            'b_receta' AS TableName        
+           ,a.rec_codigo        
+           ,a.rec_catdie        
+           ,a.rec_tippla        
+           ,a.rec_nombre        
+           ,a.rec_nomfan        
+           ,CONVERT(VARCHAR(4000), a.rec_metpre) AS rec_metpre        
+           ,CONVERT(VARCHAR(4000), a.rec_conche) AS rec_conche        
+           ,CONVERT(VARCHAR(4000), a.rec_sugere) AS rec_sugere        
+           ,a.rec_basrac   
+      ,a.rec_tiprec        
+           ,a.rec_fecvig        
+   ,CONVERT(VARCHAR(4000), a.rec_gruvul) AS rec_gruvul        
+    FROM    b_receta a WITH ( NOLOCK )        
+    INNER JOIN cas_b_minutadet b WITH ( NOLOCK )        
+    INNER JOIN cas_b_minuta c WITH ( NOLOCK )        
+    INNER JOIN #tmp AS t WITH ( NOLOCK ) ON c.min_fecmin >= t.fechaini        
+                                            AND c.min_fecmin <= t.fechafin ON c.min_cencos = b.mid_cecori        
+                                                              AND c.min_codigo = b.mid_codigo ON b.mid_cecori = t.Ceco        
+                                                              AND b.mid_codrec = a.rec_codigo        
+    WHERE   c.min_cencos = t.Ceco        
+    ORDER BY rec_codigo                             
+                          
+-----------------------------------------------------------b_recetadet--------------------------------------------------------------                           
+    SELECT DISTINCT        
+            'b_recetadet' AS TableName        
+           ,cbr.red_codigo        
+           ,cbr.red_nroite        
+           ,ISNULL(reemplazo.IdIngredienteCambio, cbr.red_codpro) AS red_codpro        
+           ,isnull(reemplazo.CantIngredienteCambio, cbr.red_canpro) AS red_canpro        
+           ,cbr.red_cospro        
+           ,cbr.red_pctapr        
+           ,cbr.red_pctcoc        
+           ,cbr.red_pctnut        
+           ,c.min_codreg AS red_tiprec        
+           ,t.Ceco AS red_cencos        
+    FROM    cas_b_minuta c WITH ( NOLOCK )        
+    INNER JOIN cas_b_minutadet b WITH ( NOLOCK ) ON c.min_codigo = b.mid_codigo        
+                                                    AND b.mid_cecori = c.min_cecori
+	inner join b_receta as br with (nolock) on br.rec_codigo = b.mid_codrec       
+    INNER JOIN b_recetadet cbr ON cbr.red_codigo = br.rec_codigo        
+    INNER JOIN #tmp AS t WITH ( NOLOCK ) ON c.min_fecmin >= t.fechaini        
+                                            AND c.min_fecmin <= t.fechafin        
+                                            AND c.min_cecori = t.Ceco        
+    INNER JOIN dbo.b_clientes bc ON bc.cli_codigo = t.Ceco        
+                                    AND bc.cli_tipo = 0 
+	OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    bc.cli_codigo,
+				    c.min_codreg,
+				    cbr.red_codigo,
+				    cbr.red_codpro ,
+				    br.rec_tippla
+			) AS reemplazo       
+    --LEFT JOIN dbo.b_tablagramajececo AS bt ON bt.tgc_codrec = cbr.red_codigo        
+    --                                          AND bt.tgc_coding = cbr.red_codpro        
+    --                                          AND bt.tgc_ceco = bc.cli_codigo        
+    --                                          AND c.min_codreg = bt.tgc_codreg        
+    UNION ALL        
+    SELECT DISTINCT        
+            'b_recetadet' AS TableName        
+           ,red_codigo        
+           ,red_nroite        
+           ,red_codpro        
+           ,red_canpro        
+           ,red_cospro        
+           ,red_pctapr        
+           ,red_pctcoc        
+           ,red_pctnut        
+           ,0 AS red_tiprec        
+           ,'0' AS red_cencos           
+           --,t.Ceco AS red_cencos            
+    FROM    cas_b_minuta c1 WITH ( NOLOCK )        
+    INNER JOIN cas_b_minutadet b WITH ( NOLOCK ) ON c1.min_codigo = b.mid_codigo        
+                                                    AND b.mid_cecori = c1.min_cecori        
+    INNER JOIN b_recetadet cbr ON cbr.red_codigo = b.mid_codrec        
+    INNER JOIN #tmp AS t WITH ( NOLOCK ) ON c1.min_cecori = t.Ceco        
+                                            AND c1.min_fecmin >= t.fechaini        
+                                            AND c1.min_fecmin <= t.fechafin                          
+                            
+                                     
+-----------------------------------------------------------a_recetacatdie--------------------------------------------------------------                           
+    SELECT DISTINCT        
+            'a_recetacatdie' AS TableName        
+           ,car_codigo        
+       ,car_nombre        
+           ,car_previo     
+    FROM    cas_b_minuta c WITH ( NOLOCK )        
+    INNER JOIN cas_b_minutadet b WITH ( NOLOCK ) ON c.min_cencos = b.mid_cecori        
+                                                    AND c.min_codigo = b.mid_codigo        
+    INNER JOIN dbo.b_receta AS cbr WITH ( NOLOCK ) ON b.mid_codrec = cbr.rec_codigo        
+    INNER JOIN dbo.a_recetacatdie AS ar WITH ( NOLOCK ) ON cbr.rec_catdie = ar.car_codigo        
+    INNER JOIN #tmp AS t WITH ( NOLOCK ) ON c.min_fecmin >= t.fechaini        
+                                            AND c.min_fecmin <= t.fechafin        
+                                            AND b.mid_cecori = t.Ceco                        
+                                                                                     
+                          
+-----------------------------------------------------------a_recetatippla--------------------------------------------------------------                            
+    SELECT DISTINCT        
+            'a_recetatippla' AS TableName        
+           ,tip_codigo        
+           ,tip_nombre        
+           ,tip_previo        
+    FROM    cas_b_minuta c WITH ( NOLOCK )        
+    INNER JOIN cas_b_minutadet b WITH ( NOLOCK ) ON c.min_cencos = b.mid_cecori        
+                                                    AND c.min_codigo = b.mid_codigo       
+    INNER JOIN dbo.b_receta AS cbr WITH ( NOLOCK ) ON b.mid_codrec = cbr.rec_codigo        
+    INNER JOIN dbo.a_recetatippla AS ar WITH ( NOLOCK ) ON cbr.rec_tippla = ar.tip_codigo        
+    INNER JOIN #tmp AS t WITH ( NOLOCK ) ON c.min_fecmin >= t.fechaini        
+                                         AND c.min_fecmin <= t.fechafin        
+                                            AND b.mid_cecori = t.Ceco                        
+                          
+------------------------------------------------------b_ingrediente----------------------------------------------------------------                           
+    SELECT DISTINCT        
+            'b_ingrediente' AS TableName        
+           ,ing_codigo        
+           ,ing_nombre        
+           ,ing_nomfan        
+           ,ing_unimed        
+           ,ing_pctapr        
+           ,ing_pctcoc        
+           ,ing_pctnut        
+           ,ing_facnut        
+           ,ing_indpav        
+           ,ing_indgrv        
+           ,ing_precos        
+           ,ing_feccos      
+           ,ing_codcom        
+           ,ing_codped        
+	  from b_ingrediente as bi
+	  WHERE   bi.ing_indppr = 1
+    --FROM    cas_b_minuta c WITH ( NOLOCK )        
+    --INNER JOIN cas_b_minutadet b WITH ( NOLOCK ) ON c.min_cencos = b.mid_cecori        
+    --                                            AND c.min_codigo = b.mid_codigo        
+    --INNER JOIN dbo.b_receta AS cbr WITH ( NOLOCK ) ON b.mid_codrec = cbr.rec_codigo        
+    --INNER JOIN dbo.b_recetadet AS cbr2 ON cbr2.red_codigo = cbr.rec_codigo        
+    --INNER JOIN dbo.b_ingrediente AS bi ON bi.ing_codigo = cbr2.red_codpro        
+    --INNER JOIN #tmp AS t WITH ( NOLOCK ) ON c.min_fecmin >= t.fechaini        
+    --                                    AND c.min_fecmin <= t.fechafin        
+    --                                    AND b.mid_cecori = t.Ceco        
+
+                          
+------------------------------------------------------b_productosing----------------------------------------------------------------                             
+    SELECT DISTINCT        
+           'b_productosing' AS TableName        
+           ,pri_codpro        
+           ,pri_coding   
+	from b_productosing AS bp WITH ( NOLOCK )    
+	INNER JOIN dbo.b_ingrediente AS bi ON bi.ing_codigo = bp.pri_coding
+	INNER JOIN dbo.b_productos AS bp2 WITH ( NOLOCK ) ON bp2.pro_codigo = bp.pri_codpro                
+    WHERE  bp2.pro_indppr = 1
+    AND    bi.ing_indppr = 1                 
+
+    --FROM    cas_b_minuta c WITH ( NOLOCK )        
+    --INNER JOIN cas_b_minutadet b WITH ( NOLOCK ) ON c.min_cencos = b.mid_cecori        
+    --                                                AND c.min_codigo = b.mid_codigo        
+    --INNER JOIN dbo.b_receta AS cbr WITH ( NOLOCK ) ON b.mid_codrec = cbr.rec_codigo        
+    --INNER JOIN dbo.b_recetadet AS cbr2 ON cbr2.red_codigo = cbr.rec_codigo        
+    --INNER JOIN dbo.b_ingrediente AS bi ON bi.ing_codigo = cbr2.red_codpro        
+    --INNER JOIN dbo.b_productosing AS bp WITH ( NOLOCK ) ON bi.ing_codigo = bp.pri_coding        
+    --INNER JOIN dbo.b_productos AS bp2 WITH ( NOLOCK ) ON bp2.pro_codigo = bp.pri_codpro        
+    --INNER JOIN #tmp AS t WITH ( NOLOCK ) ON c.min_fecmin >= t.fechaini        
+    --                                        AND c.min_fecmin <= t.fechafin        
+    --                                        AND b.mid_cecori = t.Ceco        
+    --WHERE  bp2.pro_indppr = 1
+    --AND    bi.ing_indppr = 1                 
+------------------------------------------------------b_productonut----------------------------------------------------------------                              
+    SELECT DISTINCT        
+           'b_productonut' AS TableName        
+           ,pnu_codpro        
+           ,pnu_codapo        
+           ,pnu_canapo        
+	from b_productonut AS bp1 WITH ( NOLOCK )
+	INNER JOIN dbo.b_ingrediente AS bi ON bi.ing_codigo = bp1.pnu_codpro
+	where bi.ing_indppr =1                      
+
+    --FROM    cas_b_minuta c WITH ( NOLOCK )        
+    --INNER JOIN cas_b_minutadet b WITH ( NOLOCK ) ON c.min_cencos = b.mid_cecori        
+    --                                            AND c.min_codigo = b.mid_codigo        
+    --INNER JOIN dbo.b_receta AS cbr WITH ( NOLOCK ) ON b.mid_codrec = cbr.rec_codigo        
+    --INNER JOIN dbo.b_recetadet AS cbr2 ON cbr2.red_codigo = cbr.rec_codigo        
+    --INNER JOIN dbo.b_ingrediente AS bi ON bi.ing_codigo = cbr2.red_codpro        
+    --INNER JOIN dbo.b_productosing AS bp WITH ( NOLOCK ) ON bi.ing_codigo = bp.pri_coding        
+    --INNER JOIN dbo.b_productos AS bp2 WITH ( NOLOCK ) ON bp2.pro_codigo = bp.pri_codpro        
+    --INNER JOIN dbo.b_productonut AS bp1 WITH ( NOLOCK ) ON bi.ing_codigo = bp1.pnu_codpro        
+    --INNER JOIN #tmp AS t WITH ( NOLOCK ) ON c.min_fecmin >= t.fechaini        
+    --                                    AND c.min_fecmin <= t.fechafin        
+    --                                    AND b.mid_cecori = t.Ceco        
+    --WHERE   bp2.pro_indppr = 1    
+    --AND bi.ing_indppr =1              
+    
+	DROP TABLE #tmp
+
+

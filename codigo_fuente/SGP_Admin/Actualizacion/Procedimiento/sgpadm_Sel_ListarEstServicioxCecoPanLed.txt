@@ -1,0 +1,80 @@
+/*            
+==========================================================================            
+Sistema : Sgp Administrador            
+Modulo :   Minutas - Pan Led - Parametrizar Ceco Estructura Servicio (M_EstructuraServicioPanLed)           
+            
+SP o Function : sgpadm_Sel_ListarEstServicioxCecoPanLed
+Descripcion  : Permite lista la estructura de servicio x ceco
+Observaciones :             
+            
+F. creacion:      09/10/2025
+Creador:          Jorge Paz            
+            
+==========================================================================            
+Modificaciones:            
+Fecha             Programador             Motivo y/o Modificacion            
+            
+==========================================================================            
+Test:            
+sgpadm_Sel_ListarEstServicioxCecoPanLed '22700', 10280, 10001
+sgpadm_Sel_ListarEstServicioxCecoPanLed '20450', 10436, 10001            
+==========================================================================            
+*/            
+            
+alter PROC [dbo].[sgpadm_Sel_ListarEstServicioxCecoPanLed]
+    (
+      @Ceco AS VARCHAR(10) ,
+      @CodigoRegimen AS INT ,
+      @CodigoServicio AS INT            
+    )
+AS 
+
+	declare @FecIni as int
+	declare @FecFin as int
+
+	set @FecIni = (select convert(varchar(8),getdate(),112))
+	set @FecFin = (select convert(varchar(8),DATEADD(month, 6, getdate()),112))
+
+    SELECT  CASE WHEN isnull(hd.Activo,'0') = '0' THEN '0'
+                 ELSE '1'
+            END AS sel ,
+            isnull(ae.ess_codigo,0) as ess_codigo ,
+            isnull(ae.ess_nombre,'') as ess_nombre,
+			isnull(ah.ID_HomologacionEstServicio,0) as [EstHomologacionClan],
+			isnull(ah.Descripcion,'') as [NomEstHomologacionClan]
+    FROM    dbo.cas_b_MinutaBloque AS bmb WITH ( NOLOCK )
+            INNER JOIN dbo.cas_b_minuta AS cbm WITH ( NOLOCK ) ON bmb.Ceco = cbm.min_cecori
+                                                                  AND bmb.Regimen = cbm.min_codreg
+                                                                  AND bmb.Servicio = cbm.min_codser
+                                                                  AND bmb.ID_Bloque = cbm.ID_Bloque
+            INNER JOIN dbo.cas_b_minutadet AS cbm2 WITH ( NOLOCK ) ON bmb.Ceco = cbm2.mid_cecori
+                                                                      AND cbm.min_codigo = cbm2.mid_codigo
+            INNER JOIN dbo.a_estservicio AS ae WITH ( NOLOCK ) ON cbm2.mid_estser = ae.ess_codigo
+															and	  cbm.min_codser = ae.ess_codser	
+            INNER JOIN dbo.b_clientes AS bc WITH ( NOLOCK ) ON bmb.Ceco = bc.cli_codigo
+            INNER JOIN dbo.a_regimen AS ar WITH ( NOLOCK ) ON ar.reg_codigo = bmb.Regimen
+            INNER JOIN dbo.a_servicio AS as2 WITH ( NOLOCK ) ON as2.ser_codigo = bmb.servicio
+            LEFT  JOIN dbo.homologacionPantalla_Led AS hd WITH ( NOLOCK ) ON hd.IdCeco = bmb.Ceco
+                                                                               AND hd.IdRegimen = bmb.Regimen
+                                                                               AND hd.IdServicio = bmb.Servicio
+                                                                               AND hd.IdEstSer = ae.ess_codigo
+			left join dbo.a_homologacionestservicio as ah with (nolock) on ah.id_homologacionestservicio = ae.id_homologacionestservicio
+    WHERE   bmb.Ceco = @Ceco
+            AND bmb.Regimen = @CodigoRegimen
+            AND bmb.Servicio = @CodigoServicio
+			and cbm.min_fecmin>= @FecIni
+			and cbm.min_fecmin<= @FecFin
+            AND bc.cli_tipo = 0
+            AND bc.cli_activo = 1
+            AND cbm2.mid_tipmin = '1'
+    GROUP BY ae.ess_codigo ,
+            ae.ess_nombre ,
+            hd.IdCeco,
+			cbm2.mid_numlin,
+			ah.ID_HomologacionEstServicio,
+			ah.Descripcion,
+			hd.Activo
+    ORDER BY cbm2.mid_numlin,
+	         ae.ess_nombre
+	         
+            

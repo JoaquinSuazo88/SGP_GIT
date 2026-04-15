@@ -1,0 +1,64 @@
+/*            
+==========================================================================            
+Sistema : Sgp Administrador            
+Modulo :   Minutas - Pan Led - Parametrizar Ceco Estructura Servicio (M_EstructuraServicioPanLed)           
+            
+SP o Function : sgpadm_Sel_ExportarExcelPanLed
+Descripcion  : Permite lista la pantalla led
+Observaciones :             
+            
+F. creacion:      09/10/2025
+Creador:          Jorge Paz            
+            
+==========================================================================            
+Modificaciones:            
+Fecha             Programador             Motivo y/o Modificacion            
+            
+==========================================================================            
+Test:            
+sgpadm_Sel_ExportarExcelPanLed
+
+==========================================================================            
+*/            
+            
+create PROC [dbo].[sgpadm_Sel_ExportarExcelPanLed]
+AS 
+
+select b.cli_codigo as [Centro Costo]
+      ,b.cli_nombre as [Nombre Centro Costo]
+	  ,h.cecos_ax as [Centro Costo AX]
+	  ,c.reg_codigo as [Regimen]
+	  ,c.reg_nombre as [Nombre Regimen]
+	  ,d.ser_codigo as [Servicio]
+	  ,d.ser_nombre as [Nombre Servicio]
+	  ,e.IdServicio as [Servicio Clan]
+	  ,e.Servicio as [Nombre Servicio Clan]
+	  ,f.ess_codigo as [Est. Servicio]
+	  ,f.ess_nombre as [Nombre Est. Servicio]
+	  ,g.ID_HomologacionEstServicio as [Est. Homologacion Clan]
+	  ,g.Descripcion as [Nombre Est. Homologacion Clan]
+from homologacionPantalla_Led as a with (nolock)
+inner join b_clientes as b  with (nolock) on b.cli_codigo = a.IdCeco
+inner join a_regimen as c  with (nolock) on c.reg_codigo = a.IdRegimen
+inner join a_servicio as d  with (nolock) on d.ser_codigo = a.IdServicio
+inner join a_servicioasociado as e  with (nolock) on e.IdServicio = d.IdServicio
+inner join a_estservicio as f with (nolock) on f.ess_codigo = a.idestser
+                                           and f.ess_codser = d.ser_codigo
+inner join a_homologacionestservicio as g with (nolock) on g.id_homologacionestservicio = f.id_homologacionestservicio
+inner join Cecos_Sap_AX as h with (nolock) on h.cecos_sap = b.cli_codigo
+group by b.cli_codigo
+        ,b.cli_nombre
+	    ,h.cecos_ax
+	    ,c.reg_codigo
+	    ,c.reg_nombre
+	    ,d.ser_codigo
+	    ,d.ser_nombre
+	    ,e.IdServicio
+	    ,e.Servicio
+	    ,f.ess_codigo
+	    ,f.ess_nombre
+	    ,g.ID_HomologacionEstServicio
+	    ,g.Descripcion
+order by [Centro Costo]
+	    ,[Regimen]
+	    ,[Servicio]

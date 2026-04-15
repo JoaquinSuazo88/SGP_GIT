@@ -1,0 +1,47 @@
+sgpadm_s_cliente
+opcion 22 1 y 3
+       23 1 y 3
+       29 no hay
+       38 1
+       39 1
+       40 1 y 3
+       41 1 y 3
+       45 1 y 3
+       46 1
+       55 1 y 3
+       56 1, 2 y 3
+       
+migracion base de datos sql2019
+tablas y funcionalidades
+
+Modificación m_casino.frm tipo de minuta
+             m_MinSr1.frm tipo de minuta
+             m_MinSr2.frm tipo de minuta
+             m_genrec.frm tipo de minuta
+             m_copia_min_seg tipo de minuta
+             c_Coningminblo tipo de minuta
+             m_genped tipo de minuta
+             m_copia_min_seg 
+             C_freminblo
+             C_FreIngMinBlo.frm
+             I_PlanifBloque.frm (I_MenuPlanMecanoBloque-I_MenuPlanMensualSemanaCerradaokBloque-I_MenuPlanMensualBloque-I_AportePlanEstrResBloque
+                                -ExportarExcelAportePlanEstrResMKT-I_MenuPlanBloqueMensualServicioOk-ExportarExcelMenuMensualMKT-ExportarExcelSoloTabkaGramajeMKT
+                                -ExportarExcelTabkaGramajeFrecuenciaMKT)
+             I_ExpMinBlo.frm
+	     I_ExpDetMinBloque.frm
+	     E_PlanMinuta.frm
+             M_EnMinRem.frm
+
+
+
+
+
+
+
+
+
+
+    If RS.State = 1 Then RS.Close
+    RS.CursorLocation = adUseClient
+    vg_db.CursorLocation = adUseClient
+

@@ -1,0 +1,4 @@
+'    Dim F As Form
+'    For Each F In Forms
+'        MsgBox F.Name
+'    Next

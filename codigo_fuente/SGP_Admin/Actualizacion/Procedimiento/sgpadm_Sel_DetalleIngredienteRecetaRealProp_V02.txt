@@ -1,0 +1,48 @@
+/*
+==========================================================================
+Sistema : Sgp Administrador
+Modulo :   Minutas - Recetas (M_Recetas.frm)
+
+SP o Function : sgpadm_Sel_DetalleIngredienteRecetaRealProp
+Descripcion  : Mostrar detalle del ingrediente en receta
+
+Observaciones :
+
+F. creacion:      17/10/2018
+Creador:          Jorge Andrés Paz Núñez
+
+==========================================================================
+Modificaciones:
+Fecha             Programador             Motivo y/o Modificacion
+18/08/2025	      JPN                     incluir concepto Huella Carbono
+==========================================================================
+Test:
+sgpadm_Sel_DetalleIngredienteRecetaRealProp
+==========================================================================
+*/
+                          
+CREATE PROC [dbo].[sgpadm_Sel_DetalleIngredienteRecetaRealProp_V02]
+    (
+      @CodIng VARCHAR(20) ,
+      @IndPpr AS int
+    )
+AS 
+    SET NOCOUNT ON              
+    SET XACT_ABORT ON    
+
+    SELECT DISTINCT
+            a.ing_codigo ,
+            isnull(a.ing_nombre,'') as ing_nombre,
+            isnull(a.ing_pctapr,0) as ing_pctapr,
+            isnull(a.ing_pctcoc,0) as ing_pctcoc,
+            isnull(a.ing_pctnut,0) as ing_pctnut,
+            isnull(a.ing_indppr,0) as ing_indppr,
+			isnull(a.Huella_Carbono,0) as Huella_Carbono,
+            isnull(b.unm_nomcor,'') as unm_nomcor
+    FROM    b_ingrediente a with (nolock)
+    inner join a_unidadmed b with (nolock) on   a.ing_unimed = b.unm_codigo
+    WHERE a.ing_codigo = @CodIng
+          AND ( a.ing_Indppr = @IndPpr
+                  OR @IndPpr <> 1
+                )
+

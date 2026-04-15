@@ -1,0 +1,112 @@
+/*                      
+==========================================================================                      
+Sistema : Sgp Administrador                      
+Modulo :  Minutas - Tabla Gramaje (M_CpTabGra.frm)    
+                      
+SP o Function : sgpadm_DelIns_TablaGramajeCecoNivel    
+Descripcion   : Copiar datos tabla gramaje ceco nivel    
+Observaciones :     
+                      
+F. creacion:      16/08/2025
+Creador:          Jorge Paz Núñez
+                      
+==========================================================================                      
+Modificaciones:                      
+Fecha             Programador             Motivo y/o Modificacion                      
+==========================================================================                      
+test :  sgpadm_DelIns_TablaGramajeCecoNivel '22700', '69710', 10320, 10495, 'ADM'
+    
+*/                  
+        
+alter PROCEDURE [dbo].[sgpadm_DelIns_TablaGramajeCecoNivel]
+  @SubCecoOri VARCHAR(10),
+  @SubCecoDes VARCHAR(10),
+  @RegimenOri int,
+  @RegimenDes Int,
+  @usuario	  varchar(20)
+AS
+
+BEGIN
+  SET NOCOUNT ON
+  SET XACT_ABORT ON
+
+  DECLARE @Num_error INT = 0
+  DECLARE @cRows INT = 0
+  DECLARE @error VARCHAR(2000) = ''
+
+  IF @SubCecoOri = @SubCecoDes
+  BEGIN
+    RAISERROR('Origen y destino no pueden ser iguales.', 16, 1)
+    RETURN
+  END
+
+  BEGIN TRY
+    BEGIN TRAN
+
+	/* Borrra datos donde regimen nullo */
+    DELETE FROM dbo.b_tablagramajececo_nivel
+    WHERE IdCeco = @SubCecoDes
+	and   IdRegimen is null
+
+	/*Borrar datos donde del regimen */
+	DELETE FROM dbo.b_tablagramajececo_nivel
+    WHERE IdCeco = @SubCecoDes
+	and   IdRegimen = @RegimenDes
+
+    SET @cRows = @@ROWCOUNT
+
+	/* Insertar dato que no contenga regimen */
+    INSERT INTO b_tablagramajececo_nivel (
+      IdCeco, IdRegimen, IdTipoPlato, IdIngredienteOrigen, IdIngredienteCambio, CantidadBruta, Fecha_Creacion, Fecha_Modificacion,Activo,Usuario
+    )
+    SELECT
+      @SubCecoDes, IdRegimen, IdTipoPlato, IdIngredienteOrigen, IdIngredienteCambio, CantidadBruta, GETDATE(),getdate(),Activo,@usuario
+    FROM b_tablagramajececo_nivel AS btg
+    WHERE btg.IdCeco = @SubCecoOri
+	and   btg.IdRegimen is null
+      AND NOT EXISTS (
+        SELECT 1
+        FROM b_tablagramajececo_nivel AS a
+        WHERE a.IdCeco = @SubCecoDes
+          AND a.IdRegimen is null
+          AND a.IdTipoPlato = btg.IdTipoPlato
+          AND a.IdIngredienteOrigen = btg.IdIngredienteOrigen
+      )
+
+    SET @cRows = @@ROWCOUNT
+
+	/* Insertar dato que contenga regimen */
+    INSERT INTO b_tablagramajececo_nivel (
+      IdCeco, IdRegimen, IdTipoPlato, IdIngredienteOrigen, IdIngredienteCambio, CantidadBruta, Fecha_Creacion, Fecha_Modificacion,Activo,Usuario
+    )
+    SELECT
+      @SubCecoDes, @RegimenDes, IdTipoPlato, IdIngredienteOrigen, IdIngredienteCambio, CantidadBruta, getdate(), GETDATE(),Activo,@usuario
+    FROM b_tablagramajececo_nivel AS btg
+    WHERE btg.IdCeco = @SubCecoOri
+	and   btg.IdRegimen = @RegimenOri
+      AND NOT EXISTS (
+        SELECT 1
+        FROM b_tablagramajececo_nivel AS a
+        WHERE a.IdCeco = @SubCecoDes
+          AND a.IdRegimen = @RegimenDes
+          AND a.IdTipoPlato = btg.IdTipoPlato
+          AND a.IdIngredienteOrigen = btg.IdIngredienteOrigen
+      )
+
+    SET @cRows = @@ROWCOUNT
+
+    COMMIT TRAN
+
+  END TRY
+  BEGIN CATCH
+    SET @Num_error = ERROR_NUMBER()
+    SET @error = ERROR_MESSAGE()
+    SET @cRows = -1
+    ROLLBACK TRAN
+
+    SELECT @Num_error AS NumError, @error AS MensajeError, @cRows AS FilasAfectadas
+    RETURN
+  END CATCH
+
+  SELECT @Num_error AS NumError, @error AS MensajeError, @cRows AS FilasAfectadas
+END

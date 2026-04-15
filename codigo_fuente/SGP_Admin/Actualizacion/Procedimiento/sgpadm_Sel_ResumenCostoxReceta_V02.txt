@@ -1,0 +1,181 @@
+/*                        
+==========================================================================                        
+Sistema : Sgp Administrador                        
+Modulo :   Ayuda - Busqueda Receta (M_MinSR2.frm)                        
+                        
+SP o Function : sgpadm_Sel_ResumenCostoxReceta                      
+Descripcion  :  Mostrar resumen de receta asociado tipo plato, costo y gramaje                      
+       de acuerdo a un ceco, regimen y servicio                      
+                        
+Observaciones :                         
+                        
+F. creacion:      17/10/2013                        
+Creador:          Jorge Paz                        
+                        
+==========================================================================                        
+Modificaciones:                        
+Fecha             Programador             Motivo y/o Modificacion                        
+20/08/2025        JPAZN                   Incluir tabla gramaje nivel                        
+==========================================================================              
+Test:                        
+sgpadm_Sel_ResumenCostoxReceta '22730', 10310, 10004, 8496, 20131201, 1              
+sgpadm_Sel_ResumenCostoxReceta_V02 '22730', 10310, 10004, 8496, 20131201, 1              
+                        
+==========================================================================              
+*/                        
+                          
+CREATE PROC [dbo].[sgpadm_Sel_ResumenCostoxReceta_V02]      
+  (      
+   @Ceco VARCHAR(20)      
+  ,@CodRegimen INT      
+  ,@CodServicio INT      
+  ,@CodReceta INT      
+  ,@Fecha INT      
+  ,@OpPrecio INT              
+  )      
+AS       
+  BEGIN                        
+                  
+              
+    SELECT  br3.rec_codigo      
+           ,br3.rec_nombre      
+           ,br3.rec_tippla      
+           ,br3.rec_fecvig      
+           ,bi.ing_codigo      
+           ,isnull(reemplazo.CantIngredienteCambio, br4.red_canpro) AS red_canpro      
+           ,br3.rec_indppr    
+           ,br3.cod_uniReceta    
+           ,ISNULL(br3.rec_LYD, 0) AS rec_LYD      
+    INTO    #Paso_Final      
+    FROM    dbo.b_receta AS br3 WITH ( NOLOCK )      
+    INNER JOIN dbo.b_recetadet AS br4 WITH ( NOLOCK ) ON br3.rec_codigo = br4.red_codigo      
+ 			OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+						    @Ceco,
+						    @CodRegimen,
+						    br3.rec_codigo,
+						    br4.red_codpro,
+						    br3.rec_tippla
+						) AS reemplazo
+    INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON ISNULL(reemplazo.IdIngredienteCambio, br4.red_codpro) = bi.ing_codigo      
+    WHERE   br3.rec_indppr = '1'      
+            AND br3.rec_codigo = @CodReceta      
+    GROUP BY br3.rec_codigo      
+           ,br3.rec_nombre      
+           ,br3.rec_tippla      
+           ,br3.rec_fecvig      
+           ,br3.rec_indppr      
+           ,bi.ing_codigo      
+           ,br4.red_canpro      
+           ,reemplazo.CantIngredienteCambio      
+           ,br3.rec_LYD      
+           ,br3.cod_uniReceta    
+    ORDER BY br3.rec_nombre                      
+              
+    CREATE TABLE #sgpadm_Fun_CostoMinutaProducto      
+      (      
+       ing_codigo VARCHAR(20) COLLATE DATABASE_DEFAULT      
+      ,pro_codigo VARCHAR(20) COLLATE DATABASE_DEFAULT      
+      ,pro_nombre VARCHAR(100) COLLATE DATABASE_DEFAULT      
+      ,pro_facing FLOAT      
+      ,fi INT      
+      ,ft INT      
+      ,PMP FLOAT      
+      ,PMPIng FLOAT      
+      ,Convenio FLOAT      
+      ,ConvenioIng FLOAT      
+      ,Lista FLOAT      
+      ,ListaIng FLOAT      
+      )              
+               
+    INSERT  #sgpadm_Fun_CostoMinutaProducto      
+            (       
+             ing_codigo      
+            ,pro_codigo      
+            ,pro_nombre      
+            ,pro_facing      
+            ,fi      
+            ,ft      
+            ,PMP      
+            ,PMPIng      
+         ,Convenio      
+            ,ConvenioIng      
+            ,Lista      
+            ,ListaIng           
+            )      
+            EXEC dbo.PA_sgpadm_CostoxUnaRecetaProducto_V03 @Ceco, @Fecha, @CodRegimen, @CodServicio, @CodReceta, @OpPrecio              
+                                
+    SELECT  ing_codigo      
+           ,pro_codigo      
+           ,pro_nombre      
+           ,pro_facing      
+           ,fi      
+           ,ft      
+           ,PMP      
+           ,PMPIng      
+           ,Convenio      
+           ,ConvenioIng      
+           ,Lista      
+           ,ListaIng      
+           ,( ISNULL(CASE WHEN @OpPrecio = 1 THEN ConvenioIng --Convenio              
+                          WHEN @OpPrecio = 2 THEN PMPIng --PMP              
+                          ELSE ListaIng --Lista              
+                     END, 0) ) AS pmp1      
+    INTO    #sgpadm_Fun_CostoMinutaProducto2      
+    FROM    #sgpadm_Fun_CostoMinutaProducto      
+    WHERE   ( ISNULL(CASE WHEN @OpPrecio = 1 THEN Convenio      
+                          WHEN @OpPrecio = 2 THEN PMP      
+                          ELSE Lista      
+                     END, 0) ) > 0                                           
+              
+             
+    SELECT  pf.rec_codigo      
+           ,pf.rec_nombre      
+           ,pf.rec_tippla      
+           ,pf.rec_fecvig      
+           ,ISNULL(AVG(fun.PMP1) * MAX(pf.red_canpro), 0) AS promedioreceta      
+           ,pf.rec_indppr      
+           ,pf.ing_codigo      
+           ,pf.rec_LYD      
+           ,pf.cod_uniReceta    
+    INTO    #Paso_AuxFinal      
+    FROM    #Paso_Final AS pf      
+    LEFT JOIN #sgpadm_Fun_CostoMinutaProducto2 AS fun ON fun.ing_codigo = pf.ing_codigo      
+                                                         AND fun.fi = @Fecha      
+    GROUP BY pf.rec_codigo      
+           ,pf.rec_nombre      
+           ,pf.rec_tippla      
+           ,pf.rec_fecvig      
+           ,pf.rec_indppr      
+           ,pf.ing_codigo      
+           ,pf.rec_LYD            
+           ,pf.cod_uniReceta    
+        
+    SELECT  pf.rec_codigo      
+         ,CASE WHEN bur.DescripcionCorta IS NULL THEN LTRIM(RTRIM(ISNULL(pf.rec_nombre, '')))    
+               ELSE LTRIM(RTRIM(ISNULL(pf.rec_nombre, ''))) + ' [' + LTRIM(RTRIM(ISNULL(bur.DescripcionCorta, ''))) + ']'    
+          END AS rec_nombre    
+--           ,pf.rec_nombre      
+           ,pf.rec_tippla      
+           ,pf.rec_fecvig      
+           ,SUM(promedioreceta) AS promedioreceta      
+           ,dbo.fn_sgpadm_Pro_TraerAporteCalorias(pf.rec_codigo, @Ceco, @CodRegimen) AS AporteNut      
+           ,pf.rec_indppr      
+           ,pf.rec_LYD      
+    FROM    #Paso_AuxFinal AS pf      
+    LEFT JOIN dbo.b_UnidadReceta AS bur WITH ( NOLOCK ) ON pf.cod_uniReceta = bur.Codigo_unidad    
+    GROUP BY pf.rec_codigo    
+           ,pf.rec_nombre    
+           ,pf.rec_tippla    
+           ,pf.rec_fecvig    
+           ,pf.rec_indppr    
+           ,pf.rec_LYD    
+,bur.DescripcionCorta    
+    ORDER BY pf.rec_nombre                      
+                  
+                      
+    DROP TABLE #Paso_Final        
+    DROP TABLE #Paso_AuxFinal        
+    DROP TABLE #sgpadm_Fun_CostoMinutaProducto2        
+    DROP TABLE #sgpadm_Fun_CostoMinutaProducto        
+                      
+  END 

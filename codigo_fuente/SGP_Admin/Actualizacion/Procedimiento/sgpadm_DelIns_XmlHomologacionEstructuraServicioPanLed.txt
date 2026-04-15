@@ -1,0 +1,127 @@
+/*                      
+==========================================================================                      
+Sistema : Sgp Administrador                      
+Modulo :   Minutas - Pan Led - Paraemtro Estructura Servicio (M_EstructuraServicioPanLed.frm)                      
+                      
+SP o Function : sgpadm_DelIns_XmlHomologacionEstructuraServicioPanLed
+Descripcion   : Este proceso permite grabar los datos relacionado minuta bloque                      
+                      
+Observaciones :                       
+                      
+F. creacion   :   09/10/2025
+Creador       :   Jorge Andres Paz Núñez
+                      
+==========================================================================                      
+Modificaciones:                      
+Fecha             Programador             Motivo y/o Modificacion                      
+
+==========================================================================                      
+Test:                      
+sgpadm_DelIns_XmlHomologacionEstructuraServicioPanLed
+                      
+==========================================================================                      
+*/                      
+                      
+alter PROCEDURE [dbo].[sgpadm_DelIns_XmlHomologacionEstructuraServicioPanLed]
+    (
+      @XmlEstructura AS TEXT ,
+      @Ceco AS VARCHAR(10) ,
+      @CodRegimen AS INT ,
+      @CodServicio AS INT    
+    )
+AS 
+    SET NOCOUNT ON                               
+    SET XACT_ABORT ON                               
+                            
+    DECLARE @Num_error INT                              
+    DECLARE @cRows INT                              
+    DECLARE @error VARCHAR(2000)                              
+                              
+    SET @Num_error = 0                               
+    SET @cRows = 0                               
+    SET @error = ''                              
+                              
+    DECLARE @hdoc AS INTEGER                          
+                          
+    EXEC sp_xml_preparedocument @hdoc OUTPUT, @XmlEstructura
+                          
+    SELECT  Est
+    INTO    #TmpEstructura
+    FROM    OPENXML (@hdoc, '/ParPanLed/PanLed ', 1)
+    WITH                          
+    (                          
+    Est     INT
+    )                          
+
+    BEGIN TRY                           
+
+        BEGIN TRAN                          
+                                  
+        INSERT  INTO dbo.homologacionPantalla_Led
+                ( IdCeco ,
+                  IdRegimen ,
+                  IdServicio ,
+                  IdEstSer ,
+                  NroLinea,
+				  Fecha_Creacion,
+				  Fecha_Modificacion,
+				  Activo
+                )
+                SELECT  @Ceco ,
+                        @CodRegimen ,
+                        @CodServicio ,
+                        te.Est ,
+                        1,
+						getdate(),
+						GETDATE(),
+						'1'
+                FROM    #TmpEstructura AS te WITH ( NOLOCK )
+                        INNER JOIN dbo.a_estservicio AS ae WITH ( NOLOCK ) ON ae.ess_codigo = te.est 
+				where not exists (select 1 from dbo.homologacionPantalla_Led as a with (nolock)
+				                  where a.idceco = @Ceco
+								  and   a.IdRegimen = @CodRegimen
+								  and   a.IdServicio = @CodServicio
+								  and   a.IdEstSer = te.Est)
+        
+		/* Actualizar datos existente con valor activo */
+		update dbo.homologacionPantalla_Led
+		set activo='1',
+		    Fecha_Modificacion=GETDATE()
+        from dbo.homologacionPantalla_Led as a with (nolock)
+        WHERE a.IdCeco = @Ceco
+        AND   a.IdRegimen = @CodRegimen
+        AND   a.IdServicio = @CodServicio
+		and a.IdEstSer in (select b.est
+							   from #TmpEstructura as b with (nolock))
+		and a.Activo='0'
+
+		/* Actualizar datos existente con valor de sactivo */
+		update dbo.homologacionPantalla_Led
+		set activo='0',
+		    Fecha_Modificacion=GETDATE()
+        from dbo.homologacionPantalla_Led as a with (nolock)
+        WHERE a.IdCeco = @Ceco
+        AND   a.IdRegimen = @CodRegimen
+        AND   a.IdServicio = @CodServicio
+		and a.IdEstSer not in (select b.est
+							   from #TmpEstructura as b with (nolock))
+
+        SET @cRows = @@ROWCOUNT                         
+        EXEC sp_xml_removedocument @hDoc                          
+   
+        COMMIT TRAN       
+                              
+    END TRY                              
+                              
+    BEGIN CATCH                              
+        SET @Num_error = ERROR_NUMBER()                               
+        SET @error = ERROR_MESSAGE()                               
+        ROLLBACK TRAN                              
+           
+        GOTO handle_error                              
+    END CATCH                              
+                              
+    handle_error:                              
+    SELECT  @Num_error ,
+            @error ,
+            @cRows

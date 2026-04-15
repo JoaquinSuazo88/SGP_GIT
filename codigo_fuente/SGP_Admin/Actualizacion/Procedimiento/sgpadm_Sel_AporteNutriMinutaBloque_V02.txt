@@ -1,0 +1,131 @@
+/*              
+==========================================================================              
+Sistema : Sgp Administrador              
+Modulo :  Minuta Bloque - Aporte Nutricional (C_ApoPla.frm)              
+              
+SP o Function : sgpadm_Sel_AporteNutriMinutaBloque            
+Descripcion  :  Mostrar aportes detallado y resumen minuta bloque          
+              
+Observaciones :               
+              
+F. creacion:      19/10/2013              
+Creador:          Jorge Paz              
+              
+==========================================================================              
+Modificaciones:              
+Fecha             Programador             Motivo y/o Modificacion              
+20/08/2025		  JPAZN					  Incluir Tabla gramaje nivel              
+==========================================================================              
+Test:              
+sgpadm_Sel_AporteNutriMinutaBloque 2, 5742, 10351, '51760'              
+sgpadm_Sel_AporteNutriMinutaBloque_V02 2, 27537,10320, '22700'
+sgpadm_Sel_AporteNutriMinutaBloque_V02 1, 27537, 10320, '22700'  
+sgpadm_Sel_AporteNutriMinutaBloque_V02 2, 27537,10320, '22700'
+==========================================================================              
+*/              
+            
+alter PROCEDURE [dbo].[sgpadm_Sel_AporteNutriMinutaBloque_V02]
+    (
+      @aux INT ,
+      @CodReceta INT ,
+      @CodRegimen INT ,
+      @Ceco VARCHAR(10)
+    )
+AS 
+    DECLARE @CodSubSeg INT          
+    DECLARE @CodZona AS INT          
+          
+    SELECT  @CodSubSeg = bc.cli_subseg ,
+            @CodZona = bc.cli_codzon
+    FROM    dbo.b_clientes AS bc WITH ( NOLOCK )
+    WHERE   bc.cli_codigo = @Ceco          
+          
+    IF @aux = 1 
+
+        BEGIN            
+          
+            SELECT  b.red_codigo ,
+                    canpro = SUM(isnull(reemplazo.CantIngredienteCambio, b.red_canpro)),
+                    ISNULL(reemplazo.IdIngredienteCambio, b.red_codpro) as red_codpro ,
+                    ISNULL(reemplazo.PctCoccion, b.red_pctcoc) AS red_pctcoc ,
+                    ISNULL(reemplazo.PctAprovechamiento, b.red_pctapr) as red_pctapr ,
+                    ISNULL(reemplazo.PctNutriente, b.red_pctnut) AS red_pctnut ,
+                    canser = SUM((( ISNULL(reemplazo.CantIngredienteCambio, b.red_canpro) * ( ISNULL(reemplazo.PctCoccion, b.red_pctcoc) / 100 ) )
+                                 * ISNULL(reemplazo.PctAprovechamiento, b.red_pctapr) / 100 )) ,
+                    cannet = SUM(( ISNULL(reemplazo.PctNutriente, b.red_pctnut) / 100 ) * ISNULL(reemplazo.CantIngredienteCambio, b.red_canpro)) ,
+
+                    cannetapro = SUM(( ISNULL(reemplazo.PctAprovechamiento, b.red_pctapr) / 100 ) * 
+					             ISNULL(reemplazo.CantIngredienteCambio, b.red_canpro))
+            INTO    #paso
+            FROM    b_receta a WITH ( NOLOCK )
+            INNER JOIN b_recetadet b WITH ( NOLOCK ) ON a.rec_codigo = b.red_codigo
+			OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+						    @Ceco,
+						    @CodRegimen,
+						    a.rec_codigo,
+						    b.red_codpro,
+						    a.rec_tippla
+						) AS reemplazo
+            INNER JOIN b_ingrediente c WITH ( NOLOCK ) ON ISNULL(reemplazo.IdIngredienteCambio, b.red_codpro) = c.ing_codigo
+            WHERE   a.rec_codigo = @CodReceta
+            GROUP BY b.red_codigo ,
+					 b.red_codpro ,
+                     b.red_pctcoc ,
+                     b.red_pctapr ,
+                     b.red_pctnut ,
+                     reemplazo.IdIngredienteCambio ,
+                     reemplazo.CantIngredienteCambio ,
+					 reemplazo.PctCoccion,
+					 reemplazo.PctAprovechamiento,
+					 reemplazo.PctNutriente,
+                     c.ing_pctcoc ,
+                     c.ing_pctapr ,
+                     c.ing_pctnut ,
+					 b.red_canpro  
+  
+            SELECT DISTINCT
+                    red_codigo ,
+                    canpro = SUM(canpro) ,
+                    canser = SUM(( ( red_pctapr / 100 ) * canpro ) * ( red_pctcoc / 100 )) ,
+                    cannet = SUM(( red_pctnut / 100 ) * ( canpro )),
+                    cannetapro=SUM(( red_pctapr / 100 ) * ( canpro ))
+            FROM    #paso WITH ( NOLOCK )
+            GROUP BY red_codigo          
+          
+        END            
+            
+    IF @aux = 2 
+
+        BEGIN          
+          
+            SELECT  e.nut_nombre ,
+                    e.nut_codigo ,
+	                SUM(( ( ( CASE WHEN reemplazo.IdIngredienteCambio is null THEN b.red_pctnut
+                                   ELSE c.ing_pctnut
+                              END / 100 ) * ( d.pnu_canapo * ( ( CASE WHEN reemplazo.CantIngredienteCambio IS NULL THEN b.red_canpro
+                                                                      ELSE reemplazo.CantIngredienteCambio
+                                                                 END ) / a.rec_basrac ) ) ) / c.ing_facnut )) AS candiet ,
+
+                    --SUM(( ( ( ISNULL(reemplazo.PctNutriente, b.red_pctnut) / 100 ) * ( d.pnu_canapo * ( ( ISNULL(reemplazo.CantIngredienteCambio, b.red_canpro) ) / a.rec_basrac ) ) ) / c.ing_facnut )) AS candiet ,
+                    e.nut_secnro
+            FROM    b_receta a WITH ( NOLOCK )
+                    INNER JOIN b_recetadet b WITH ( NOLOCK ) ON a.rec_codigo = b.red_codigo
+			OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+						    @Ceco,
+						    @CodRegimen,
+						    a.rec_codigo,
+						    b.red_codpro,
+						    a.rec_tippla
+						) AS reemplazo
+            inner JOIN b_ingrediente c WITH ( NOLOCK ) ON ISNULL(reemplazo.IdIngredienteCambio, b.red_codpro) = c.ing_codigo
+            INNER JOIN b_productonut d WITH ( NOLOCK ) ON c.ing_codigo = d.pnu_codpro
+            INNER JOIN a_nutriente e WITH ( NOLOCK ) ON d.pnu_codapo = e.nut_codigo
+            WHERE   a.rec_codigo = @CodReceta
+            AND     c.ing_facnut > 0
+            GROUP BY e.nut_nombre ,
+                     e.nut_codigo ,
+                     e.nut_secnro
+            ORDER BY e.nut_secnro            
+            
+          
+        END 

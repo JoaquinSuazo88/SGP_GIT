@@ -1,0 +1,84 @@
+/*                                        
+==========================================================================                                        
+Sistema : Sgp Administrador                                        
+Modulo :   Minutas - Minuta Bloque (C_AportesSansis.frm)                                        
+                                        
+SP o Function : sgpadm_Sel_AporteMinutaBloqueDia      
+Descripcion  : Mostrar detalle de la receta con su aportes      
+                                        
+Observaciones :                                         
+                                        
+F. creacion:      18/05/2017      
+Creador:          Jorge Paz                                        
+                                        
+==========================================================================                                        
+Modificaciones:                                        
+Fecha             Programador             Motivo y/o Modificacion                                        
+20/08/2025        JPAN                    incluir tabla gramaje nivel        
+NOTA:       
+==========================================================================                                        
+Test:                                        
+      
+sgpadm_Sel_AporteMinutaBloqueDia 2, 10361, '20210'      
+sgpadm_Sel_AporteMinutaBloqueDia 15518, 11117, '45213'      
+sgpadm_Sel_AporteMinutaBloqueDia 15856, 11117, '45292'    
+sgpadm_Sel_AporteMinutaBloqueDia_V02 15856, 11117, '45292'    
+select * from b_receta where rec_codigo = 16111    
+==========================================================================                                        
+*/                                        
+                                        
+alter PROC [dbo].[sgpadm_Sel_AporteMinutaBloqueDia_V02]
+    (
+      @Receta INT ,
+      @Regimen INT ,
+      @Ceco VARCHAR(10)
+    )
+AS 
+    SELECT DISTINCT
+            br2.red_codpro AS ingrediente ,
+            br2.red_canpro AS cantidad ,
+            br2.red_pctnut ,
+            br2.red_pctapr ,
+            br2.red_pctcoc,
+			br.rec_tippla
+    INTO    #TempDetalleRecera
+    FROM    dbo.b_receta AS br WITH ( NOLOCK )
+            INNER JOIN dbo.b_recetadet AS br2 WITH ( NOLOCK ) ON br.rec_codigo = br2.red_codigo
+    WHERE   br.rec_codigo = @Receta      
+      
+ /* Mover tabla gramaje */      
+      
+    UPDATE  #TempDetalleRecera
+    SET     ingrediente = ISNULL(reemplazo.IdIngredienteCambio, tdr.ingrediente),
+            cantidad = isnull(reemplazo.CantIngredienteCambio, tdr.cantidad) ,
+            red_pctnut = ISNULL(reemplazo.PctNutriente, tdr.red_pctnut), 
+            red_pctapr = ISNULL(reemplazo.PctAprovechamiento, tdr.red_pctapr) ,
+            red_pctcoc = ISNULL(reemplazo.PctCoccion, tdr.red_pctcoc)
+    FROM    #TempDetalleRecera AS tdr WITH ( NOLOCK )
+	OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+						    @Ceco,
+						    @Regimen,
+						    @Receta,
+						    tdr.ingrediente,
+						    tdr.rec_tippla
+						) AS reemplazo
+    inner JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON ISNULL(reemplazo.IdIngredienteCambio, tdr.ingrediente) = bi.ing_codigo
+      
+    SELECT  an.nut_codigo ,
+            an.nut_nombre ,
+            an.nut_secnro ,
+            SUM(( ( ( tdr.red_pctnut / 100 ) * ( bp.pnu_canapo * ( tdr.cantidad / br.rec_basrac ) ) ) / bi.ing_facnut )) AS valordietetico ,
+            ISNULL(SUM(( ( ( tdr.red_pctapr / 100 ) * tdr.cantidad ) * ( tdr.red_pctcoc / 100 ) )), 0) AS cantidadservir
+    FROM    #TempDetalleRecera AS tdr WITH ( NOLOCK )
+            INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON tdr.ingrediente = bi.ing_codigo
+            INNER JOIN dbo.b_productonut AS bp WITH ( NOLOCK ) ON bi.ing_codigo = bp.pnu_codpro
+            INNER JOIN dbo.a_nutriente AS an WITH ( NOLOCK ) ON an.nut_codigo = bp.pnu_codapo
+   INNER JOIN dbo.b_receta AS br WITH ( NOLOCK ) ON br.rec_codigo = @Receta
+    GROUP BY an.nut_codigo ,
+            an.nut_nombre ,
+            an.nut_secnro
+    ORDER BY an.nut_secnro      
+      
+    DROP TABLE #TempDetalleRecera 
+    
+

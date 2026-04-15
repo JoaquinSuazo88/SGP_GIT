@@ -1,0 +1,194 @@
+/*                      
+==========================================================================                      
+Sistema : Sgp Administrador                      
+Modulo :  Minutas - Tabla Gramaje vnivel (M_TabGra.frm)    
+                      
+SP o Function : sgpadm_InsOrUpd_XmlTablaGramajeNivel    
+Descripcion   : insertar y actualizar datos tabla gramaje ceco nivel
+Observaciones :     
+                      
+F. creacion:      13/08/2025
+Creador:          Jorge Paz Núñez    
+                      
+==========================================================================                      
+Modificaciones:                      
+Fecha             Programador             Motivo y/o Modificacion                      
+==========================================================================                      
+test :  sgpadm_InsOrUpd_XmlTablaGramajeNivel
+
+sgpadm_InsOrUpd_XmlTablaGramajeNivel '22700','adm' , '<?xml version="1.0" encoding="iso-8859-1" ?><GrabaTablaGramajes> <TablaGramaje IR = "10320" ITP = "" CIO = "41" CIC = "43" CT = "" A = "0"/> <TablaGramaje IR = "10320" ITP = "67" CIO = "41" CIC = "45" CT = "3.000" A = "3.000"/></GrabaTablaGramajes>'
+  
+*/                  
+
+ALTER PROCEDURE [dbo].[sgpadm_InsOrUpd_XmlTablaGramajeNivel]
+(
+    @Ceco VARCHAR(10),
+    @Usuario VARCHAR(20),
+    @XmlTablaGramaje TEXT
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @Num_error INT = 0;
+    DECLARE @cRows INT = 0;
+    DECLARE @error VARCHAR(2000) = '';
+    DECLARE @XmlConvertido XML = CAST(@XmlTablaGramaje AS XML);
+
+    -- Validaciones iniciales
+    IF @Ceco IS NULL OR LTRIM(RTRIM(@Ceco)) = ''
+    BEGIN
+        RAISERROR('El parámetro @Ceco no puede estar vacío.', 16, 1);
+        RETURN;
+    END
+
+    IF @Usuario IS NULL OR LTRIM(RTRIM(@Usuario)) = ''
+    BEGIN
+        RAISERROR('El parámetro @Usuario no puede estar vacío.', 16, 1);
+        RETURN;
+    END
+
+    BEGIN TRY
+        BEGIN TRAN;
+
+        -- Crear tabla temporal
+        CREATE TABLE #TmpDetTablaGramaje (
+            IdRegimen VARCHAR(10),
+            IdTipoPlato VARCHAR(10),
+            IdIngredienteOrigen VARCHAR(20),
+            IdIngredienteCambio VARCHAR(20),
+            CantidadBruta FLOAT,
+            Activo VARCHAR(1)
+        );
+
+        -- Insertar datos desde el XML usando nodes() y value()
+        INSERT INTO #TmpDetTablaGramaje
+        SELECT
+            NULLIF(Tabla.value('@IR', 'VARCHAR(10)'), '') AS IdRegimen,
+            NULLIF(Tabla.value('@ITP', 'VARCHAR(10)'), '') AS IdTipoPlato,
+            LTRIM(RTRIM(Tabla.value('@CIO', 'VARCHAR(20)'))) AS IdIngredienteOrigen,
+            NULLIF(Tabla.value('@CIC', 'VARCHAR(20)'), '') AS IdIngredienteCambio,
+            CASE 
+                WHEN ISNUMERIC(Tabla.value('@CT', 'VARCHAR(20)')) = 1 
+                THEN CAST(Tabla.value('@CT', 'VARCHAR(20)') AS FLOAT)
+                ELSE NULL
+            END AS CantidadBruta,
+            NULLIF(Tabla.value('@A', 'VARCHAR(1)'), '') AS Activo
+        FROM @XmlConvertido.nodes('/GrabaTablaGramajes/TablaGramaje') AS X(Tabla);
+
+        COMMIT TRAN;
+    END TRY
+    BEGIN CATCH
+        SET @Num_error = ERROR_NUMBER();
+        SET @error = ERROR_MESSAGE();
+        ROLLBACK TRAN;
+        GOTO handle_error;
+    END CATCH
+
+    BEGIN TRY
+        BEGIN TRAN;
+
+        -- Nivel 3: Ceco + IngredienteOrigen + Regimen + TipoPlato
+        MERGE dbo.b_tablagramajececo_nivel AS target
+        USING (
+            SELECT @Ceco AS IdCeco, * FROM #TmpDetTablaGramaje
+            WHERE IdRegimen IS NOT NULL AND IdTipoPlato IS NOT NULL
+        ) AS source
+        ON target.IdCeco = source.IdCeco
+           AND target.IdIngredienteOrigen COLLATE SQL_Latin1_General_CP1_CI_AS = source.IdIngredienteOrigen COLLATE SQL_Latin1_General_CP1_CI_AS
+           AND target.IdRegimen = source.IdRegimen
+           AND target.IdTipoPlato = source.IdTipoPlato
+        WHEN MATCHED THEN
+            UPDATE SET
+                target.IdIngredienteCambio = source.IdIngredienteCambio,
+                target.CantidadBruta = source.CantidadBruta,
+                target.Activo = source.Activo,
+                target.Fecha_Modificacion = GETDATE(),
+                target.Usuario = @Usuario
+        WHEN NOT MATCHED THEN
+            INSERT (
+                IdCeco, IdRegimen, IdTipoPlato, IdIngredienteOrigen,
+                IdIngredienteCambio, CantidadBruta, Activo,
+                Fecha_Creacion, Fecha_Modificacion, Usuario
+            )
+            VALUES (
+                source.IdCeco, source.IdRegimen, source.IdTipoPlato, source.IdIngredienteOrigen,
+                source.IdIngredienteCambio, source.CantidadBruta, source.Activo,
+                GETDATE(), GETDATE(), @Usuario
+            );
+
+        -- Nivel 2: Ceco + IngredienteOrigen + Regimen
+        MERGE dbo.b_tablagramajececo_nivel AS target
+        USING (
+            SELECT @Ceco AS IdCeco, * FROM #TmpDetTablaGramaje
+            WHERE IdRegimen IS NOT NULL AND IdTipoPlato IS NULL
+        ) AS source
+        ON target.IdCeco = source.IdCeco
+           AND target.IdIngredienteOrigen COLLATE SQL_Latin1_General_CP1_CI_AS = source.IdIngredienteOrigen COLLATE SQL_Latin1_General_CP1_CI_AS
+           AND target.IdRegimen = source.IdRegimen
+           AND target.IdTipoPlato IS NULL
+        WHEN MATCHED THEN
+            UPDATE SET
+                target.IdIngredienteCambio = source.IdIngredienteCambio,
+                target.CantidadBruta = source.CantidadBruta,
+                target.Activo = source.Activo,
+                target.Fecha_Modificacion = GETDATE(),
+                target.Usuario = @Usuario
+        WHEN NOT MATCHED THEN
+            INSERT (
+                IdCeco, IdRegimen, IdTipoPlato, IdIngredienteOrigen,
+                IdIngredienteCambio, CantidadBruta, Activo,
+                Fecha_Creacion, Fecha_Modificacion, Usuario
+            )
+            VALUES (
+                source.IdCeco, source.IdRegimen, NULL, source.IdIngredienteOrigen,
+                source.IdIngredienteCambio, source.CantidadBruta, source.Activo,
+                GETDATE(), GETDATE(), @Usuario
+            );
+
+        -- Nivel 1: Ceco + IngredienteOrigen
+        MERGE dbo.b_tablagramajececo_nivel AS target
+        USING (
+            SELECT @Ceco AS IdCeco, * FROM #TmpDetTablaGramaje
+            WHERE IdRegimen IS NULL AND IdTipoPlato IS NULL
+        ) AS source
+        ON target.IdCeco = source.IdCeco
+           AND target.IdIngredienteOrigen COLLATE SQL_Latin1_General_CP1_CI_AS = source.IdIngredienteOrigen COLLATE SQL_Latin1_General_CP1_CI_AS
+           AND target.IdRegimen IS NULL
+           AND target.IdTipoPlato IS NULL
+        WHEN MATCHED THEN
+            UPDATE SET
+                target.IdIngredienteCambio = source.IdIngredienteCambio,
+                target.CantidadBruta = source.CantidadBruta,
+                target.Activo = source.Activo,
+                target.Fecha_Modificacion = GETDATE(),
+                target.Usuario = @Usuario
+        WHEN NOT MATCHED THEN
+            INSERT (
+                IdCeco, IdRegimen, IdTipoPlato, IdIngredienteOrigen,
+                IdIngredienteCambio, CantidadBruta, Activo,
+                Fecha_Creacion, Fecha_Modificacion, Usuario
+            )
+            VALUES (
+                source.IdCeco, NULL, NULL, source.IdIngredienteOrigen,
+                source.IdIngredienteCambio, source.CantidadBruta, source.Activo,
+                GETDATE(), GETDATE(), @Usuario
+            );
+
+        SET @cRows = @@ROWCOUNT;
+
+        COMMIT TRAN;
+    END TRY
+    BEGIN CATCH
+        SET @Num_error = ERROR_NUMBER();
+        SET @error = ERROR_MESSAGE();
+        ROLLBACK TRAN;
+        GOTO handle_error;
+    END CATCH
+
+    DROP TABLE #TmpDetTablaGramaje;
+
+handle_error:
+    SELECT @Num_error AS NumError, @error AS MensajeError, @cRows AS RegistrosProcesados;
+END

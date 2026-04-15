@@ -1,0 +1,64 @@
+/*
+==========================================================================                                
+Sistema           : Sgp Administrador
+Modulo            : Minutas - Tabla de gramaje nivel (E_LogTablaNivel)
+                                
+SP o Function     : sgpadm_Sel_ExportarExcelLogEventoTablaNivel
+Descripcion       :
+Observaciones     :
+                                
+F. creacion       : 28/08/2025
+Creador           : Jorge Andrés Paz Núñez
+
+==========================================================================
+Modificaciones:
+ID    Fecha       Programador            Motivo y/o Modificacion                                
+==========================================================================                                
+                                
+Test:                               
+DECLARE @FechaIni datetimeoffset
+DECLARE @FechaFin datetimeoffset
+
+SET @FechaIni = '2025-08-25T01:00:00.599-03:00'
+SET @FechaFin = '2025-08-25T23:59:00.599-03:00'
+
+EXEC sgpadm_Sel_ExportarExcelLogEventoTablaNivel @FechaIni, @FechaFin
+
+*/
+alter PROCEDURE [dbo].[sgpadm_Sel_ExportarExcelLogEventoTablaNivel]
+(
+@FechaIni datetime,
+@FechaFin datetime
+)
+AS
+
+SET NOCOUNT ON           
+SET XACT_ABORT ON
+
+select a.fecha as [Fecha],
+       a.Usuario as [Usuario],
+	   a.Accion as [Acción],
+	   a.IdCeco as [Centro Costo],
+	   b.cli_nombre as [Nombre Centro Costo],
+	   a.IdRegimen as [Regimen],
+	   c.reg_nombre as [Nombre Regimen],
+	   a.IdTipoPlato as [Tipo Plato],
+	   case when d.tip_codigo is null
+	        then ''
+	        else isnull(SUBSTRING(dbo.sgpadm_p_buscararboltipplato1(d.tip_codigo), 1, LEN(dbo.sgpadm_p_buscararboltipplato1(d.tip_codigo)) - 1),'')
+			end as [Nombre Tipo Plato],
+       a.IdIngredienteOrigen as [Ingrediente Origen],
+	   e.ing_nombre as [Nombre Ingrediente Origen],
+	   a.IdIngredienteCambio as [Ingrediente Cambio],
+	   f.ing_nombre as [Nombre Ingrediente Cambio],
+	   a.CantidadBruta as [Cantidad a Cambio],
+	  case when a.activo = '1' then 'X' else 'O' end as [Activo],
+	  a.Detalle as [Detalle]
+from LogGramajeCecoNivel as a with (nolock)
+inner join b_clientes as b with (nolock) on b.cli_codigo = a.IdCeco
+left join a_regimen as c with (nolock) on c.reg_codigo = a.idregimen
+left join a_recetatippla as d with (nolock) on d.tip_codigo = a.IdTipoPlato
+left join b_ingrediente as e with (nolock) on e.ing_codigo = a.IdIngredienteOrigen
+left join b_ingrediente as f with (nolock) on f.ing_codigo = a.IdIngredienteCambio
+where a.fecha >= @FechaIni
+and   a.Fecha <= @FechaFin

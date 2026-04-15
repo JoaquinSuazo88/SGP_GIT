@@ -1,0 +1,265 @@
+/*                                            
+==========================================================================                                            
+Sistema : Sgp Administrador                                            
+Modulo :   Minutas - Minuta Bloque (M_MinSR2.frm)                                            
+                                            
+SP o Function : sgpadm_Sel_CostoMinutaBloquexServicios                                            
+Descripcion  : calcula costo de todo servicio             
+                                            
+Observaciones :                                             
+                                            
+F. creacion:      23/09/2014            
+Creador:          Jorge Paz                                            
+                                            
+==========================================================================                                            
+Modificaciones:                                            
+Fecha             Programador             Motivo y/o Modificacion                                            
+18/01/2022        Jorge Paz Núñez         Cambiar nombre sub procedimiento 
+                                          PA_sgpadm_CostoMinBloqueServicios x
+										  PA_sgpadm_CostoMinBloqueServicios_V02
+										  esto incluye dos nuevo cambio a la
+										  tabla excepción formato compras que son
+										  fecha inicio y fin.   
+										  Cambio de procedimiento sgpadm_Sel_CostoMinutaBloquexServicios
+										  x sgpadm_Sel_CostoMinutaBloquexServicios_V02  
+20/08/2025       JPAZN                    incluir tabla gramaje x nivel                                           
+==========================================================================                                            
+Test:                                            
+sgpadm_Sel_CostoMinutaBloquexServicios_V02  '22700',  '20150101' , '20150331' , '1'    
+sgpadm_Sel_CostoMinutaBloquexServicios_V03  '22700',  '20150101' , '20150331' , '1'    
+
+==========================================================================                                            
+*/                                            
+                                            
+alter PROC [dbo].[sgpadm_Sel_CostoMinutaBloquexServicios_V03]    
+  (    
+   @Ceco AS VARCHAR(10)    
+  ,@FecIni AS INT    
+  ,@FecFin AS INT    
+  ,@OpPrecio AS INT    
+  )    
+AS     
+  SET NOCOUNT ON                                            
+                                            
+  SELECT  br.rec_codigo    
+         ,br2.red_canpro    
+         ,br2.red_codpro
+		 ,br.rec_tippla
+		 ,cbm.min_codreg
+		 ,br.rec_LYD
+  INTO    #DetReceta
+  FROM    dbo.cas_b_minuta AS cbm WITH ( NOLOCK )    
+  INNER JOIN dbo.cas_b_minutadet AS cbm2 WITH ( NOLOCK ) ON cbm.min_cecori = cbm2.mid_cecori    
+                                                            AND cbm.min_codigo = cbm2.mid_codigo    
+  INNER JOIN dbo.b_receta AS br WITH ( NOLOCK ) ON cbm2.mid_codrec = br.rec_codigo    
+  INNER JOIN dbo.b_recetadet AS br2 WITH ( NOLOCK ) ON br.rec_codigo = br2.red_codigo    
+  INNER JOIN dbo.b_clientes AS bc WITH ( NOLOCK ) ON cbm.min_cecori = bc.cli_codigo    
+  WHERE   cbm.min_cecori = @Ceco    
+          AND cbm.min_fecmin >= @FecIni    
+          AND cbm.min_fecmin <= @FecFin    
+  group by br.rec_codigo    
+          ,br2.red_canpro    
+          ,br2.red_codpro
+		  ,br.rec_tippla
+		  ,cbm.min_codreg
+		  ,br.rec_LYD
+
+  	-- Índice para acelerar JOIN y APPLY
+    CREATE NONCLUSTERED INDEX IX_DetReceta_R ON #DetReceta (rec_codigo, red_codpro) INCLUDE (rec_tippla);
+
+	--Actualizar tabla detalle receta x tabla de gramaje
+	update #DetReceta
+	set red_canpro=isnull(reemplazo.CantIngredienteCambio, a.red_canpro)
+	   ,red_codpro=ISNULL(reemplazo.IdIngredienteCambio, a.red_codpro)
+	from #DetReceta as a
+	OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    @Ceco,
+				    a.min_codreg,
+				    a.rec_codigo,
+				    a.red_codpro,
+				    a.rec_tippla
+				) AS reemplazo
+    INNER JOIN b_ingrediente c WITH ( NOLOCK ) ON ISNULL(reemplazo.IdIngredienteCambio, a.red_codpro) = c.ing_codigo  
+
+  SELECT  cbm.min_cecori    
+         ,bc.cli_nombre    
+         ,cbm.min_fecmin    
+         ,cbm.min_codreg    
+         ,cbm.min_codser    
+         ,cbm.min_racteo    
+         ,cbm2.mid_numlin    
+         ,ISNULL(cbm2.mid_numrac, 0) AS mid_numrac    
+         ,br.rec_codigo    
+         ,br.red_codpro AS ing_codigo    
+         ,br.red_canpro AS red_canbru    
+         ,ISNULL(br.rec_LYD, 0) AS rec_LYD    
+  INTO    #PasoMinutaBloque    
+  FROM    dbo.cas_b_minuta AS cbm WITH ( NOLOCK )    
+  INNER JOIN dbo.cas_b_minutadet AS cbm2 WITH ( NOLOCK ) ON cbm.min_cecori = cbm2.mid_cecori    
+                                                            AND cbm.min_codigo = cbm2.mid_codigo    
+  INNER JOIN #DetReceta AS br WITH ( NOLOCK ) ON cbm2.mid_codrec = br.rec_codigo    
+  INNER JOIN dbo.b_recetadet AS br2 WITH ( NOLOCK ) ON br.rec_codigo = br2.red_codigo    
+  INNER JOIN dbo.b_clientes AS bc WITH ( NOLOCK ) ON cbm.min_cecori = bc.cli_codigo    
+  WHERE   cbm.min_cecori = @Ceco    
+          AND cbm.min_fecmin >= @FecIni    
+          AND cbm.min_fecmin <= @FecFin    
+--          AND cbm2.mid_numrac > 0            
+            
+  CREATE TABLE #sgpadm_Fun_CostoMinutaProducto    
+    (   
+     ing_codigo VARCHAR(20) COLLATE DATABASE_DEFAULT    
+    ,pro_codigo VARCHAR(20) COLLATE DATABASE_DEFAULT    
+    ,pro_nombre VARCHAR(100) COLLATE DATABASE_DEFAULT    
+    ,pro_facing FLOAT    
+    ,fi INT    
+    ,ft INT    
+    ,PMP FLOAT    
+    ,Convenio FLOAT    
+    ,Lista FLOAT    
+    )                          
+                                 
+  INSERT  #sgpadm_Fun_CostoMinutaProducto    
+          (     
+           ing_codigo    
+          ,pro_codigo    
+          ,pro_nombre    
+          ,pro_facing    
+          ,fi    
+          ,ft    
+          ,PMP    
+          ,Convenio    
+          ,Lista                              
+          )    
+          EXEC dbo.PA_sgpadm_CostoMinBloqueServicios_V03 @Ceco, @FecIni, @FecFin, @OpPrecio      
+                                      
+  SELECT  ing_codigo    
+         ,pro_codigo    
+         ,pro_nombre    
+         ,pro_facing    
+         ,fi    
+         ,ft    
+         ,PMP    
+         ,Convenio    
+         ,Lista    
+         ,( ISNULL(CASE WHEN @OpPrecio = 1 THEN Convenio    
+                        WHEN @OpPrecio = 2 THEN PMP    
+                        ELSE Lista    
+                   END, 0) / ISNULL(pro_facing, 0) ) AS pmp1    
+  INTO    #sgpadm_Fun_CostoMinutaProducto2    
+  FROM    #sgpadm_Fun_CostoMinutaProducto    
+  WHERE   ( ISNULL(CASE WHEN @OpPrecio = 1 THEN Convenio    
+                        WHEN @OpPrecio = 2 THEN PMP    
+                        ELSE Lista    
+                   END, 0) ) > 0                      
+                                       
+/***** Incluir indices tabla pasos *****/          
+          
+  CREATE INDEX ix_sgpadm_Fun_CostoMinutaProducto2_01 ON #sgpadm_Fun_CostoMinutaProducto2 (ing_codigo,fi)                        
+  CREATE INDEX ix_sgpadm_Fun_CostoMinutaProducto2_02 ON #sgpadm_Fun_CostoMinutaProducto2 (ing_codigo)                 
+          
+  SELECT  tg.min_cecori    
+         ,tg.cli_nombre    
+         ,tg.min_fecmin    
+         ,tg.min_codreg    
+         ,tg.min_codser    
+         ,tg.min_racteo    
+         ,tg.mid_numlin    
+         ,tg.rec_codigo    
+         ,tg.mid_numrac    
+         ,tg.ing_codigo AS codigoingrediente    
+         ,ISNULL(AVG(fun.PMP1) * MAX(tg.red_canbru), 0) AS promedioreceta    
+         ,tg.rec_LYD    
+  INTO    #tmp_raciones    
+  FROM    #PasoMinutaBloque AS tg    
+  INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON tg.ing_codigo = bi.ing_codigo    
+  LEFT JOIN #sgpadm_Fun_CostoMinutaProducto2 AS fun ON fun.ing_codigo = tg.ing_codigo    
+                                                       AND fun.fi = tg.min_fecmin    
+  GROUP BY tg.min_cecori    
+         ,tg.cli_nombre    
+         ,tg.min_fecmin    
+         ,tg.min_codreg    
+         ,tg.min_codser    
+         ,tg.min_racteo    
+         ,tg.mid_numlin    
+         ,tg.rec_codigo    
+         ,tg.mid_numrac    
+         ,tg.ing_codigo    
+         ,tg.rec_LYD            
+            
+  SELECT  r.min_cecori    
+         ,r.cli_nombre    
+         ,r.min_fecmin    
+         ,r.min_codreg    
+         ,r.min_codser    
+         ,r.min_racteo    
+         ,r.mid_numlin    
+         ,r.rec_codigo    
+         ,r.mid_numrac    
+         ,CONVERT(NUMERIC(18, 2), SUM(r.promedioreceta)) AS promedioreceta    
+  INTO    #tmp_final    
+  FROM    #tmp_raciones r    
+  GROUP BY r.min_cecori    
+         ,r.cli_nombre    
+         ,r.min_fecmin    
+         ,r.min_codreg    
+         ,r.min_codser    
+         ,r.min_racteo    
+         ,r.mid_numlin    
+         ,r.rec_codigo    
+         ,r.mid_numrac    
+    
+  SELECT DISTINCT    
+          t.min_cecori    
+         ,t.cli_nombre    
+         ,t.min_fecmin    
+         ,t.min_codreg    
+         ,t.min_codser    
+         ,t.min_racteo    
+  INTO    #tmp_raciontotal1    
+  FROM    #tmp_raciones t    
+    
+  SELECT  t.min_cecori    
+         ,t.cli_nombre    
+    ,t.min_codreg    
+         ,t.min_codser    
+         ,SUM(t.min_racteo) AS raciontotal    
+  INTO    #tmp_raciontotal    
+  FROM    #tmp_raciontotal1 t    
+  GROUP BY t.min_cecori    
+         ,t.cli_nombre    
+         ,t.min_codreg    
+         ,t.min_codser    
+    
+  SELECT  tr.min_cecori    
+         ,tr.cli_nombre    
+         ,t.min_codreg    
+         ,ar.reg_nombre    
+       ,t.min_codser    
+         ,as2.ser_nombre    
+----         ,CONVERT(NUMERIC(18, 2), SUM(ISNULL(t.promedioreceta, 0) * ISNULL(t.mid_numrac, 0))) AS CostoReceta    
+    ,ROUND(SUM(ISNULL(t.promedioreceta, 0) * ISNULL(t.mid_numrac, 0)),2) AS CostoReceta    
+         ,ISNULL(tr.raciontotal, 0) AS raciontotal    
+  FROM    #tmp_final t    
+  INNER JOIN #tmp_raciontotal AS tr ON tr.min_codreg = t.min_codreg    
+                                       AND tr.min_codser = t.min_codser    
+  INNER JOIN dbo.a_regimen AS ar ON t.min_codreg = ar.reg_codigo    
+  INNER JOIN dbo.a_servicio AS as2 ON t.min_codser = as2.ser_codigo    
+                                      AND as2.ser_activo = '1'    
+  GROUP BY tr.min_cecori    
+         ,tr.cli_nombre    
+         ,t.min_codreg    
+         ,ar.reg_nombre    
+         ,t.min_codser    
+         ,as2.ser_nombre    
+         ,tr.raciontotal    
+  ORDER BY t.min_codreg    
+         ,t.min_codser           
+            
+  DROP TABLE #tmp_raciones            
+  DROP TABLE #tmp_final                                            
+  DROP TABLE #PasoMinutaBloque                               
+  DROP TABLE #sgpadm_Fun_CostoMinutaProducto                              
+  DROP TABLE #sgpadm_Fun_CostoMinutaProducto2     
+  DROP TABLE #tmp_raciontotal     
+  DROP TABLE #tmp_raciontotal1
+  drop table #DetReceta    

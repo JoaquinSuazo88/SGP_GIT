@@ -1,0 +1,71 @@
+/*                      
+==========================================================================                      
+Sistema : Sgp Administrador                      
+Modulo :   Minutas - Pan Led - Paraemtro Estructura Servicio (M_EstructuraServicioPanLed.frm)                      
+                      
+SP o Function : sgpadm_Del_HomologacionEstructuraServicioPanLed
+Descripcion   : Este proceso permite eliminar homologación estructura servicio pantalla led
+                      
+Observaciones :                       
+                      
+F. creacion   :   09/10/2025
+Creador       :   Jorge Andres Paz Núñez
+                      
+==========================================================================                      
+Modificaciones:                      
+Fecha             Programador             Motivo y/o Modificacion                      
+
+==========================================================================                      
+Test:                      
+sgpadm_Del_HomologacionEstructuraServicioPanLed
+                      
+==========================================================================                      
+*/                      
+                      
+CREATE PROCEDURE [dbo].[sgpadm_Del_HomologacionEstructuraServicioPanLed]
+    (
+      @Ceco AS VARCHAR(10) ,
+      @CodRegimen AS INT ,
+      @CodServicio AS INT    
+    )
+AS 
+    SET NOCOUNT ON                               
+    SET XACT_ABORT ON                               
+                            
+    DECLARE @Num_error INT                              
+    DECLARE @cRows INT                              
+    DECLARE @error VARCHAR(2000)                              
+                              
+    SET @Num_error = 0                               
+    SET @cRows = 0                               
+    SET @error = ''                              
+                              
+    BEGIN TRY                           
+
+        BEGIN TRAN                          
+        
+		update dbo.homologacionPantalla_Led
+		set Activo = 0
+        from dbo.homologacionPantalla_Led as a with (nolock)
+        WHERE a.IdCeco = @Ceco
+        AND   a.IdRegimen = @CodRegimen
+        AND   a.IdServicio = @CodServicio
+            
+        SET @cRows = @@ROWCOUNT                                  
+            
+        COMMIT TRAN                           
+                              
+    END TRY                              
+                              
+    BEGIN CATCH                              
+        SET @Num_error = ERROR_NUMBER()                               
+        SET @error = ERROR_MESSAGE()                               
+        ROLLBACK TRAN                              
+           
+        GOTO handle_error                              
+    END CATCH                              
+                              
+    handle_error:                              
+    SELECT  @Num_error ,
+            @error ,
+            @cRows

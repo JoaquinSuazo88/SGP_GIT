@@ -1,0 +1,180 @@
+/*
+==========================================================================                                  
+Sistema : Sgp Administrador                                  
+Modulo :  Informess - Estructura x Huella Carbono (I_PlanifBloque.frm)                                  
+                                  
+SP o Function : sgpadm_Sel_HuellaCarbonoxEstructuraServicio_V01                                 
+Descripcion  : Mostrar detalle de la minuta x estructura servicio huella carbono
+                                  
+Observaciones :                                   
+                                  
+F. creacion:      11/08/2025
+Creador:          Jorge Paz                                  
+                                  
+==========================================================================                                  
+Modificaciones:                                  
+Fecha             Programador             Motivo y/o Modificacion                                  
+==========================================================================                                  
+Test:                                  
+sgpadm_Sel_HuellaCarbonoxEstructuraServicio_V01 '<?xml version="1.0" encoding="iso-8859-1" ?><Ser> <Est Ser = "10444" Est = "9999"/> <Est Ser = "10001" Est = "10001"/> <Est Ser = "10001" Est = "10032"/> <Est Ser = "10001" Est = "10002"/> <Est Ser = "10001" Est = "10005"/> <Est Ser = "10001" Est = "10010"/> <Est Ser = "10001" Est = "10012"/> <Est Ser = "10001" Est = "10015"/> <Est Ser = "10001" Est = "10076"/> <Est Ser = "10001" Est = "10080"/> <Est Ser = "10001" Est = "10589"/> <Est Ser = "10001" Est = "10601"/> <Est Ser = "10001" Est = "10602"/> <Est Ser = "10001" Est = "10606"/> <Est Ser = "10001" Est = "11983"/> <Est Ser = "10001" Est = "11984"/> <Est Ser = "10001" Est = "11986"/> <Est Ser = "10001" Est = "11987"/> <Est Ser = "10001" Est = "11988"/> <Est Ser = "10001" Est = "12000"/> <Est Ser = "10001" Est = "12001"/> <Est Ser = "10001" Est = "12002"/> <Est Ser = "10001" Est = "12010"/> <Est Ser = "10001" Est = "14579"/> <Est Ser = "10001" Est = "21395"/> <Est Ser = "10001" Est = "21397"/> <Est Ser = "10001" Est = "21398"/> <Est Ser = "10001" Est = "21399"/> <Est Ser = "10001" Est = "23340"/> <Est Ser = "10001" Est = "24565"/> <Est Ser = "10001" Est = "25850"/> <Est Ser = "10001" Est = "26523"/> <Est Ser = "10001" Est = "26752"/> <Est Ser = "10001" Est = "26753"/> <Est Ser = "10001" Est = "41345"/> <Est Ser = "10001" Est = "41346"/> <Est Ser = "10001" Est = "35374"/> <Est Ser = "10001" Est = "38155"/> <Est Ser = "10001" Est = "38156"/> <Est Ser = "10001" Est = "38157"/> <Est Ser = "10001" Est = "39316"/> <Est Ser = "10001" Est = "50393"/> <Est Ser = "10001" Est = "50394"/> <Est Ser = "10001" Est = "39318"/> <Est Ser = "10001" Est = "39319"/> <Est Ser = "10001" Est = "39320"/> <Est Ser = "10001" Est = "39321"/> <Est Ser = "10001" Est = "39322"/> <Est Ser = "10001" Est = "41442"/> <Est Ser = "10001" Est = "42340"/> <Est Ser = "10001" Est = "9999"/> <Est Ser = "10003" Est = "38802"/> <Est Ser = "10003" Est = "9999"/></Ser>', '22700', 10320, 20241110, 20241112 
+==========================================================================                                  
+*/                                  
+                                  
+ALTER PROC [dbo].[sgpadm_Sel_HuellaCarbonoxEstructuraServicio_V01]
+(
+	@xmlServicioEstructura text,
+    @Ceco     AS VARCHAR(10),
+	@Regimen  as int,
+	@FechaIni as int,
+	@FechaFin as int
+)
+AS
+
+BEGIN
+ 
+    SET NOCOUNT ON;
+    SET XACT_ABORT ON;
+
+    DECLARE @hdoc AS INTEGER;
+
+    -- Procesar XML de recetas
+    EXEC sp_xml_preparedocument @hdoc OUTPUT, @xmlServicioEstructura;
+
+    -- Limpiar temporales
+    IF OBJECT_ID('tempdb..#TmpServicioEstructura') IS NOT NULL DROP TABLE #TmpServicioEstructura;
+
+    SELECT Ser, Est INTO #TmpServicioEstructura
+    FROM OPENXML (@hdoc, '/Ser/Est', 1)
+    WITH (Ser INT,
+	      Est int);
+
+ -- Tabla temporal con datos clave de recetas e ingredientes
+    SELECT 
+        a.min_cecori,
+        a.min_codreg,
+        e.rec_codigo,
+        e.rec_tippla,
+        f.red_codpro,
+        f.red_canpro
+    INTO #detReceta
+    FROM cas_b_minuta AS a WITH (NOLOCK)
+    INNER JOIN cas_b_minutadet AS b WITH (NOLOCK) 
+        ON b.mid_cecori = a.min_cecori AND b.mid_codigo = a.min_codigo
+    INNER JOIN b_receta AS e WITH (NOLOCK) 
+        ON e.rec_codigo = b.mid_codrec
+    INNER JOIN b_recetadet AS f WITH (NOLOCK) 
+        ON f.red_codigo = e.rec_codigo
+	inner join #TmpServicioEstructura as ff on ff.Ser = a.min_codser
+    WHERE a.min_cecori = @Ceco
+      AND a.min_fecmin >= @FechaIni
+      AND a.min_fecmin <= @FechaFin
+      AND a.min_codreg = @Regimen
+    GROUP BY a.min_cecori, a.min_codreg, e.rec_codigo, e.rec_tippla, f.red_codpro, f.red_canpro;
+
+    -- Índice para acelerar JOIN y APPLY
+    CREATE NONCLUSTERED INDEX IX_DetReceta_R ON #detReceta (rec_codigo, red_codpro) INCLUDE (rec_tippla);
+
+    -- Tabla temporal con cálculo agregado por receta
+    SELECT 
+        a.rec_codigo,
+        SUM(ISNULL(reemplazo.CantIngredienteCambio, a.red_canpro)) AS TotalCantidadGramaje,
+        SUM(ISNULL(b.huella_carbono, 0)*ISNULL(reemplazo.CantIngredienteCambio, a.red_canpro)) AS TotalHuellaCarbono
+    INTO #Receta
+    FROM #detReceta AS a
+    OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+        a.min_cecori,
+        a.min_codreg,
+        a.rec_codigo,
+        a.red_codpro,
+        a.rec_tippla
+    ) AS reemplazo
+    INNER JOIN b_ingrediente AS b WITH (NOLOCK) 
+        ON b.ing_codigo = ISNULL(reemplazo.IdIngredienteCambio, a.red_codpro)
+    GROUP BY a.rec_codigo;
+
+    -- Índice para acelerar JOIN
+    CREATE NONCLUSTERED INDEX IX_Receta_R ON #Receta (rec_codigo);
+
+    -- Consulta principal con cálculo final
+		 --Detalle por estructura
+		SELECT  
+		    a.min_cecori AS [Código Ceco],
+		    bc.cli_nombre AS [Nombre Ceco],
+		    a.min_codreg AS [Código Régimen],
+		    ar.reg_nombre AS [Nombre Régimen],
+		    a.min_codser AS [Código Servicio],
+		    c.ser_nombre AS [Nombre Servicio],
+		    CONVERT(VARCHAR(10), a.min_fecmin, 103) AS Fecha,
+		    dd.Nombre AS [Grupo Estructura],
+		    d.ess_nombre AS [Estructura],
+		    ISNULL(e.TotalHuellaCarbono, 0) AS [Huella Carbono],
+		    b.mid_numrac AS [Ración],
+		    ISNULL(e.TotalHuellaCarbono, 0) * b.mid_numrac AS [Total],
+		    0 AS EsTotal  -- 👈 Fila normal
+		FROM cas_b_minuta AS a WITH (NOLOCK)
+		INNER JOIN cas_b_minutadet AS b WITH (NOLOCK) ON b.mid_cecori = a.min_cecori AND b.mid_codigo = a.min_codigo
+		INNER JOIN #Receta AS e WITH (NOLOCK) ON e.rec_codigo = b.mid_codrec
+		INNER JOIN a_servicio AS c WITH (NOLOCK) ON c.ser_codigo = a.min_codser
+		INNER JOIN a_estservicio AS d WITH (NOLOCK) ON d.ess_codigo = b.mid_estser AND d.ess_codser = c.ser_codigo
+		INNER JOIN a_grupoestructura AS dd WITH (NOLOCK) ON dd.IdGrupoEstructura = d.ess_agrupacionestructura
+		INNER JOIN #TmpServicioEstructura AS se WITH (NOLOCK) ON se.Ser = c.ser_codigo AND se.Est = d.ess_codigo
+		INNER JOIN b_clientes AS bc WITH (NOLOCK) ON bc.cli_codigo = a.min_cecori
+		INNER JOIN a_regimen AS ar WITH (NOLOCK) ON ar.reg_codigo = a.min_codreg
+		WHERE a.min_cecori = @Ceco
+		  AND a.min_fecmin BETWEEN @FechaIni AND @FechaFin
+		  AND a.min_codreg = @Regimen
+
+		UNION ALL
+
+		-- Subtotales por grupo de estructura
+		SELECT  
+		    a.min_cecori AS [Código Ceco],
+		    bc.cli_nombre AS [Nombre Ceco],
+		    a.min_codreg AS [Código Régimen],
+		    ar.reg_nombre AS [Nombre Régimen],
+		    a.min_codser AS [Código Servicio],
+		    c.ser_nombre AS [Nombre Servicio],
+		    CONVERT(VARCHAR(10), a.min_fecmin, 103) AS Fecha,
+		    dd.Nombre AS [Grupo Estructura],
+		    'TOTAL ' + dd.Nombre AS [Estructura],
+		    NULL AS [Huella Carbono],
+		    NULL AS [Ración],
+		    SUM(ISNULL(e.TotalHuellaCarbono, 0) * b.mid_numrac) AS [Total],
+		    1 AS EsTotal  -- 👈 Fila de total
+		FROM cas_b_minuta AS a WITH (NOLOCK)
+		INNER JOIN cas_b_minutadet AS b WITH (NOLOCK) ON b.mid_cecori = a.min_cecori AND b.mid_codigo = a.min_codigo
+		INNER JOIN #Receta AS e WITH (NOLOCK) ON e.rec_codigo = b.mid_codrec
+		INNER JOIN a_servicio AS c WITH (NOLOCK) ON c.ser_codigo = a.min_codser
+		INNER JOIN a_estservicio AS d WITH (NOLOCK) ON d.ess_codigo = b.mid_estser AND d.ess_codser = c.ser_codigo
+		INNER JOIN a_grupoestructura AS dd WITH (NOLOCK) ON dd.IdGrupoEstructura = d.ess_agrupacionestructura
+		INNER JOIN #TmpServicioEstructura AS se WITH (NOLOCK) ON se.Ser = c.ser_codigo AND se.Est = d.ess_codigo
+		INNER JOIN b_clientes AS bc WITH (NOLOCK) ON bc.cli_codigo = a.min_cecori
+		INNER JOIN a_regimen AS ar WITH (NOLOCK) ON ar.reg_codigo = a.min_codreg
+		WHERE a.min_cecori = @Ceco
+		  AND a.min_fecmin BETWEEN @FechaIni AND @FechaFin
+		  AND a.min_codreg = @Regimen
+		GROUP BY 
+		    a.min_cecori, bc.cli_nombre,
+		    a.min_codreg, ar.reg_nombre,
+		    a.min_codser, c.ser_nombre,
+		    a.min_fecmin,
+		    dd.Nombre--, b.mid_numlin
+
+		-- Orden final
+		ORDER BY 
+		    [Código Servicio],
+		    Fecha,
+			--b.mid_numlin,
+		    [Grupo Estructura],
+		    EsTotal,  -- 👈 primero 0 (detalle), luego 1 (total)
+		    [Estructura]
+
+		OPTION (RECOMPILE);
+
+    -- Limpieza de tablas temporales
+    DROP TABLE #Receta;
+    DROP TABLE #detReceta;
+	drop table #TmpServicioEstructura
+
+END;
+

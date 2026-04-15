@@ -1,0 +1,148 @@
+/*                                                
+==========================================================================                                                
+Sistema : Sgp Administrador                                                
+Modulo :   Informe - Informes ( I_GramosProductos)                                                
+                                                
+SP o Function : sgpadm_Sel_GramosProductosMensual  
+Descripcion   : Muertra los gramos de las recetas
+                                                
+Observaciones :                                                 
+                                                
+F. creacion:      04/01/2017
+Creador:          Jorge Paz                                                
+                                                
+==========================================================================                                                
+Modificaciones:                                                
+Fecha             Programador             Motivo y/o Modificacion                                                
+22/08/2025        JPAZN                   Incluir tabla gramaje x nivel                                                
+==========================================================================                                                
+Test:                                                
+sgpadm_Sel_GramosProductosMensual  '20210',  10361, 10001, '2017', '01'
+sgpadm_Sel_GramosProductosMensual_V02  '20210',  10361, 10001, '2017', '01'
+  
+==========================================================================                                                
+*/                                                
+                                                
+ alter PROC [dbo].[sgpadm_Sel_GramosProductosMensual_V02]
+    (
+      @ceco VARCHAR(10) ,
+      @regimen INT ,
+      @servicio INT ,
+      @ano VARCHAR(4) ,
+      @mes VARCHAR(2)
+    )
+ AS 
+    BEGIN       
+        CREATE TABLE #frecuencia1
+            (
+              Mnitm_Ref INT NULL ,
+              Fecha_Minutas INT NULL ,
+              Codigo_Servicio INT NULL ,
+              Mnitm_No INT NULL ,
+              Mnitm_Type INT NULL ,
+              Rcpe_No INT NULL ,
+              Rcpe_Item_Ref_No INT NULL ,
+              Rcpe_Item_Type_No INT NULL ,
+              Rcpe_Desc VARCHAR(100) NULL ,
+              WsNumPorcion FLOAT NULL ,
+              Mnitm_Pld_Cnt INT NULL ,
+              Ind_Existe INT NULL ,
+              Ing_Cost FLOAT NULL ,
+              Nom_Servicio VARCHAR(70) NULL ,
+              Item_No INT NULL ,
+              Item_Name VARCHAR(70) NULL ,
+              Item_Cat_Anal_Code INT NULL ,
+              Anal_Code_Desc VARCHAR(70) NULL ,
+              cod_prorea INT NULL,
+			  rec_tippla int null
+            )      
+          
+        INSERT  INTO #frecuencia1
+                SELECT  cbm2.mid_codrec ,
+                        cbm.min_fecmin ,
+                        cbm.min_codser ,
+                        cbm2.mid_codigo ,
+                        1 ,
+                        br.rec_codigo ,
+                        br2.red_codpro ,
+                        br2.red_nroite ,
+                        br.rec_nombre ,
+                        ( br2.red_canpro / br.rec_basrac ) 'WsNumPorcion' ,
+                        cbm2.mid_numrac ,
+                        0 ,
+                        0 ,
+                        '' ,
+                        0 ,
+                        '' ,
+                        0 ,
+                        '' ,
+                        0,
+						br.rec_tippla
+                FROM    dbo.cas_b_minuta AS cbm WITH ( NOLOCK )
+                        INNER JOIN cas_b_minutadet AS cbm2 WITH ( NOLOCK ) ON cbm.min_cecori = cbm2.mid_cecori
+                                                                              AND cbm.min_codigo = cbm2.mid_codigo
+                        INNER JOIN dbo.b_receta AS br WITH ( NOLOCK ) ON br.rec_codigo = cbm2.mid_codrec
+                        INNER JOIN dbo.b_recetadet AS br2 WITH ( NOLOCK ) ON br2.red_codigo = br.rec_codigo
+      WHERE   cbm.min_cecori = @ceco
+                        AND cbm.min_codreg = @regimen
+                        AND cbm.min_codser = @servicio
+                        AND ( SUBSTRING(CONVERT(VARCHAR(8), cbm.min_fecmin), 1, 6) = @ano + @mes )
+          
+		/* inicio Modificación */
+         
+        UPDATE  #frecuencia1
+        SET     WsNumPorcion = ( isnull(reemplazo.CantIngredienteCambio, f.WsNumPorcion) ),--* 1000 )
+		        Rcpe_Item_Ref_No = ( isnull(reemplazo.IdIngredienteCambio, f.Rcpe_Item_Ref_No)) 
+        FROM    #frecuencia1 AS f WITH ( NOLOCK )
+		OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    @Ceco,
+				    @regimen,
+				    f.Rcpe_No,
+				    f.Rcpe_Item_Ref_No,
+				    f.rec_tippla
+			) AS reemplazo
+                 
+		/* fin Modificación */
+          
+        UPDATE  #frecuencia1
+        SET     #frecuencia1.Ing_Cost = 0 ,
+                #frecuencia1.Item_No = bp2.pro_codigo ,
+                #frecuencia1.Item_Name = bp2.pro_nombre ,
+                #frecuencia1.Item_Cat_Anal_Code = bp2.pro_codtip ,
+                #frecuencia1.cod_prorea = bp2.pro_indppr
+        FROM    dbo.b_ingrediente AS bi WITH ( NOLOCK )
+                INNER JOIN dbo.b_productosing AS bp WITH ( NOLOCK ) ON bp.pri_coding = bi.ing_codigo
+                INNER JOIN dbo.b_productos AS bp2 WITH ( NOLOCK ) ON bp2.pro_codigo = bp.pri_codpro
+                INNER JOIN #frecuencia1 AS f WITH ( NOLOCK ) ON bi.ing_codigo = f.Rcpe_Item_Ref_No
+        WHERE   bi.ing_activo = '1'
+                AND bp.pri_propre = 1
+                AND bp2.pro_activo = 1
+       
+        --DELETE  #frecuencia1
+        --WHERE   Item_No = 27    
+    
+        UPDATE  #frecuencia1
+        SET     Nom_Servicio = as2.ser_nombre
+        FROM    dbo.a_servicio AS as2 ,
+                #frecuencia1
+        WHERE   #frecuencia1.Codigo_Servicio = as2.ser_codigo
+      
+        UPDATE  #frecuencia1
+        SET     Anal_Code_Desc = tip_nombre
+        FROM    dbo.a_tipopro AS at WITH ( NOLOCK )
+                INNER JOIN #frecuencia1 AS f WITH ( NOLOCK ) ON f.Item_Cat_Anal_Code = at.tip_codigo
+       
+        SELECT  a.* 
+        --,
+        --        ( SELECT TOP 1
+        --                    x.Item_Name
+        --          FROM      pcentral_san.dbo.PB00313 x
+        --          WHERE     x.Item_No = a.cod_prorea
+        --        ) AS nom_prorea
+        FROM    #frecuencia1 a
+        ORDER BY a.Item_Cat_Anal_Code ,
+                a.Item_No ,
+                a.Fecha_Minutas       
+         
+    END  
+

@@ -1,0 +1,240 @@
+/*                                          
+==========================================================================                                          
+Sistema : Sgp Administrador                                          
+Modulo  : Mantenedor recetas (M_Receta.frm)                                          
+                                          
+SP o Function : sgpadm_Sel_CostoDetRecetaOrgComprasTarjeta_V01
+Descripcion  :  Mostrar detalle de receta costo                  
+                                          
+Observaciones :                                           
+                                          
+F. creacion:      07/08/2025                                          
+Creador:          Jorge Andrés Paz Núñez
+                                          
+==========================================================================                                          
+Modificaciones:                                          
+Fecha             Programador             Motivo y/o Modificacion   
+                                    
+==========================================================================                                
+Test:                                          
+sgpadm_Sel_CostoDetRecetaOrgComprasTarjeta_V01 21966, 'CL14', 1, 20200108
+                                          
+==========================================================================                                
+*/                                          
+    
+create PROC [dbo].[sgpadm_Sel_CostoDetRecetaOrgComprasTarjeta_V01]
+    (
+	  @OrgCompras varchar(4),
+	  @OpPrecio   int,
+	  @fecha      int,
+	  @Usuario    varchar(20),
+      @spid       int
+    )
+AS 
+
+SET NOCOUNT ON 
+
+/*INI Crear tabla costo receta producto*/
+CREATE TABLE #sgpadm_Fun_CostoRecetaProducto  
+    (  
+        ing_codigo VARCHAR(20) COLLATE DATABASE_DEFAULT ,  
+        pro_codigo VARCHAR(20) COLLATE DATABASE_DEFAULT ,  
+        pro_nombre VARCHAR(100) COLLATE DATABASE_DEFAULT ,  
+        pro_facing FLOAT ,  
+        fi INT ,  
+        ft INT ,  
+        PMP FLOAT ,  
+        PMPIng FLOAT ,  
+        Convenio FLOAT ,  
+        ConvenioIng FLOAT ,  
+        Lista FLOAT ,  
+        ListaIng FLOAT,
+	Proveedor varchar(10),
+	Material varchar(20),
+	FIniCon datetime ,
+	FFinCon datetime 
+    )                            
+                                    
+INSERT  #sgpadm_Fun_CostoRecetaProducto  
+        ( ing_codigo ,  
+          pro_codigo ,  
+          pro_nombre ,  
+          pro_facing ,  
+          fi ,  
+          ft ,  
+          PMP ,  
+          PMPIng ,  
+          Convenio ,  
+          ConvenioIng ,  
+          Lista ,  
+          ListaIng ,
+	  Proveedor,
+	  Material,
+	  FIniCon,
+	  FFinCon
+        )  
+        EXEC dbo.PA_sgpadm_CostoVariasRecetaxOrgCompras_V01 @fecha, @OrgCompras
+
+SELECT  ing_codigo ,  
+        pro_codigo ,  
+        pro_nombre ,  
+        pro_facing ,  
+        fi ,  
+        ft ,  
+        PMP ,  
+        PMPIng ,  
+        Convenio ,  
+        ConvenioIng ,  
+        Lista ,  
+        ListaIng ,
+		Proveedor,
+		Material,
+		FIniCon,
+		FFinCon,
+        ( ISNULL(CASE WHEN @OpPrecio = 1 THEN Convenio  
+                        WHEN @OpPrecio = 2 THEN PMP  
+                        ELSE Lista  
+                    END, 0) / ISNULL(pro_facing, 0) ) AS pmp1  
+INTO    #sgpadm_Fun_CostoRecetaProducto2  
+FROM    #sgpadm_Fun_CostoRecetaProducto  
+WHERE   ( ISNULL(CASE WHEN @OpPrecio = 1 THEN Convenio  
+                        WHEN @OpPrecio = 2 THEN PMP  
+                        ELSE Lista  
+                    END, 0) ) > 0                                             
+                                                         
+CREATE INDEX ix_ing_codigo_01 ON #sgpadm_Fun_CostoRecetaProducto2 (ing_codigo)    
+CREATE INDEX ix_ing_codigo_02 ON #sgpadm_Fun_CostoRecetaProducto2 (pro_codigo)    
+/*FIN Crear tabla costo receta producto*/
+
+select a.rec_codigo,
+	   isnull(a.rec_nombre,'') as [Nombre Receta],
+       SUBSTRING(dbo.sgpadm_p_buscararbolcatdietetica(a.rec_catdie), 1, LEN(dbo.sgpadm_p_buscararbolcatdietetica(a.rec_catdie)) - 1) AS [Cat.Dietetica],
+       SUBSTRING(dbo.sgpadm_p_buscararboltipplato1(a.rec_tippla), 1, LEN(dbo.sgpadm_p_buscararboltipplato1(a.rec_tippla)) - 1) AS [Tipo Plato],
+	   isnull(a.rec_basrac,0) as [Nro. Raciones],
+	   case when isnull(a.rec_fecvig,0) = 0 then '' else convert(varchar(8),a.rec_fecvig) end as [Fecha Vigencia],
+	   '' as [C. Servir Ma.],
+	   case when a.rec_indppr = 1 then 'Real' else 'Propuesta' end as [Tipo Receta]
+into #EncReceta
+from b_receta as a with (nolock)
+inner join paso_receta as e WITH ( NOLOCK ) on e.rec_codigo = a.rec_codigo  
+                                           and e.rec_usr = @usuario
+					                       and e.rec_spid = @spid
+
+SELECT  a.rec_codigo,
+	    e.[Nombre Receta],
+        e.[Cat.Dietetica],
+        e.[Tipo Plato],
+	    e.[Nro. Raciones],
+	    e.[Fecha Vigencia],
+	    e.[C. Servir Ma.],
+	    e.[Tipo Receta],
+        b.red_codpro,
+        b.red_cospro,
+        ISNULL(c.ing_nombre, '') AS [Nombre Ingrediente],
+        ISNULL(b.red_canpro, 0) AS [C.Bruta],
+        ISNULL(b.red_pctapr, 0) AS [%Aprov.],
+        ((ISNULL(b.red_pctapr, 0) / 100.0) * ISNULL(b.red_canpro, 0)) AS [Neta],
+        ISNULL(b.red_pctcoc, 0) AS [%A.coc.],
+        ((ISNULL(b.red_pctapr, 0) / 100.0) * ISNULL(b.red_canpro, 0) * (ISNULL(b.red_pctcoc, 0) / 100.0)) AS [C.Servir],
+        ISNULL(b.red_pctnut, 0) AS [%P.Nut.],
+        ((ISNULL(b.red_pctnut, 0) / 100.0) * ISNULL(b.red_canpro, 0)) AS [Neta Nut],
+        (ISNULL(b.red_canpro, 0) * ISNULL(c.Huella_Carbono, 0)) AS [Huella Carbono]
+INTO    #DetReceta
+FROM    b_receta as a WITH ( NOLOCK ) 
+inner join b_recetadet as b WITH ( NOLOCK ) on b.red_codigo = a.rec_codigo
+inner join b_ingrediente as c WITH ( NOLOCK ) on b.red_codpro = c.ing_codigo
+inner join a_unidadmed as d WITH ( NOLOCK )   on c.ing_unimed = d.unm_codigo
+inner join #EncReceta as e WITH ( NOLOCK ) on e.rec_codigo = a.rec_codigo  
+WHERE c.ing_activo = '1'                
+
+CREATE INDEX ix_#paso_01 ON #DetReceta (red_codpro) 
+
+UPDATE  #DetReceta
+SET     #DetReceta.red_cospro = ( [C.Bruta] * ISNULL(( SELECT b.pmp1
+                                               FROM  #sgpadm_Fun_CostoRecetaProducto2 b WITH ( NOLOCK )
+											   inner join b_ingrediente c with (nolock) on c.ing_codigo = red_codpro and b.ing_codigo = c.ing_codigo
+                                               WHERE b.pmp1 > 0 AND c.ing_codigo IS NOT NULL ), 0) )
+                
+
+WITH Detalle AS (
+    SELECT 
+        a.rec_codigo AS GrupoOrden,
+        convert(varchar(8),a.rec_codigo) as [Codigo Receta],
+        a.[Nombre Receta],
+        a.[Cat.Dietetica],
+        a.[Tipo Plato],
+	    convert(varchar(8),a.[Nro. Raciones]) as [Nro. Raciones],
+	    a.[Fecha Vigencia],
+	    a.[C. Servir Ma.],
+	    a.[Tipo Receta],
+        a.[Nombre Ingrediente],
+        a.[C.Bruta],
+        a.[%Aprov.],
+        a.[Neta],
+        a.[%A.coc.],
+        a.[C.Servir],
+        a.[%P.Nut.],
+        a.[Neta Nut],
+        a.[Huella Carbono],
+		a.red_cospro as [Costo],
+        0 AS Orden,
+        'Detalle' AS TipoFila
+    FROM #DetReceta AS a
+),
+Totales AS (
+    SELECT 
+        GrupoOrden,
+        '' AS [Codigo Receta],
+        '' AS [Nombre Receta],
+        '' AS [Cat.Dietetica],
+        '' AS [Tipo Plato],
+	    '' as [Nro. Raciones],
+	    '' as [Fecha Vigencia],
+	    '' as [C. Servir Ma.],
+	    '' as [Tipo Receta],
+        'TOTAL' AS [Nombre Ingrediente],
+        SUM([C.Bruta]) AS [C.Bruta],
+        SUM([%Aprov.]) AS [%Aprov.],
+        SUM([Neta]) AS [Neta],
+        SUM([%A.coc.]) AS [%A.coc.],
+        SUM([C.Servir]) AS [C.Servir],
+        SUM([%P.Nut.]) AS [%P.Nut.],
+        SUM([Neta Nut]) AS [Neta Nut],
+        SUM([Huella Carbono]) AS [Huella Carbono],
+		sum([costo]) as [Costo],
+        1 AS Orden,
+        'Total' AS TipoFila
+    FROM Detalle
+    GROUP BY GrupoOrden
+)
+SELECT 
+    d.[Codigo Receta],
+    d.[Nombre Receta],
+    d.[Cat.Dietetica],
+    d.[Tipo Plato],
+	d.[Nro. Raciones],
+	d.[Fecha Vigencia],
+	d.[C. Servir Ma.],
+	d.[Tipo Receta],
+    d.[Nombre Ingrediente],
+    d.[C.Bruta],
+    d.[%Aprov.],
+    d.[Neta],
+    d.[%A.coc.],
+    d.[C.Servir],
+    d.[%P.Nut.],
+    d.[Neta Nut],
+    d.[Huella Carbono],
+	d.[Costo],
+    d.TipoFila
+FROM (
+    SELECT * FROM Detalle
+    UNION ALL
+    SELECT * FROM Totales
+) AS d
+ORDER BY d.GrupoOrden, d.Orden, d.TipoFila
+
+drop table #DetReceta
+drop table #EncReceta
+drop table #sgpadm_Fun_CostoRecetaProducto2
+drop table #sgpadm_Fun_CostoRecetaProducto

@@ -1,0 +1,76 @@
+/*
+==========================================================================
+Sistema : Sgp Administrador
+Modulo :  Informe - Aportes Nutricionales (I_AportePlanDetalladoBloque)
+
+SP o Function : sgpadm_Sel_AporteRegimenMinutaBloque
+Descripcion   : Permite generar codigo aportes
+Observaciones :
+                                      
+F. creacion:      04/06/2018
+Creador:          Jorge Paz Núñez
+                                      
+==========================================================================
+Modificaciones:
+Fecha             Programador             Motivo y/o Modificacion
+21-08-2025        JPAZN                   Incluir tabla garmaje x nivel
+==========================================================================
+Test:
+
+sgpadm_Sel_AporteRegimenMinutaBloque
+
+==========================================================================
+*/
+                                      
+CREATE PROC [dbo].[sgpadm_Sel_AporteRegimenMinutaBloque_V02]
+    (
+      @ceco VARCHAR(10) ,
+      @codreg INT ,
+      @fecini INT ,
+      @fecfin INT
+     )
+AS
+    SET NOCOUNT ON
+       
+    SELECT DISTINCT
+            c.rec_codigo,
+			c.rec_tippla
+    INTO    #tmpReceta
+    FROM    cas_b_minuta a WITH ( NOLOCK )
+            INNER JOIN cas_b_minutadet b WITH ( NOLOCK ) ON a.min_cecori = b.mid_cecori
+                                                            AND a.min_codigo = b.mid_codigo
+            INNER JOIN b_receta c WITH ( NOLOCK ) ON c.rec_codigo = b.mid_codrec
+    WHERE   a.min_codreg = @codreg
+            AND a.min_fecmin >= @fecini
+            AND a.min_fecmin <= @fecfin
+            AND b.mid_tipmin = '1'
+            AND a.min_cecori = @ceco
+      
+    SELECT DISTINCT
+            b.red_codigo ,
+            b.red_codpro,
+			a.rec_tippla
+    INTO    #tmpDetReceta
+    FROM    #tmpReceta a WITH ( NOLOCK )
+            INNER JOIN b_recetadet b WITH ( NOLOCK ) ON a.rec_codigo = b.red_codigo
+      
+    UPDATE  #tmpDetReceta
+    SET     #tmpDetReceta.red_codpro =  ISNULL(reemplazo.IdIngredienteCambio, b.red_codpro) 
+    FROM    #tmpDetReceta b WITH ( NOLOCK ) 
+			OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    @Ceco,
+				    @codreg,
+				    b.red_codigo,
+				    b.red_codpro,
+				    b.rec_tippla
+			) AS reemplazo
+      
+    SELECT DISTINCT
+            d.pnu_codpro ,
+            d.pnu_codapo ,
+            d.pnu_canapo
+    FROM    #tmpDetReceta a WITH ( NOLOCK )
+            INNER JOIN b_ingrediente c WITH ( NOLOCK ) ON a.red_codpro = c.ing_codigo
+            INNER JOIN b_productonut d WITH ( NOLOCK ) ON c.ing_codigo = d.pnu_codpro
+      
+    DROP TABLE #tmpDetReceta

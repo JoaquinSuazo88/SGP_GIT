@@ -1,0 +1,167 @@
+/*                                      
+==========================================================================                                      
+Sistema : Sgp Administrador                                      
+Modulo :  Informe - Informe Aporte de Estructura Resumido (I_AportePlanEstrResBloque)    
+                                      
+SP o Function : sgpadm_Sel_MinutaBloqueTablaGramajeFrecuencia
+Descripcion  : Permite generar frecuencia minuta bloque
+Observaciones :                                       
+                                      
+F. creacion:      28/02/2018
+Creador:          Jorge Paz Núñez
+                                      
+==========================================================================
+Modificaciones:                                      
+Fecha             Programador             Motivo y/o Modificacion
+21-08-2025        JPAZN                   Incluir tabla gramaje x nivel
+==========================================================================
+Test:
+                                     
+sgpadm_Sel_MinutaBloqueTablaGramajeFrecuencia
+        
+==========================================================================
+*/                                      
+
+CREATE PROCEDURE [sgpadm_Sel_MinutaBloqueTablaGramajeFrecuencia_V02]
+    @XmlEstServicio AS TEXT ,
+    @Ceco AS VARCHAR(10) ,
+    @CodigoRegimen AS INT ,
+    @CodigoServicio AS INT ,
+    @FechaMinIni AS INT ,
+    @FechaMinFin AS INT ,
+    @TipoMinuta AS VARCHAR(1) ,
+    @TipoGramaje AS VARCHAR(1)
+AS 
+    SET NOCOUNT ON  
+
+    DECLARE @hdoc AS INT       
+      
+    EXEC sp_xml_preparedocument @hdoc OUTPUT, @XmlEstServicio      
+    DECLARE @CodigoEstServicio INT       
+      
+    SELECT  *
+    INTO    #TempEstServicio
+    FROM    OPENXML(@hdoc, N'/EstServicio/EstServicioDet', 1)       
+	WITH ([CodigoEstServicio] INT )        
+      
+	--> Traer primera raiz y segunda nivel en adelante categoria receta      
+    SELECT DISTINCT
+            br.rec_tippla ,
+            dbo.fn_sgpadm_Pro_TraerRaizTipoPlato(rec_tippla) AS PrimeraCategoria ,
+            CASE WHEN dbo.fn_sgpadm_Pro_TraerDesdeSegundoTipoPlato(rec_tippla) = '' THEN 'Nivel sin datos'
+                 ELSE SUBSTRING(dbo.fn_sgpadm_Pro_TraerDesdeSegundoTipoPlato(rec_tippla), 1,
+                                LEN(dbo.fn_sgpadm_Pro_TraerDesdeSegundoTipoPlato(rec_tippla)) - 1)
+            END AS SegundaCategoria
+    INTO    #TempTipoPlato
+    FROM    cas_b_minuta bm
+            INNER JOIN cas_b_minutadet bmd ON bm.min_codigo = bmd.mid_codigo
+                                              AND bm.min_cecori = bmd.mid_cecori
+            INNER JOIN b_receta br ON br.rec_codigo = bmd.mid_codrec
+            INNER JOIN #TempEstServicio AS tes ON tes.CodigoEstServicio = bmd.mid_estser
+    WHERE   bm.min_cecori = @Ceco
+            AND bm.min_codreg = @CodigoRegimen
+            AND bm.min_codser = @CodigoServicio
+            AND bm.min_fecmin >= @FechaMinIni
+            AND bm.min_fecmin <= @FechaMinFin
+            AND bmd.mid_tipmin = @TipoMinuta
+    ORDER BY PrimeraCategoria ,
+            SegundaCategoria      
+      
+--> Traer frecuencia x tipo plato      
+    SELECT  br.rec_tippla ,
+            COUNT(br.rec_codigo) AS FrecuenciaTipoPlato
+    INTO    #TempFrecuenciaTipoPlato
+    FROM    cas_b_minuta bm
+            INNER JOIN cas_b_minutadet bmd ON bm.min_codigo = bmd.mid_codigo
+                                              AND bm.min_cecori = bmd.mid_cecori
+            INNER JOIN b_receta br ON br.rec_codigo = bmd.mid_codrec
+            INNER JOIN #TempEstServicio AS tes ON tes.CodigoEstServicio = bmd.mid_estser
+    WHERE   bm.min_cecori = @Ceco
+            AND bm.min_codreg = @CodigoRegimen
+            AND bm.min_codser = @CodigoServicio
+            AND bm.min_fecmin >= @FechaMinIni
+            AND bm.min_fecmin <= @FechaMinFin
+            AND br.rec_activo = '1'
+            AND bmd.mid_tipmin = @TipoMinuta
+    GROUP BY br.rec_tippla      
+      
+	--> Traer desde la receta codigo, ingrediente, cantidad bruta, % aprovechamiento, % cocciòn      
+    SELECT DISTINCT
+            brd.red_codigo ,
+            brd.red_codpro ,
+            brd.red_canpro ,
+            brd.red_pctapr ,
+            brd.red_pctcoc ,
+            br.rec_tippla
+    INTO    #TempRecetaDet
+    FROM    cas_b_minuta bm
+            INNER JOIN cas_b_minutadet bmd ON bm.min_codigo = bmd.mid_codigo
+                                              AND bm.min_cecori = bmd.mid_cecori
+            INNER JOIN b_receta br ON br.rec_codigo = bmd.mid_codrec
+            INNER JOIN b_recetadet brd ON brd.red_codigo = br.rec_codigo
+            INNER JOIN b_ingrediente bi ON brd.red_codpro = bi.ing_codigo
+            INNER JOIN #TempEstServicio AS tes ON tes.CodigoEstServicio = bmd.mid_estser
+    WHERE   bm.min_cecori = @Ceco
+            AND bm.min_codreg = @CodigoRegimen
+            AND bm.min_codser = @CodigoServicio
+            AND bm.min_fecmin >= @FechaMinIni
+            AND bm.min_fecmin <= @FechaMinFin
+            AND bi.ing_activo = '1'
+            AND br.rec_activo = '1'
+            AND brd.red_IndentificadorIngSumaTablaGramaje = '1'
+            AND bmd.mid_tipmin = @TipoMinuta      
+      
+	--> Actualizar tabla temporal recetas desde la tabla gramaje      
+    UPDATE  #TempRecetaDet
+    SET     #TempRecetaDet.red_canpro = isnull(reemplazo.CantIngredienteCambio, b.red_canpro)  ,
+            #TempRecetaDet.red_pctapr = c.ing_pctapr ,
+            #TempRecetaDet.red_pctcoc = c.ing_pctcoc
+    FROM    #TempRecetaDet b WITH ( NOLOCK )
+			OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    @Ceco,
+				    @CodigoRegimen,
+				    b.red_codigo,
+				    b.red_codpro,
+				    b.rec_tippla
+			) AS reemplazo  
+            INNER JOIN b_ingrediente c WITH ( NOLOCK ) ON ISNULL(reemplazo.IdIngredienteCambio, b.red_codpro)  = c.ing_codigo
+            AND c.ing_activo = '1'      
+      
+	--> Traer tabla temporal final recetas      
+    SELECT  trd.red_codigo ,
+            trd.rec_tippla ,
+            SUM(trd.red_canpro) AS red_canpro ,
+            SUM(( ( ( trd.red_pctapr / 100 ) * trd.red_canpro ) * ( trd.red_pctcoc / 100 ) )) AS red_canser
+    INTO    #TempRecetaDetFinal
+    FROM    #TempRecetaDet AS trd
+    GROUP BY trd.red_codigo ,
+            trd.rec_tippla      
+      
+      
+	--> Formato salida      
+    SELECT DISTINCT
+            dbo.fn_sgpadm_Pro_TraerCodRaizTipoPlato(ttp.rec_tippla) AS CodTipPla ,
+            ttp.PrimeraCategoria ,
+            ttp.SegundaCategoria ,
+            CEILING(ISNULL(tippla.valor, 0)) AS valor ,
+            ISNULL(FreTipPla.FrecuenciaTipoPlato, 0) AS frecuencia
+    FROM    #TempTipoPlato AS ttp
+            LEFT JOIN ( SELECT DISTINCT
+                                trd.rec_tippla ,
+                                CASE WHEN @TipoGramaje = '1' THEN trd.red_canpro
+                                     ELSE ROUND(trd.red_canser, 0)
+                                END AS valor
+                        FROM    #TempRecetaDetFinal trd
+                      ) AS TipPla ON TipPla.rec_tippla = ttp.rec_tippla
+            LEFT JOIN ( SELECT DISTINCT
+                                tftp.rec_tippla ,
+                                tftp.FrecuenciaTipoPlato
+                        FROM    #TempFrecuenciaTipoPlato tftp
+                      ) AS FreTipPla ON FreTipPla.rec_tippla = ttp.rec_tippla
+    ORDER BY CodTipPla ,
+            ttp.PrimeraCategoria ,
+            ttp.SegundaCategoria      
+      
+    DROP TABLE #TempRecetaDet
+    DROP TABLE #TempRecetaDetFinal
+    DROP TABLE #TempTipoPlato

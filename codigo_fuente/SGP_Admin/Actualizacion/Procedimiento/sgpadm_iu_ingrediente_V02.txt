@@ -1,0 +1,83 @@
+/* 18/08/2025 JPAZ Incluir Huella Carbono */
+
+CREATE Procedure [dbo].[sgpadm_iu_ingrediente_V02]
+(@tipop       varchar(2),
+ @ing_codigo  varchar(20),
+ @ing_nombre  varchar(50),
+ @ing_nomfan  varchar(50),
+ @ing_unimed  int,
+ @ing_pctapr  float,
+ @ing_pctcoc  float,
+ @ing_pctnut  float,
+ @ing_facnut  float,
+ @ing_indpav  int,
+ @ing_indgrv  int,
+ @ing_precos  float,
+ @ing_feccos  int,
+ @ing_codcom  varchar(20),
+ @ing_codped  varchar(20),
+ @ing_indppr  int,
+ @huellacarbono float
+ )
+as
+
+DECLARE @indice varchar(20)
+SELECT  @indice = ''
+
+if @tipop = 'A' 
+
+   BEGIN
+
+     IF exists(SELECT * FROM b_ingrediente WITH (holdlock))
+
+       BEGIN          
+
+         SELECT @indice = MAX(convert(int,ing_codigo)) + 1 FROM b_ingrediente
+
+        END
+      ELSE         
+         BEGIN          
+
+           SELECT @indice = '1'
+
+         END
+
+     INSERT INTO b_ingrediente (ing_codigo, ing_nombre, ing_nomfan, ing_unimed, ing_pctapr, ing_pctcoc, ing_pctnut, ing_facnut, ing_indpav,
+                                ing_indgrv, ing_precos, ing_feccos, ing_indppr, Huella_Carbono)
+     VALUES                  (@indice, @ing_nombre, @ing_nomfan, @ing_unimed, @ing_pctapr, @ing_pctcoc, @ing_pctnut, @ing_facnut, @ing_indpav,
+                              @ing_indgrv, @ing_precos, @ing_feccos, @ing_indppr, @huellacarbono)
+
+     SELECT @indice AS indice
+
+   END
+
+if @tipop = 'M1' 
+
+   UPDATE b_ingrediente
+   SET    ing_nombre  = @ing_nombre,
+          ing_nomfan  = @ing_nomfan,
+          ing_unimed  = @ing_unimed,
+          ing_pctapr  = @ing_pctapr,
+          ing_pctcoc  = @ing_pctcoc,
+          ing_pctnut  = @ing_pctnut,
+          ing_facnut  = @ing_facnut,
+          ing_indpav  = @ing_indpav,
+          ing_indgrv  = @ing_indgrv,
+          ing_precos  = @ing_precos,
+          ing_feccos  = @ing_feccos,
+          ing_indppr  = @ing_indppr,
+          ing_fecmod  = getdate(),
+		  Huella_Carbono=@huellacarbono
+   WHERE  ing_codigo  = @ing_codigo
+
+if @tipop = 'M2' 
+
+   UPDATE b_ingrediente
+   SET    ing_codcom = @ing_codcom,
+          ing_codped = @ing_codped,
+          ing_fecmod = getdate()
+   WHERE  ing_codigo = @ing_codigo
+
+
+
+

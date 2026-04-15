@@ -1,0 +1,51 @@
+/*
+==========================================================================                                  
+Sistema : Sgp Administrador                                  
+Modulo :   Minutas - Tabla Gramaje x Nivel (M_TabGra.frm)                                  
+                                  
+SP o Function : sgpadm_Sel_DetalleTablaGramajeNivel_V01
+Descripcion  : Mostrar detalle tabla gramaje x nivel
+                                  
+Observaciones :                                   
+                                  
+F. creacion:      12/08/2025                                  
+Creador:          Jorge Paz                                  
+                                  
+==========================================================================                                  
+Modificaciones:                                  
+Fecha             Programador             Motivo y/o Modificacion                                  
+==========================================================================                                  
+Test:                                 
+sgpadm_Sel_DetalleTablaGramajeNivel_V01
+==========================================================================                                  
+*/                                  
+                                  
+alter PROC [dbo].[sgpadm_Sel_DetalleTablaGramajeNivel_V01]
+(
+    @Ceco AS VARCHAR(10)
+)
+AS
+BEGIN
+    SET NOCOUNT ON;
+
+	select isnull(b.reg_codigo,0) as reg_codigo,
+		   isnull(b.reg_nombre,'') as reg_nombre,
+		   isnull(c.tip_codigo,0) as tip_codigo,
+		   case when c.tip_codigo > 0 then 
+		   	   isnull(SUBSTRING(dbo.sgpadm_p_buscararboltipplato1(c.tip_codigo), 1, LEN(dbo.sgpadm_p_buscararboltipplato1(c.tip_codigo)) - 1),'')
+			else '' end
+			AS [TipoPlato],
+			isnull(d.ing_codigo,'') as ing_codigo,
+			isnull(d.ing_nombre,'') as ing_nombre,
+			isnull(e.ing_codigo,'') as ing_cambio,
+			isnull(e.ing_nombre,'') as ing_nomcambio,
+			a.CantidadBruta as CantidadBruta,
+			isnull(a.Activo,'') as Activo
+	from b_tablagramajececo_nivel as a with (nolock)
+	left join a_regimen as b with (nolock) on b.reg_codigo = a.IdRegimen
+	left join a_recetatippla as c with (nolock) on c.tip_codigo = a.IdTipoPlato
+	inner join b_ingrediente as d with (nolock) on d.ing_codigo = a.IdIngredienteOrigen
+	left join b_ingrediente as e with (nolock) on e.ing_codigo = a.IdIngredienteCambio
+	where idceco = @Ceco
+
+END;

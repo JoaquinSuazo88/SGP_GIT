@@ -1,0 +1,44 @@
+/*
+==========================================================================
+Sistema	:	Sgp Administrador
+Modulo	:   Ayuda formulario B_TabEst
+
+SP o Function	:	sgpadm_Sel_ListaIngRecetaNombre
+Descripcion		:	Lista Ingrediente que esten en la receta
+Observaciones	:
+
+F. creacion:      13/08/2025
+Creador:          Jorge Paz
+
+==========================================================================
+Modificaciones:
+Fecha             Programador             Motivo y/o Modificacion
+
+==========================================================================
+Test:
+sgpadm_Sel_ListaIngRecetaNombre ''
+
+==========================================================================
+*/  
+   
+create proc [dbo].[sgpadm_Sel_ListaIngRecetaNombre]  
+(
+ @Codigo varchar(100)
+)        
+AS       
+  
+SELECT e.ing_codigo
+      , e.ing_nombre
+      , e.ing_Indppr
+FROM b_receta c WITH ( NOLOCK )
+INNER JOIN b_recetadet AS d WITH ( NOLOCK ) ON d.red_codigo = c.rec_codigo
+INNER JOIN b_ingrediente AS e WITH ( NOLOCK ) ON d.red_codpro = e.ing_codigo
+WHERE   (e.ing_nombre like @Codigo or @codigo = '')
+and     c.rec_activo = '1'
+and    (c.rec_fecvig> convert(varchar(8),getdate(),112) or c.rec_fecvig > 0)
+group by e.ing_codigo 
+        ,e.ing_nombre
+        ,e.ing_Indppr
+ORDER BY e.ing_nombre
+
+

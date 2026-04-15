@@ -1,0 +1,158 @@
+/*                                              
+==========================================================================                                              
+Sistema : Sgp Administrador                                              
+Modulo :   Informe - Informes ( I_SetMinutaSansis)                                              
+                                              
+SP o Function : sgpadm_Sel_CostoDetalleMinutaSansis
+Descripcion  : Costo detalle minutas sansis
+                                              
+Observaciones :                                               
+                                              
+F. creacion:      28/11/2016
+Creador:          Jorge Paz                                              
+                                              
+==========================================================================                                              
+Modificaciones:                                              
+Fecha             Programador             Motivo y/o Modificacion                                              
+18/01/2022        Jorge Paz Núñez         Cambiar nombre sub procedimiento 
+                                          PA_sgpadm_CostoMinBloqueServicios x
+										  PA_sgpadm_CostoMinBloqueServicios_V02
+										  esto incluye dos nuevo cambio a la
+										  tabla excepción formato compras que son
+										  fecha inicio y fin.   
+										  Cambio de procedimiento sgpadm_Sel_CostoDetalleMinutaSansis
+										  x sgpadm_Sel_CostoDetalleMinutaSansis_V02                             
+22/08/2025        JPAZN                   Incluir tabla de gramaje x nivel                                              
+==========================================================================                                              
+Test:                                              
+sgpadm_Sel_CostoDetalleMinutaSansis  '20210',  10361, 10001, 20170201 , 20170228 , '1'      
+sgpadm_Sel_CostoDetalleMinutaSansis_V02 '45213', 11117, 10001, '20170701', '20170731', '1'
+sgpadm_Sel_CostoDetalleMinutaSansis_V03 '45213', 11117, 10001, '20170701', '20170731', '1'
+==========================================================================                                              
+*/                                              
+                                              
+alter PROC [dbo].[sgpadm_Sel_CostoDetalleMinutaSansis_V03]
+    (
+      @Ceco AS VARCHAR(10) ,
+      @Regimen INT ,
+      @Servicio INT ,
+      @FecIni AS INT ,
+      @FecFin AS INT ,
+      @OpPrecio AS INT      
+    )
+AS 
+    SET NOCOUNT ON                                              
+                                              
+    SELECT  cbm.min_cecori ,
+            bc.cli_nombre ,
+            cbm.min_fecmin ,
+            cbm.min_codreg ,
+            cbm.min_codser ,
+            cbm.min_racteo ,
+            cbm2.mid_numlin ,
+            ISNULL(cbm2.mid_numrac, 0) AS mid_numrac ,
+            br.rec_codigo ,
+            br.rec_nombre ,
+            ISNULL(reemplazo.IdIngredienteCambio, br2.red_codpro) AS ing_codigo ,
+            isnull(reemplazo.CantIngredienteCambio, br2.red_canpro) AS red_canbru ,
+            ISNULL(br.rec_LYD, 0) AS rec_LYD
+    INTO    #PasoMinutaBloque
+    FROM    dbo.cas_b_minuta AS cbm WITH ( NOLOCK )
+            INNER JOIN dbo.cas_b_minutadet AS cbm2 WITH ( NOLOCK ) ON cbm.min_cecori = cbm2.mid_cecori
+                                                                      AND cbm.min_codigo = cbm2.mid_codigo
+            INNER JOIN dbo.b_receta AS br WITH ( NOLOCK ) ON cbm2.mid_codrec = br.rec_codigo
+            INNER JOIN dbo.b_recetadet AS br2 WITH ( NOLOCK ) ON br.rec_codigo = br2.red_codigo
+            INNER JOIN dbo.b_clientes AS bc WITH ( NOLOCK ) ON cbm.min_cecori = bc.cli_codigo
+			OUTER APPLY dbo.fn_ObtenerIngredienteReemplazoJerarquia(
+				    @Ceco,
+				    @regimen,
+				    br2.red_codigo,
+				    br2.red_codpro,
+				    br.rec_tippla
+				) AS reemplazo
+    WHERE   cbm.min_cecori = @Ceco
+            AND cbm.min_fecmin >= @FecIni
+            AND cbm.min_fecmin <= @FecFin
+            AND cbm.min_codreg = @regimen
+            AND cbm.min_codser = @Servicio
+
+    CREATE TABLE #sgpadm_Fun_CostoMinutaProducto
+        (
+          ing_codigo VARCHAR(20) COLLATE DATABASE_DEFAULT ,
+          pro_codigo VARCHAR(20) COLLATE DATABASE_DEFAULT ,
+          pro_nombre VARCHAR(100) COLLATE DATABASE_DEFAULT ,
+          pro_facing FLOAT ,
+          fi INT ,
+          ft INT ,
+          PMP FLOAT ,
+          Convenio FLOAT ,
+          Lista FLOAT
+        )                            
+                                   
+    INSERT  #sgpadm_Fun_CostoMinutaProducto
+            ( ing_codigo ,
+              pro_codigo ,
+              pro_nombre ,
+              pro_facing ,
+              fi ,
+              ft ,
+              PMP ,
+              Convenio ,
+              Lista                                
+            )
+            EXEC dbo.PA_sgpadm_CostoMinBloqueServicios_V03 @Ceco, @FecIni, @FecFin, @OpPrecio        
+                                        
+    SELECT  ing_codigo ,
+            pro_codigo ,
+            pro_nombre ,
+            pro_facing ,
+            fi ,
+            ft ,
+            PMP ,
+            Convenio ,
+            Lista ,
+            ( ISNULL(CASE WHEN @OpPrecio = 1 THEN Convenio
+                          WHEN @OpPrecio = 2 THEN PMP
+                          ELSE Lista
+                     END, 0) / ISNULL(pro_facing, 0) ) AS pmp1
+    INTO    #sgpadm_Fun_CostoMinutaProducto2
+    FROM    #sgpadm_Fun_CostoMinutaProducto
+    WHERE   ( ISNULL(CASE WHEN @OpPrecio = 1 THEN Convenio
+                          WHEN @OpPrecio = 2 THEN PMP
+                          ELSE Lista
+                     END, 0) ) > 0                        
+                                         
+/***** Incluir indices tabla pasos *****/            
+            
+    CREATE INDEX ix_sgpadm_Fun_CostoMinutaProducto2_01 ON #sgpadm_Fun_CostoMinutaProducto2 (ing_codigo,fi)                          
+    CREATE INDEX ix_sgpadm_Fun_CostoMinutaProducto2_02 ON #sgpadm_Fun_CostoMinutaProducto2 (ing_codigo)                   
+            
+    SELECT  tg.min_fecmin AS Fecha_Minutas ,
+            tg.rec_codigo AS Rcpe_No ,
+            tg.ing_codigo AS Rcpe_Item_Ref_No ,
+            tg.rec_nombre AS Rcpe_Desc ,
+            tg.red_canbru AS WsNumPorcion ,
+            ISNULL(AVG(fun.PMP1) * tg.red_canbru, 0) AS Ing_Cost ,
+            tg.ing_codigo AS Item_No ,
+            bi.ing_nombre AS Item_Name ,
+            ISNULL(fun.pro_codigo,0) AS [Item_No1] ,
+            ISNULL(fun.pro_nombre,'') AS [Item_Name1], 
+            tg.mid_numlin
+    FROM    #PasoMinutaBloque AS tg
+            INNER JOIN dbo.b_ingrediente AS bi WITH ( NOLOCK ) ON tg.ing_codigo = bi.ing_codigo
+            LEFT JOIN #sgpadm_Fun_CostoMinutaProducto2 AS fun ON fun.ing_codigo = tg.ing_codigo
+                                                                 AND fun.fi = tg.min_fecmin
+    GROUP BY tg.min_fecmin ,
+            tg.rec_codigo ,
+            tg.ing_codigo ,
+            tg.rec_nombre ,
+            tg.red_canbru ,
+            bi.ing_nombre ,
+            fun.pro_codigo ,
+            fun.pro_nombre,
+            tg.mid_numlin
+    ORDER BY min_fecmin, tg.mid_numlin, tg.rec_codigo 
+              
+    DROP TABLE #PasoMinutaBloque                                 
+    DROP TABLE #sgpadm_Fun_CostoMinutaProducto                                
+    DROP TABLE #sgpadm_Fun_CostoMinutaProducto2       
