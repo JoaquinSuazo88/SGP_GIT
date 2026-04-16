@@ -7,10 +7,10 @@
 ## ▶ PARÁMETROS — modificar antes de usar
 
 ```
-RUTA_WORD      = C:\Users\Joaquin.Suazo\Documents\SGP-Producción\Doc_Funcionales\Words\DRF_Informes.docx
+RUTA_WORD      = C:\Users\Joaquin.Suazo\Documents\SGP-Producción\Doc_Funcionales\Words\DRF_Inventario.docx
 RUTA_SALIDA    = C:\Users\Joaquin.Suazo\Documents\SGP-Producción\Doc_Funcionales\MD
-NOMBRE_CARPETA = DRF_Informes
-NOMBRE_MD      = DRF_Informes.md
+NOMBRE_CARPETA = DRF_Inventario
+NOMBRE_MD      = DRF_Inventario.md
 CARPETA_IMG    = imagenes
 ```
 
