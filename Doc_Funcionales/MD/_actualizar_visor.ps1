@@ -4,6 +4,9 @@
 $Host.UI.RawUI.WindowTitle = "SGP Visor - Modo Vigilancia"
 Set-Location $PSScriptRoot
 
+# Raiz del proyecto (dos niveles arriba: MD/ -> Doc_Funcionales/ -> SGP-Produccion/)
+$ProjectRoot = Split-Path (Split-Path $PSScriptRoot)
+
 function Write-Header {
     Write-Host ""
     Write-Host "  =================================================" -ForegroundColor Cyan
@@ -21,8 +24,12 @@ function Invoke-GitPush {
     Write-Host ""
     Write-Host "  -------------------------------------------------"
     Write-Host "  Actualizacion del repositorio Git"
+    Write-Host "  Carpeta: $ProjectRoot"
     Write-Host "  -------------------------------------------------"
     Write-Host ""
+
+    # Cambiar al directorio raiz del proyecto para los comandos git
+    Set-Location $ProjectRoot
 
     # git add
     Write-Host "  Agregando archivos al stage..." -ForegroundColor Yellow
@@ -30,6 +37,7 @@ function Invoke-GitPush {
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  ERROR: git add fallo. Verifica que esta carpeta" -ForegroundColor Red
         Write-Host "  sea un repositorio Git inicializado." -ForegroundColor Red
+        Set-Location $PSScriptRoot
         return
     }
     Write-Host "  OK." -ForegroundColor Green
@@ -50,6 +58,7 @@ function Invoke-GitPush {
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  ERROR: No se pudo crear el commit." -ForegroundColor Red
         Write-Host "  Puede que no haya cambios pendientes para confirmar." -ForegroundColor Red
+        Set-Location $PSScriptRoot
         return
     }
 
@@ -60,11 +69,13 @@ function Invoke-GitPush {
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  ERROR: git push fallo." -ForegroundColor Red
         Write-Host "  Verifica tu conexion y credenciales de Git." -ForegroundColor Red
+        Set-Location $PSScriptRoot
         return
     }
 
     Write-Host ""
     Write-Host "  Repositorio actualizado correctamente." -ForegroundColor Green
+    Set-Location $PSScriptRoot
 }
 
 # ── Ejecucion principal ──────────────────────────────────────
