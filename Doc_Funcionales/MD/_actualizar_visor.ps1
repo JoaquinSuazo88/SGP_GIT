@@ -1,5 +1,5 @@
 # _actualizar_visor.ps1
-# Lanzador del visor SGP con soporte para Ctrl+C limpio y commit Git al salir.
+# Lanzador del visor SGP — Node corre en segundo plano; teclas controlan el flujo.
 
 $Host.UI.RawUI.WindowTitle = "SGP Visor - Modo Vigilancia"
 Set-Location $PSScriptRoot
@@ -7,19 +7,22 @@ Set-Location $PSScriptRoot
 # Raiz del proyecto (dos niveles arriba: MD/ -> Doc_Funcionales/ -> SGP-Produccion/)
 $ProjectRoot = Split-Path (Split-Path $PSScriptRoot)
 
+# ── Encabezado ───────────────────────────────────────────────
 function Write-Header {
     Write-Host ""
     Write-Host "  =================================================" -ForegroundColor Cyan
     Write-Host "  SGP Upgrade - Generador de Documentacion HTML   " -ForegroundColor Cyan
     Write-Host "  =================================================" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "  Cada vez que guardes un .md o agregues una nueva"
-    Write-Host "  carpeta, el visor_documentos.html se actualiza."
+    Write-Host "  Vigilando cambios en archivos .md ..."
     Write-Host ""
-    Write-Host "  Presiona Ctrl+C para detener." -ForegroundColor Yellow
+    Write-Host "  [G]      Gestionar Git y pausar vigilancia" -ForegroundColor Yellow
+    Write-Host "  [Q]      Salir sin Git                    " -ForegroundColor Yellow
+    Write-Host "  [Ctrl+C] Salir sin Git                    " -ForegroundColor Yellow
     Write-Host ""
 }
 
+# ── Git push ─────────────────────────────────────────────────
 function Invoke-GitPush {
     Write-Host ""
     Write-Host "  -------------------------------------------------"
@@ -28,47 +31,37 @@ function Invoke-GitPush {
     Write-Host "  -------------------------------------------------"
     Write-Host ""
 
-    # Cambiar al directorio raiz del proyecto para los comandos git
     Set-Location $ProjectRoot
 
-    # git add
     Write-Host "  Agregando archivos al stage..." -ForegroundColor Yellow
     git add .
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "  ERROR: git add fallo. Verifica que esta carpeta" -ForegroundColor Red
-        Write-Host "  sea un repositorio Git inicializado." -ForegroundColor Red
+        Write-Host "  ERROR: git add fallo." -ForegroundColor Red
         Set-Location $PSScriptRoot
         return
     }
     Write-Host "  OK." -ForegroundColor Green
     Write-Host ""
 
-    # Pedir mensaje (no puede quedar vacio)
     do {
         $msg = Read-Host "  Mensaje del commit"
-        if ($msg -eq "") {
-            Write-Host "  El mensaje no puede estar vacio." -ForegroundColor Red
-        }
+        if ($msg -eq "") { Write-Host "  El mensaje no puede estar vacio." -ForegroundColor Red }
     } while ($msg -eq "")
 
-    # git commit
     Write-Host ""
     Write-Host "  Creando commit..." -ForegroundColor Yellow
     git commit -m "$msg"
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  ERROR: No se pudo crear el commit." -ForegroundColor Red
-        Write-Host "  Puede que no haya cambios pendientes para confirmar." -ForegroundColor Red
         Set-Location $PSScriptRoot
         return
     }
 
-    # git push
     Write-Host ""
     Write-Host "  Subiendo cambios a origin/main..." -ForegroundColor Yellow
     git push -u origin main
     if ($LASTEXITCODE -ne 0) {
         Write-Host "  ERROR: git push fallo." -ForegroundColor Red
-        Write-Host "  Verifica tu conexion y credenciales de Git." -ForegroundColor Red
         Set-Location $PSScriptRoot
         return
     }
@@ -78,43 +71,104 @@ function Invoke-GitPush {
     Set-Location $PSScriptRoot
 }
 
+# ── Iniciar Node como proceso hijo (hereda consola: output visible) ──
+function Start-NodeWatch {
+    $proc = New-Object System.Diagnostics.Process
+    $proc.StartInfo.FileName        = "node"
+    $proc.StartInfo.Arguments       = "_gen_html.js --watch"
+    $proc.StartInfo.WorkingDirectory = $PSScriptRoot
+    $proc.StartInfo.UseShellExecute = $false   # hereda stdin/stdout/stderr del padre
+    $proc.Start() | Out-Null
+    return $proc
+}
+
 # ── Ejecucion principal ──────────────────────────────────────
+
+# Ctrl+C se convierte en input (char 3) en vez de matar PowerShell.
+# Tambien evita que Node reciba SIGINT por Ctrl+C (lo matamos manualmente).
+[Console]::TreatControlCAsInput = $true
+
 Write-Header
 
-$continuar = $true
+while ($true) {
 
-while ($continuar) {
+    $nodeProc  = Start-NodeWatch
+    $accion    = $null
 
-    try {
-        node _gen_html.js --watch
-    }
-    finally {
-        # Este bloque siempre se ejecuta, incluso tras Ctrl+C
-        Write-Host ""
-        Write-Host "  =================================================" -ForegroundColor Cyan
-        Write-Host "  Proceso detenido."
-        Write-Host "  =================================================" -ForegroundColor Cyan
-        Write-Host ""
+    # Bucle de escucha: espera tecla mientras Node corre
+    while (-not $nodeProc.HasExited) {
+        if ([Console]::KeyAvailable) {
+            $key  = [Console]::ReadKey($true)   # $true = no mostrar la tecla
+            $char = [int]$key.KeyChar
 
-        $respGit = Read-Host "  Deseas actualizar el repositorio Git? (s/n)"
-
-        if ($respGit -match '^[sS]$') {
-            Invoke-GitPush
-        } else {
-            Write-Host "  Git omitido." -ForegroundColor Gray
+            # G → gestionar Git
+            if ($char -eq [int][char]'g' -or $char -eq [int][char]'G') {
+                $accion = 'git'
+                break
+            }
+            # Q o Ctrl+C (char 3) → salir
+            if ($char -eq [int][char]'q' -or $char -eq [int][char]'Q' -or $char -eq 3) {
+                $accion = 'salir'
+                break
+            }
         }
-
-        Write-Host ""
-        $respWatch = Read-Host "  Deseas seguir vigilando modificaciones? (s/n)"
-
-        if ($respWatch -match '^[sS]$') {
-            Write-Host ""
-            Write-Host "  Reiniciando modo vigilancia..." -ForegroundColor Cyan
-            Write-Host ""
-            $continuar = $true
-        } else {
-            $continuar = $false
-        }
+        Start-Sleep -Milliseconds 150
     }
 
+    # Detener Node
+    if (-not $nodeProc.HasExited) {
+        $nodeProc.Kill()
+        $nodeProc.WaitForExit(3000) | Out-Null
+    }
+
+    # Si Node salio solo (error o fin inesperado) ir a menu
+    if ($null -eq $accion) { $accion = 'git' }
+
+    # ── Salir sin Git ────────────────────────────────────────
+    if ($accion -eq 'salir') {
+        Write-Host ""
+        Write-Host "  Proceso finalizado." -ForegroundColor Gray
+        Write-Host ""
+        break
+    }
+
+    # ── Menu Git ─────────────────────────────────────────────
+    Write-Host ""
+    Write-Host "  =================================================" -ForegroundColor Cyan
+    Write-Host "  Vigilancia pausada."
+    Write-Host "  =================================================" -ForegroundColor Cyan
+    Write-Host ""
+
+    # Restaurar Ctrl+C normal para que Read-Host funcione correctamente
+    [Console]::TreatControlCAsInput = $false
+
+    $respGit = Read-Host "  Deseas actualizar el repositorio Git? (s/n)"
+    if ($respGit -match '^[sS]$') {
+        Invoke-GitPush
+    } else {
+        Write-Host "  Git omitido." -ForegroundColor Gray
+    }
+
+    Write-Host ""
+    $respWatch = Read-Host "  Deseas seguir vigilando modificaciones? (s/n)"
+
+    # Volver a interceptar Ctrl+C antes del proximo ciclo
+    [Console]::TreatControlCAsInput = $true
+
+    if ($respWatch -match '^[sS]$') {
+        Write-Host ""
+        Write-Host "  Reiniciando modo vigilancia..." -ForegroundColor Cyan
+        Write-Host ""
+        Write-Host "  [G] Gestionar Git y pausar   [Q] Salir" -ForegroundColor Yellow
+        Write-Host ""
+        # El while externo reinicia Node automaticamente
+    } else {
+        Write-Host ""
+        Write-Host "  Proceso finalizado." -ForegroundColor Gray
+        Write-Host ""
+        break
+    }
 }
+
+# Restaurar comportamiento normal de Ctrl+C al cerrar
+[Console]::TreatControlCAsInput = $false
