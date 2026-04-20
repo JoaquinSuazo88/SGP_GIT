@@ -81,26 +81,40 @@ function Invoke-GitPush {
 # ── Ejecucion principal ──────────────────────────────────────
 Write-Header
 
-try {
-    node _gen_html.js --watch
-}
-finally {
-    # Este bloque siempre se ejecuta, incluso tras Ctrl+C
-    Write-Host ""
-    Write-Host "  =================================================" -ForegroundColor Cyan
-    Write-Host "  Proceso detenido."
-    Write-Host "  =================================================" -ForegroundColor Cyan
-    Write-Host ""
+$continuar = $true
 
-    $resp = Read-Host "  Deseas actualizar el repositorio Git? (s/n)"
+while ($continuar) {
 
-    if ($resp -match '^[sS]$') {
-        Invoke-GitPush
-    } else {
-        Write-Host "  Git omitido." -ForegroundColor Gray
+    try {
+        node _gen_html.js --watch
+    }
+    finally {
+        # Este bloque siempre se ejecuta, incluso tras Ctrl+C
+        Write-Host ""
+        Write-Host "  =================================================" -ForegroundColor Cyan
+        Write-Host "  Proceso detenido."
+        Write-Host "  =================================================" -ForegroundColor Cyan
+        Write-Host ""
+
+        $respGit = Read-Host "  Deseas actualizar el repositorio Git? (s/n)"
+
+        if ($respGit -match '^[sS]$') {
+            Invoke-GitPush
+        } else {
+            Write-Host "  Git omitido." -ForegroundColor Gray
+        }
+
+        Write-Host ""
+        $respWatch = Read-Host "  Deseas seguir vigilando modificaciones? (s/n)"
+
+        if ($respWatch -match '^[sS]$') {
+            Write-Host ""
+            Write-Host "  Reiniciando modo vigilancia..." -ForegroundColor Cyan
+            Write-Host ""
+            $continuar = $true
+        } else {
+            $continuar = $false
+        }
     }
 
-    Write-Host ""
-    Write-Host "  Presiona Enter para cerrar."
-    Read-Host | Out-Null
 }
